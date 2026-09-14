@@ -1,0 +1,538 @@
+// LocalGrowth AI — Prisma schema
+// Brand / product affiliate + referral platform.
+// All monetary amounts are stored as integers in minor units (paise for INR).
+// Percentage values (reward/commission) are stored in basis points (1000 = 10%).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  BRAND_OWNER
+  CREATOR
+  CUSTOMER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum BrandStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum CampaignType {
+  CREATOR_AFFILIATE
+  CUSTOMER_REFERRAL
+  HYBRID
+}
+
+enum CampaignStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  ENDED
+  ARCHIVED
+}
+
+enum RewardType {
+  FIXED_AMOUNT
+  PERCENTAGE
+  VOUCHER
+  DISCOUNT
+}
+
+enum CommissionType {
+  FIXED_AMOUNT
+  PERCENTAGE
+}
+
+enum PartnerType {
+  CREATOR
+  CUSTOMER
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ReferralLinkStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ClickSource {
+  LINK
+  QR
+}
+
+enum ReferralStatus {
+  PENDING
+  CLICKED
+  VISITED
+  PURCHASED
+  VERIFIED
+  REJECTED
+  CANCELLED
+}
+
+enum ConversionSource {
+  MANUAL
+  REFERRAL_CODE
+  QR_SCAN
+  IMPORT
+}
+
+enum RewardStatus {
+  PENDING
+  APPROVED
+  AVAILABLE
+  REDEEMED
+  REJECTED
+}
+
+enum CommissionStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  UNDER_REVIEW
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+}
+
+enum AIInsightType {
+  PERFORMANCE
+  RECOMMENDATION
+  WARNING
+  INSUFFICIENT_DATA
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole
+  phone        String?
+  avatarUrl    String?
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  brands              Brand[]
+  creatorProfile      CreatorProfile?
+  partnerApplications PartnerApplication[]
+  referralLinks       ReferralLink[]
+  referralsMade       Referral[]           @relation("ReferralReferrer")
+  referralsReceived   Referral[]           @relation("ReferralReferred")
+  conversionsVerified Conversion[]         @relation("ConversionVerifier")
+  rewards             Reward[]
+  commissions         Commission[]
+  payoutRequests      PayoutRequest[]
+  auditLogs           AuditLog[]
+
+  @@index([role])
+  @@index([status])
+  @@map("users")
+}
+
+/// A brand (e.g. a headphone company) that lists products and runs campaigns.
+model Brand {
+  id                 String             @id @default(cuid())
+  ownerId            String
+  name               String
+  slug               String             @unique
+  tagline            String?
+  description        String?
+  logoUrl            String?
+  coverImageUrl      String?
+  website            String?
+  industry           String?
+  /// { instagram?, youtube?, twitter?, facebook?, linkedin? } — public URLs only.
+  socialLinks        Json?
+  supportEmail       String?
+  country            String             @default("India")
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  status             BrandStatus        @default(ACTIVE)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products    Product[]
+  campaigns   Campaign[]
+  conversions Conversion[]
+  aiInsights  AIInsight[]
+
+  @@index([ownerId])
+  @@index([industry])
+  @@index([status])
+  @@map("brands")
+}
+
+/// A product a brand sells online. Every campaign promotes exactly one product.
+model Product {
+  id          String        @id @default(cuid())
+  brandId     String
+  name        String
+  /// Globally unique — used in public URLs (/products/[slug]).
+  slug        String        @unique
+  description String?
+  imageUrl    String?
+  category    String?
+  /// Minor units.
+  price       Int
+  currency    String        @default("INR")
+  purchaseUrl String
+  sku         String?
+  status      ProductStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  brand     Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@unique([brandId, sku])
+  @@index([brandId])
+  @@index([category])
+  @@index([status])
+  @@map("products")
+}
+
+model CreatorProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  displayName        String
+  username           String             @unique
+  bio                String?
+  profileImageUrl    String?
+  category           String?
+  location           String?
+  // --- Social presence. All numbers are SELF-REPORTED by the creator unless a
+  // --- social API is connected; the UI must label them as such.
+  instagramHandle    String?
+  instagramUrl       String?
+  instagramFollowers Int?
+  youtubeChannel     String?
+  youtubeUrl         String?
+  youtubeSubscribers Int?
+  twitterHandle      String?
+  twitterUrl         String?
+  averageViews       Int?
+  engagementRate     Float?
+  audienceCategory   String?
+  audienceLocation   String?
+  previousCampaigns  String?
+  /// Array of public content URLs.
+  contentSamples     Json?
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([location])
+  @@index([category])
+  @@index([verificationStatus])
+  @@map("creator_profiles")
+}
+
+model Campaign {
+  id                     String         @id @default(cuid())
+  brandId                String
+  productId              String
+  name                   String
+  /// Globally unique — used in public URLs (/campaigns/[slug]).
+  slug                   String         @unique
+  description            String?
+  campaignType           CampaignType   @default(HYBRID)
+  /// Customer-facing headline shown on the referral landing page.
+  offerTitle             String?
+  offerDescription       String?
+  terms                  String?
+  rewardType             RewardType     @default(FIXED_AMOUNT)
+  /// Minor units (paise) for FIXED_AMOUNT/VOUCHER/DISCOUNT; basis points for PERCENTAGE.
+  customerRewardValue    Int
+  creatorCommissionType  CommissionType @default(PERCENTAGE)
+  /// Minor units (paise) for FIXED_AMOUNT; basis points for PERCENTAGE.
+  creatorCommissionValue Int
+  currency               String         @default("INR")
+  /// Minor units. Null = no minimum order value.
+  minimumPurchaseAmount  Int?
+  newCustomerOnly        Boolean        @default(false)
+  /// Minor units. Null = no cap.
+  maxRewardPerCustomer   Int?
+  attributionWindowDays  Int            @default(30)
+  /// When true, creators must be approved by the brand before receiving a link.
+  requiresApproval       Boolean        @default(true)
+  startDate              DateTime
+  endDate                DateTime?
+  /// Minor units. Null = no budget cap.
+  budget                 Int?
+  status                 CampaignStatus @default(DRAFT)
+  publishedAt            DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  brand               Brand                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product             Product              @relation(fields: [productId], references: [id], onDelete: Restrict)
+  partnerApplications PartnerApplication[]
+  referralLinks       ReferralLink[]
+  referralClicks      ReferralClick[]
+  referrals           Referral[]
+  aiInsights          AIInsight[]
+
+  @@index([brandId])
+  @@index([productId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("campaigns")
+}
+
+model PartnerApplication {
+  id          String            @id @default(cuid())
+  campaignId  String
+  userId      String
+  partnerType PartnerType
+  status      ApplicationStatus @default(PENDING)
+  message     String?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, userId])
+  @@index([userId])
+  @@index([status])
+  @@map("partner_applications")
+}
+
+/// One link per partner per campaign. `code` is human readable, e.g. ARJUN-BOAT-450.
+model ReferralLink {
+  id             String             @id @default(cuid())
+  campaignId     String
+  ownerId        String
+  partnerType    PartnerType
+  code           String             @unique
+  destinationUrl String?
+  status         ReferralLinkStatus @default(ACTIVE)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  clicks    ReferralClick[]
+  referrals Referral[]
+
+  @@unique([campaignId, ownerId])
+  @@index([ownerId])
+  @@index([campaignId])
+  @@map("referral_links")
+}
+
+model ReferralClick {
+  id                 String      @id @default(cuid())
+  referralLinkId     String
+  campaignId         String
+  anonymousVisitorId String
+  source             ClickSource @default(LINK)
+  ipHash             String?
+  userAgent          String?
+  referer            String?
+  createdAt          DateTime    @default(now())
+
+  referralLink ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([referralLinkId])
+  @@index([campaignId, createdAt])
+  @@index([anonymousVisitorId])
+  @@map("referral_clicks")
+}
+
+model Referral {
+  id                 String         @id @default(cuid())
+  campaignId         String
+  referralLinkId     String
+  referrerId         String
+  referredUserId     String?
+  referredPhoneHash  String?
+  anonymousVisitorId String?
+  status             ReferralStatus @default(PENDING)
+  qualifyingEvent    String?
+  verifiedAt         DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  referralLink ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+  referrer     User         @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser User?        @relation("ReferralReferred", fields: [referredUserId], references: [id], onDelete: SetNull)
+  conversion   Conversion?
+  rewards      Reward[]
+  commissions  Commission[]
+
+  @@index([campaignId, status])
+  @@index([referrerId])
+  @@index([referredUserId])
+  @@index([referredPhoneHash])
+  @@index([anonymousVisitorId])
+  @@map("referrals")
+}
+
+/// An online order attributed to a referral. Recorded by the brand, then verified.
+model Conversion {
+  id             String           @id @default(cuid())
+  referralId     String           @unique
+  brandId        String
+  orderReference String
+  /// Order value in minor units.
+  amount         Int
+  quantity       Int              @default(1)
+  currency       String           @default("INR")
+  source         ConversionSource @default(MANUAL)
+  verifiedById   String?
+  verifiedAt     DateTime?
+  createdAt      DateTime         @default(now())
+
+  referral   Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  verifiedBy User?    @relation("ConversionVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  @@unique([brandId, orderReference])
+  @@index([brandId, createdAt])
+  @@map("conversions")
+}
+
+model Reward {
+  id          String       @id @default(cuid())
+  referralId  String
+  recipientId String
+  rewardType  RewardType
+  /// Minor units.
+  amount      Int
+  currency    String       @default("INR")
+  status      RewardStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  referral  Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  recipient User     @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([referralId, recipientId])
+  @@index([recipientId, status])
+  @@map("rewards")
+}
+
+model Commission {
+  id         String           @id @default(cuid())
+  referralId String
+  creatorId  String
+  /// Minor units.
+  amount     Int
+  currency   String           @default("INR")
+  status     CommissionStatus @default(PENDING)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  referral Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+  creator  User     @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([referralId, creatorId])
+  @@index([creatorId, status])
+  @@map("commissions")
+}
+
+model PayoutRequest {
+  id              String       @id @default(cuid())
+  userId          String
+  /// Minor units.
+  amount          Int
+  currency        String       @default("INR")
+  status          PayoutStatus @default(REQUESTED)
+  payoutMethod    String
+  payoutReference String?
+  adminNote       String?
+  requestedAt     DateTime     @default(now())
+  processedAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([status])
+  @@map("payout_requests")
+}
+
+model AIInsight {
+  id             String        @id @default(cuid())
+  brandId        String
+  campaignId     String?
+  type           AIInsightType
+  title          String
+  description    String
+  recommendation String?
+  createdAt      DateTime      @default(now())
+
+  brand    Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, createdAt])
+  @@map("ai_insights")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
