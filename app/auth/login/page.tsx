@@ -11,7 +11,7 @@ async function getQuickAccounts() {
   if (!showDemoLogins()) return [];
   try {
     const existing = await prisma.user.findMany({
-      where: { email: { in: QUICK_DEMO_ACCOUNTS.map((a) => a.email) }, status: "ACTIVE" },
+      where: { email: { in: QUICK_DEMO_ACCOUNTS.map((a) => a.email) }, status: "APPROVED" },
       select: { email: true },
     });
     const emails = new Set(existing.map((u) => u.email));
@@ -24,11 +24,15 @@ async function getQuickAccounts() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string; registered?: string }>;
 }) {
-  const { callbackUrl, error } = await searchParams;
+  const { callbackUrl, error, registered } = await searchParams;
   const safeCallback = callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : undefined;
-  const notice = error ? "Please log in to continue." : undefined;
+  const notice = registered
+    ? "Your account was created and is waiting for admin approval. You can log in after approval."
+    : error
+      ? "Please log in to continue."
+      : undefined;
   const quickAccounts = await getQuickAccounts();
 
   return (

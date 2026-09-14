@@ -27,6 +27,7 @@ export async function createUser(input: {
           passwordHash,
           role: input.role,
           phone: input.phone || null,
+          status: "PENDING",
         },
         select: { id: true, name: true, email: true, role: true, status: true },
       });
@@ -43,6 +44,21 @@ export async function createUser(input: {
     }
     throw err;
   }
+}
+
+export async function setUserStatus(userId: string, actorId: string, status: "APPROVED" | "SUSPENDED") {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: { status },
+      select: { id: true, name: true, email: true, role: true, status: true },
+    });
+    await recordAudit(
+      { userId: actorId, action: status === "APPROVED" ? "USER_APPROVED" : "USER_SUSPENDED", entityType: "User", entityId: userId, metadata: { status } },
+      tx,
+    );
+    return user;
+  });
 }
 
 export async function updateAccount(userId: string, input: { name: string; phone?: string | null }) {

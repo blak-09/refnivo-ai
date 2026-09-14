@@ -24,7 +24,8 @@ enum UserRole {
 }
 
 enum UserStatus {
-  ACTIVE
+  PENDING
+  APPROVED
   SUSPENDED
 }
 
@@ -155,7 +156,7 @@ model User {
   role         UserRole
   phone        String?
   avatarUrl    String?
-  status       UserStatus @default(ACTIVE)
+  status       UserStatus @default(PENDING)
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 

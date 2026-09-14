@@ -1,9 +1,8 @@
 "use server";
 
 import { AuthError } from "next-auth";
-import { unstable_rethrow } from "next/navigation";
+import { redirect, unstable_rethrow } from "next/navigation";
 import { signIn, signOut } from "@/lib/auth";
-import { roleHome } from "@/lib/auth/roles";
 import { createUser, EmailTakenError } from "@/lib/services/users";
 import { loginSchema, registerSchema } from "@/lib/validation/auth";
 import { fail, firstError, formValues, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
@@ -31,21 +30,7 @@ export async function registerAction(
     return fail("Could not create your account. Please try again.");
   }
 
-  const destination = parsed.data.role === "BRAND_OWNER" || parsed.data.role === "CREATOR"
-    ? "/auth/onboarding"
-    : roleHome(parsed.data.role);
-
-  try {
-    await signIn("credentials", {
-      email: parsed.data.email,
-      password: parsed.data.password,
-      redirectTo: destination,
-    });
-  } catch (err) {
-    unstable_rethrow(err);
-    return fail("Account created, but sign-in failed. Please log in.");
-  }
-  return { ok: true, data: undefined };
+  redirect("/auth/login?registered=1");
 }
 
 export async function loginAction(

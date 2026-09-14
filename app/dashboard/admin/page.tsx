@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { ShieldCheckIcon } from "lucide-react";
 import { EmptyState, KpiCard, PageHeader } from "@/components/dashboard/primitives";
+import { PendingUsers } from "@/components/admin/pending-users";
 import { requireRole } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { formatMoney } from "@/lib/money";
@@ -9,11 +10,16 @@ export const metadata: Metadata = { title: "Admin overview" };
 
 export default async function AdminOverviewPage() {
   await requireRole("ADMIN");
-  const [users, brands, creators, customers, activeCampaigns, verified, revenue] = await Promise.all([
+  const [users, brands, creators, customers, pendingUsers, activeCampaigns, verified, revenue] = await Promise.all([
     prisma.user.count(),
     prisma.brand.count(),
     prisma.user.count({ where: { role: "CREATOR" } }),
     prisma.user.count({ where: { role: "CUSTOMER" } }),
+    prisma.user.findMany({
+      where: { status: "PENDING" },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, role: true, status: true, createdAt: true },
+    }),
     prisma.campaign.count({ where: { status: "ACTIVE" } }),
     prisma.referral.count({ where: { status: "VERIFIED" } }),
     prisma.conversion.aggregate({ where: { referral: { status: "VERIFIED" } }, _sum: { amount: true } }),
@@ -36,6 +42,7 @@ export default async function AdminOverviewPage() {
         title="Management tools arrive in the Admin phase"
         description="User, brand, creator, campaign, order, payout and audit-log management are built in the Admin phase of this MVP."
       />
+      <PendingUsers users={pendingUsers} />
     </div>
   );
 }

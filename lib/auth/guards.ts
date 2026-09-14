@@ -23,7 +23,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     where: { id },
     select: { id: true, name: true, email: true, role: true, status: true },
   });
-  if (!user || user.status === "SUSPENDED") return null;
+  if (!user || user.status !== "APPROVED") return null;
   return user;
 }
 

@@ -37,10 +37,11 @@ export function LoginForm({
   const [password, setPassword] = React.useState("");
   const [seen, setSeen] = React.useState(state);
   // Restore the typed email after a failed submit (React resets the form).
-  if (state !== seen) {
+  React.useEffect(() => {
+    if (state === seen) return;
     setSeen(state);
     if (state && !state.ok && state.values?.email) setEmail(state.values.email);
-  }
+  }, [state, seen]);
 
   const [selected, setSelected] = React.useState<string | null>(null);
   function fill(acc: QuickAccount) {
