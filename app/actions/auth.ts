@@ -1,11 +1,23 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { headers } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
+import bcrypt from "bcryptjs";
 import { signIn, signOut } from "@/lib/auth";
+import { prisma } from "@/lib/db/prisma";
+import { roleHome } from "@/lib/auth/roles";
 import { createUser, EmailTakenError } from "@/lib/services/users";
-import { loginSchema, registerSchema } from "@/lib/validation/auth";
+import { notifyRegistration } from "@/lib/services/notifications";
+import { buildRegistrationRow, exportRegistration } from "@/lib/registrations/sheet";
+import { extractRegistrationDetails, loginSchema, registerSchema } from "@/lib/validation/auth";
+import { rateLimit } from "@/lib/utils/rate-limit";
 import { fail, firstError, formValues, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
+
+async function clientIp(): Promise<string> {
+  const h = await headers();
+  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
+}
 
 function safeCallback(url: FormDataEntryValue | null): string | null {
   if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return null;
@@ -16,21 +28,55 @@ export async function registerAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
+  const limit = rateLimit(`register:${await clientIp()}`, 5, 10 * 60 * 1000);
+  if (!limit.ok) {
+    return fail(`Too many attempts. Please try again in ${limit.retryAfterSeconds} seconds.`, undefined, formValues(formData));
+  }
+
   const parsed = registerSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     const fieldErrors = zodFieldErrors(parsed.error);
     return fail(firstError(fieldErrors), fieldErrors, formValues(formData));
   }
 
+  const details = extractRegistrationDetails(parsed.data);
+
+  let user;
   try {
-    await createUser(parsed.data);
+    user = await createUser({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      password: parsed.data.password,
+      role: parsed.data.role,
+      phone: parsed.data.phone || null,
+      registrationDetails: details,
+    });
   } catch (err) {
     if (err instanceof EmailTakenError) return fail(err.message, { email: err.message }, formValues(formData));
     console.error("[register] failed", err instanceof Error ? err.message : err);
     return fail("Could not create your account. Please try again.");
   }
 
-  redirect("/auth/login?registered=1");
+  // Best-effort side-effects — never block the registration if these fail.
+  await exportRegistration(
+    buildRegistrationRow({
+      registrationId: user.registrationId ?? "",
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      details,
+      createdAt: user.createdAt,
+    }),
+  );
+  await notifyRegistration("received", {
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    registrationId: user.registrationId,
+  });
+
+  redirect(`/registration-pending?rid=${encodeURIComponent(user.registrationId ?? "")}`);
 }
 
 export async function loginAction(
@@ -43,13 +89,53 @@ export async function loginAction(
     return fail(firstError(fieldErrors), fieldErrors, formValues(formData));
   }
 
+  const limit = rateLimit(`login:${await clientIp()}:${parsed.data.email}`, 10, 10 * 60 * 1000);
+  if (!limit.ok) {
+    return fail(`Too many attempts. Please try again in ${limit.retryAfterSeconds} seconds.`, undefined, formValues(formData));
+  }
+
   const callbackUrl = safeCallback(formData.get("callbackUrl"));
 
+  // Look up the account so we can give the user a precise, safe reason.
+  const user = await prisma.user.findUnique({
+    where: { email: parsed.data.email },
+    select: { passwordHash: true, status: true, role: true, rejectionReason: true },
+  });
+
+  // Case 1 — no account.
+  if (!user) {
+    return fail("No account found. Please sign up first.", { _status: "NO_ACCOUNT" }, formValues(formData));
+  }
+
+  // Case 5 — verify the password BEFORE revealing any status, so account status
+  // cannot be probed without the correct credentials.
+  const passwordOk = await bcrypt.compare(parsed.data.password, user.passwordHash);
+  if (!passwordOk) {
+    return fail("Invalid email or password.", undefined, formValues(formData));
+  }
+
+  // Cases 2/3 + suspended — password is correct but the account can't sign in yet.
+  if (user.status === "PENDING") {
+    return fail("Your registration is still under review. Please wait for approval.", { _status: "PENDING" }, formValues(formData));
+  }
+  if (user.status === "REJECTED") {
+    const reason = user.rejectionReason?.trim();
+    return fail(
+      reason ? `Your registration was not approved. Reason: ${reason}` : "Your registration was not approved.",
+      { _status: "REJECTED" },
+      formValues(formData),
+    );
+  }
+  if (user.status === "SUSPENDED") {
+    return fail("Your account has been suspended. Please contact support.", { _status: "SUSPENDED" }, formValues(formData));
+  }
+
+  // Case 4 — approved: sign in and route by role.
   try {
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: callbackUrl ?? "/dashboard",
+      redirectTo: callbackUrl ?? roleHome(user.role),
     });
   } catch (err) {
     unstable_rethrow(err);

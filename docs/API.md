@@ -6,9 +6,25 @@ The app uses Next.js Server Actions (no public JSON API yet). Every action valid
 
 | Action | Input | Result |
 | --- | --- | --- |
-| `registerAction(prev, formData)` | `name, email, password, role (BRAND_OWNER/CREATOR/CUSTOMER), phone?` | Creates user, signs in, redirects (brand owners and creators → `/auth/onboarding`) |
-| `loginAction(prev, formData)` | `email, password, callbackUrl?` | Signs in and redirects; `Invalid email or password.` on failure |
+| `registerAction(prev, formData)` | `name, email, password, confirmPassword, role (BRAND_OWNER/CREATOR/CUSTOMER), phone?` + role-specific fields (brand: `brandName, brandWebsite?, brandCategory, brandDescription?`; creator: `creatorName, creatorCategory, instagramHandle?, instagramFollowers?, youtubeChannel?, youtubeSubscribers?`) | Creates a **PENDING** user (no auto-login), mirrors non-sensitive details to the registration spreadsheet, redirects to `/registration-pending?rid=…`. Rate-limited. |
+| `loginAction(prev, formData)` | `email, password, callbackUrl?` | Verifies the password, then gates on status: no account, PENDING, REJECTED (with reason), SUSPENDED each return a distinct message; APPROVED signs in and redirects by role. Rate-limited. |
 | `logoutAction()` | — | Signs out → `/` |
+
+Only **APPROVED** users can sign in (enforced in `authorize()` and `getCurrentUser()`).
+
+### Admin verification (`app/actions/admin.ts`) — ADMIN only
+
+| Action | Input | Notes |
+| --- | --- | --- |
+| `approveUserAction(prev, formData)` | `userId` | Sets status APPROVED (records `approvedAt`/`approvedById`); syncs the sheet; notifies. Cannot approve self. |
+| `rejectUserAction(prev, formData)` | `userId, reason` | Sets status REJECTED with reason (shown to the applicant); syncs the sheet; notifies. Cannot reject self. |
+| `suspendUserAction(prev, formData)` | `userId` | Sets status SUSPENDED. Cannot suspend self. |
+
+### Registration status (`app/actions/registrations.ts`)
+
+| Action | Input | Notes |
+| --- | --- | --- |
+| `checkRegistrationAction(prev, formData)` | `registrationId?` **or** `email?` | Public status lookup → Name, Role, Registration date, Status, admin message. Rate-limited. |
 
 Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 
@@ -65,6 +81,9 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 /products /products/[slug] /brands /brands/[slug] /creators/[username]
 /r/[code]?src=qr           GET → records click, sets attribution cookies, 302 → /campaigns/[slug]?ref=CODE
 /auth/login /auth/register /auth/onboarding
+/registration-pending?rid=…         post-signup status page (opaque Registration ID)
+/check-registration                 public status lookup (Registration ID or email)
+/admin/registrations                → /dashboard/admin/registrations (ADMIN)
 /dashboard                 → role home
 /dashboard/brand           overview · products[/new|/[id]] · campaigns[/new|/[id]|/[id]/edit] · creators?status&type · orders?status · payouts · analytics · profile · settings
 /dashboard/creator         overview · campaigns · links · conversions · earnings · profile · settings

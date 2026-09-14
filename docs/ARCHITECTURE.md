@@ -14,7 +14,7 @@ Brand lists products → creates a product campaign (commission + customer rewar
 
 | Model | Purpose | Notable constraints |
 | --- | --- | --- |
-| `User` | All accounts; `role` ∈ BRAND_OWNER, CREATOR, CUSTOMER, ADMIN | unique `email`, `status` ACTIVE/SUSPENDED |
+| `User` | All accounts; `role` ∈ BRAND_OWNER, CREATOR, CUSTOMER, ADMIN | unique `email`, `status` PENDING/APPROVED/REJECTED/SUSPENDED (manual verification), unique `registrationId` |
 | `Brand` | Brand profile (industry, socials, verification) — one per owner in v1 | unique `slug` |
 | `Product` | A product sold online; price in paise, purchase URL, SKU, status | unique `slug`, unique `(brandId, sku)` |
 | `CreatorProfile` | Public creator profile incl. self-reported social metrics, audience, samples | unique `userId`, `username` |
@@ -44,7 +44,11 @@ Brand lists products → creates a product campaign (commission + customer rewar
 - Every page/layout re-checks server-side via `lib/auth/guards.ts`:
   - `requireUser()` / `requireRole()` / `requireBrand()` / `requireCreator()` — redirect (pages; brand/creator also require onboarding).
   - `assertUser()` / `assertRole()` / `assertBrandOwner()` / `assertCreator()` / `assertPartner()` — throw `AuthorizationError` (server actions).
-- Suspended users are refused at login and on every request.
+- Manual verification: new accounts are created **PENDING** and cannot sign in until an admin approves them
+  (`/dashboard/admin/registrations`). Login distinguishes no-account / pending / rejected / suspended; only
+  APPROVED users pass `authorize()` and `getCurrentUser()`. Non-sensitive registration details are mirrored to a
+  spreadsheet (`lib/registrations`, csv default / Google Sheets optional) — the password hash never leaves the DB.
+- Suspended (and pending/rejected) users are refused at login and on every request.
 - Services take `brandId` / `ownerId` explicitly and scope every query by it, so ownership is enforced in the data layer.
 - Brands see a creator's public profile and self-reported metrics, never their email/phone. Customers never see creator metrics.
   Partners never see who bought — only order value and status.

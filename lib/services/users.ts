@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { Prisma, type UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { generateRegistrationId } from "@/lib/utils/registration-id";
 import { recordAudit } from "./audit";
 
 export class EmailTakenError extends Error {
@@ -10,51 +11,130 @@ export class EmailTakenError extends Error {
   }
 }
 
-export async function createUser(input: {
+function isUniqueViolationOn(err: unknown, field: string): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") return false;
+  const target = err.meta?.target;
+  if (Array.isArray(target)) return target.includes(field);
+  if (typeof target === "string") return target.includes(field);
+  return false;
+}
+
+export type CreateUserInput = {
   name: string;
   email: string;
   password: string;
   role: UserRole;
   phone?: string | null;
-}) {
+  /** Non-sensitive role-specific fields captured at signup. Never the password. */
+  registrationDetails?: Record<string, string | number>;
+};
+
+export async function createUser(input: CreateUserInput) {
   const passwordHash = await bcrypt.hash(input.password, 12);
-  try {
-    const user = await prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: {
-          name: input.name,
-          email: input.email.toLowerCase(),
-          passwordHash,
-          role: input.role,
-          phone: input.phone || null,
-          status: "PENDING",
-        },
-        select: { id: true, name: true, email: true, role: true, status: true },
+  const details = input.registrationDetails ?? {};
+
+  // Retry only on a registrationId collision; surface email conflicts immediately.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const registrationId = generateRegistrationId();
+    try {
+      return await prisma.$transaction(async (tx) => {
+        const created = await tx.user.create({
+          data: {
+            name: input.name,
+            email: input.email.toLowerCase(),
+            passwordHash,
+            role: input.role,
+            phone: input.phone || null,
+            status: "PENDING",
+            registrationId,
+            registrationDetails: details as Prisma.InputJsonValue,
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            status: true,
+            phone: true,
+            registrationId: true,
+            createdAt: true,
+          },
+        });
+        await recordAudit(
+          {
+            userId: created.id,
+            action: "USER_REGISTERED",
+            entityType: "User",
+            entityId: created.id,
+            metadata: { role: created.role, registrationId },
+          },
+          tx,
+        );
+        return created;
       });
-      await recordAudit(
-        { userId: created.id, action: "USER_REGISTERED", entityType: "User", entityId: created.id, metadata: { role: created.role } },
-        tx,
-      );
-      return created;
-    });
-    return user;
-  } catch (err) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-      throw new EmailTakenError();
+    } catch (err) {
+      if (isUniqueViolationOn(err, "email")) throw new EmailTakenError();
+      if (isUniqueViolationOn(err, "registrationId")) continue; // regenerate and retry
+      throw err;
     }
-    throw err;
   }
+  throw new Error("Could not allocate a registration id. Please try again.");
 }
 
-export async function setUserStatus(userId: string, actorId: string, status: "APPROVED" | "SUSPENDED") {
+/** Approve a pending/rejected account so the user can sign in. */
+export async function approveUser(userId: string, adminId: string) {
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({
       where: { id: userId },
-      data: { status },
-      select: { id: true, name: true, email: true, role: true, status: true },
+      data: {
+        status: "APPROVED",
+        approvedAt: new Date(),
+        approvedById: adminId,
+        rejectedAt: null,
+        rejectionReason: null,
+      },
+      select: { id: true, name: true, email: true, role: true, status: true, registrationId: true },
     });
     await recordAudit(
-      { userId: actorId, action: status === "APPROVED" ? "USER_APPROVED" : "USER_SUSPENDED", entityType: "User", entityId: userId, metadata: { status } },
+      { userId: adminId, action: "USER_APPROVED", entityType: "User", entityId: userId, metadata: { status: "APPROVED" } },
+      tx,
+    );
+    return user;
+  });
+}
+
+/** Reject an account with a reason (shown to the user on the status page). */
+export async function rejectUser(userId: string, adminId: string, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: {
+        status: "REJECTED",
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+        approvedAt: null,
+        approvedById: null,
+      },
+      select: { id: true, name: true, email: true, role: true, status: true, registrationId: true },
+    });
+    await recordAudit(
+      { userId: adminId, action: "USER_REJECTED", entityType: "User", entityId: userId, metadata: { status: "REJECTED", reason } },
+      tx,
+    );
+    return user;
+  });
+}
+
+/** Suspend a previously approved account. */
+export async function suspendUser(userId: string, adminId: string) {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({
+      where: { id: userId },
+      data: { status: "SUSPENDED" },
+      select: { id: true, name: true, email: true, role: true, status: true, registrationId: true },
+    });
+    await recordAudit(
+      { userId: adminId, action: "USER_SUSPENDED", entityType: "User", entityId: userId, metadata: { status: "SUSPENDED" } },
       tx,
     );
     return user;

@@ -35,7 +35,7 @@ async function main() {
 
   // ------------------------------------------------------------------ users
   const admin = await prisma.user.create({
-    data: { name: "Platform Admin", email: `admin@${DEMO_DOMAIN}`, passwordHash, role: "ADMIN" },
+    data: { name: "Platform Admin", email: `admin@${DEMO_DOMAIN}`, passwordHash, role: "ADMIN", status: "APPROVED" },
   });
 
   const owners = await Promise.all(
@@ -43,7 +43,7 @@ async function main() {
       { name: "Rohan Mehta", email: `owner.soundwave@${DEMO_DOMAIN}` },
       { name: "Priya Nair", email: `owner.glowlab@${DEMO_DOMAIN}` },
       { name: "Arjun Kapoor", email: `owner.fitfuel@${DEMO_DOMAIN}` },
-    ].map((o) => prisma.user.create({ data: { ...o, passwordHash, role: "BRAND_OWNER", phone: "+91 98100 00001" } })),
+    ].map((o) => prisma.user.create({ data: { ...o, passwordHash, role: "BRAND_OWNER", phone: "+91 98100 00001", status: "APPROVED" } })),
   );
 
   const creators = await Promise.all(
@@ -120,7 +120,7 @@ async function main() {
       },
     ].map((c) =>
       prisma.user.create({
-        data: { name: c.name, email: c.email, passwordHash, role: "CREATOR", creatorProfile: { create: c.profile } },
+        data: { name: c.name, email: c.email, passwordHash, role: "CREATOR", status: "APPROVED", creatorProfile: { create: c.profile } },
       }),
     ),
   );
@@ -131,7 +131,7 @@ async function main() {
       { name: "Ishita Verma", email: `ishita@${DEMO_DOMAIN}` },
       { name: "Dev Malhotra", email: `dev@${DEMO_DOMAIN}` },
       { name: "Meera Iyer", email: `meera@${DEMO_DOMAIN}` },
-    ].map((c) => prisma.user.create({ data: { ...c, passwordHash, role: "CUSTOMER" } })),
+    ].map((c) => prisma.user.create({ data: { ...c, passwordHash, role: "CUSTOMER", status: "APPROVED" } })),
   );
 
   // ----------------------------------------------------------------- brands
@@ -478,6 +478,7 @@ async function main() {
       email: `brand@${DEMO_DOMAIN}`,
       passwordHash,
       role: "BRAND_OWNER",
+      status: "APPROVED",
       brands: {
         create: {
           name: "Demo Gadgets Co",
@@ -506,13 +507,14 @@ async function main() {
       email: `creator@${DEMO_DOMAIN}`,
       passwordHash,
       role: "CREATOR",
+      status: "APPROVED",
       creatorProfile: {
         create: { displayName: "Demo Creator", username: "democreator", category: "Lifestyle", location: "Delhi, India", instagramHandle: "democreator", instagramFollowers: 12_000, engagementRate: 3.5, audienceCategory: "Young professionals" },
       },
     },
   });
   const quickCustomer = await prisma.user.create({
-    data: { name: "Demo Customer", email: `customer@${DEMO_DOMAIN}`, passwordHash, role: "CUSTOMER" },
+    data: { name: "Demo Customer", email: `customer@${DEMO_DOMAIN}`, passwordHash, role: "CUSTOMER", status: "APPROVED" },
   });
 
   console.log("Demo data ready.\n");

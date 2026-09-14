@@ -9,7 +9,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
   return (
     <div className="w-full pt-10">
       <div className="mx-auto w-full max-w-md">
-        <AuthCard title="Create your account" description="Brands, creators and customers all start here.">
+        <AuthCard title="Create your account" description="Brands, creators and customers all start here. Accounts are reviewed before first sign-in.">
           <RegisterForm initialRole={role} />
         </AuthCard>
       </div>

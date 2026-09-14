@@ -26,6 +26,7 @@ enum UserRole {
 enum UserStatus {
   PENDING
   APPROVED
+  REJECTED
   SUSPENDED
 }
 
@@ -157,6 +158,18 @@ model User {
   phone        String?
   avatarUrl    String?
   status       UserStatus @default(PENDING)
+
+  // Manual verification workflow (temporary approval system).
+  // registrationId is an opaque, human-readable handle safe to show/share.
+  // registrationDetails holds NON-SENSITIVE role-specific fields captured at
+  // signup (brand/creator info); it never contains the password or its hash.
+  registrationId      String?    @unique
+  registrationDetails Json?
+  approvedAt          DateTime?
+  approvedById        String?
+  rejectedAt          DateTime?
+  rejectionReason     String?
+
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 

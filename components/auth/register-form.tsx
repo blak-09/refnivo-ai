@@ -6,9 +6,12 @@ import Link from "next/link";
 import { GiftIcon, LinkIcon, StoreIcon, type LucideIcon } from "lucide-react";
 import { registerAction } from "@/app/actions/auth";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Field, FormError } from "@/components/forms/field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { useFormAttempt } from "@/components/forms/use-form-attempt";
+import { BRAND_CATEGORIES, CREATOR_CATEGORIES } from "@/lib/validation/auth";
 import { cn } from "@/lib/utils";
 
 type Role = "BRAND_OWNER" | "CREATOR" | "CUSTOMER";
@@ -59,20 +62,97 @@ export function RegisterForm({ initialRole }: { initialRole?: string }) {
         </div>
       </fieldset>
 
-      <Field label="Full name" htmlFor="name" error={errors.name} required>
-        <Input id="name" name="name" autoComplete="name" defaultValue={values.name} required aria-invalid={!!errors.name} />
-      </Field>
-      <Field label="Email" htmlFor="email" error={errors.email} required>
-        <Input id="email" name="email" type="email" autoComplete="email" defaultValue={values.email} required aria-invalid={!!errors.email} />
-      </Field>
-      <Field label="Phone (optional)" htmlFor="phone" error={errors.phone} hint="Used only for account recovery and partner coordination.">
-        <Input id="phone" name="phone" type="tel" autoComplete="tel" defaultValue={values.phone} placeholder="+91 98765 43210" aria-invalid={!!errors.phone} />
-      </Field>
-      <Field label="Password" htmlFor="password" error={errors.password} hint="At least 8 characters with a letter and a number." required>
-        <Input id="password" name="password" type="password" autoComplete="new-password" required aria-invalid={!!errors.password} />
-      </Field>
+      <div className="space-y-4">
+        <Field label="Full name" htmlFor="name" error={errors.name} required>
+          <Input id="name" name="name" autoComplete="name" defaultValue={values.name} required aria-invalid={!!errors.name} />
+        </Field>
+        <Field label="Email" htmlFor="email" error={errors.email} required>
+          <Input id="email" name="email" type="email" autoComplete="email" defaultValue={values.email} required aria-invalid={!!errors.email} />
+        </Field>
+        <Field label="Phone (optional)" htmlFor="phone" error={errors.phone} hint="Used only for account recovery and partner coordination.">
+          <Input id="phone" name="phone" type="tel" autoComplete="tel" defaultValue={values.phone} placeholder="+91 98765 43210" aria-invalid={!!errors.phone} />
+        </Field>
+      </div>
 
-      <SubmitButton className="w-full" pendingText="Creating account…">
+      {/* Brand-owner specific */}
+      {role === "BRAND_OWNER" ? (
+        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-medium">Brand details</p>
+          <Field label="Brand name" htmlFor="brandName" error={errors.brandName} required>
+            <Input id="brandName" name="brandName" defaultValue={values.brandName} required aria-invalid={!!errors.brandName} placeholder="e.g. Soundwave Audio" />
+          </Field>
+          <Field label="Brand website (optional)" htmlFor="brandWebsite" error={errors.brandWebsite}>
+            <Input id="brandWebsite" name="brandWebsite" type="url" defaultValue={values.brandWebsite} placeholder="https://yourbrand.com" aria-invalid={!!errors.brandWebsite} />
+          </Field>
+          <Field label="Brand category" htmlFor="brandCategory" error={errors.brandCategory} required>
+            <NativeSelect id="brandCategory" name="brandCategory" defaultValue={values.brandCategory ?? ""} aria-invalid={!!errors.brandCategory}>
+              <option value="" disabled>
+                Select a category
+              </option>
+              {BRAND_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <Field label="Brand description (optional)" htmlFor="brandDescription" error={errors.brandDescription}>
+            <Textarea id="brandDescription" name="brandDescription" defaultValue={values.brandDescription} rows={3} placeholder="What does your brand sell?" aria-invalid={!!errors.brandDescription} />
+          </Field>
+        </div>
+      ) : null}
+
+      {/* Creator specific */}
+      {role === "CREATOR" ? (
+        <div className="space-y-4 rounded-lg border bg-muted/30 p-4">
+          <p className="text-sm font-medium">Creator details</p>
+          <Field label="Creator name" htmlFor="creatorName" error={errors.creatorName} required>
+            <Input id="creatorName" name="creatorName" defaultValue={values.creatorName} required aria-invalid={!!errors.creatorName} placeholder="Your public creator name" />
+          </Field>
+          <Field label="Content category" htmlFor="creatorCategory" error={errors.creatorCategory} required>
+            <NativeSelect id="creatorCategory" name="creatorCategory" defaultValue={values.creatorCategory ?? ""} aria-invalid={!!errors.creatorCategory}>
+              <option value="" disabled>
+                Select a category
+              </option>
+              {CREATOR_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Instagram handle (optional)" htmlFor="instagramHandle" error={errors.instagramHandle}>
+              <Input id="instagramHandle" name="instagramHandle" defaultValue={values.instagramHandle} placeholder="@yourhandle" aria-invalid={!!errors.instagramHandle} />
+            </Field>
+            <Field label="Instagram followers (optional)" htmlFor="instagramFollowers" error={errors.instagramFollowers}>
+              <Input id="instagramFollowers" name="instagramFollowers" inputMode="numeric" defaultValue={values.instagramFollowers} placeholder="e.g. 12000" aria-invalid={!!errors.instagramFollowers} />
+            </Field>
+            <Field label="YouTube channel (optional)" htmlFor="youtubeChannel" error={errors.youtubeChannel}>
+              <Input id="youtubeChannel" name="youtubeChannel" defaultValue={values.youtubeChannel} placeholder="Channel name or URL" aria-invalid={!!errors.youtubeChannel} />
+            </Field>
+            <Field label="YouTube subscribers (optional)" htmlFor="youtubeSubscribers" error={errors.youtubeSubscribers}>
+              <Input id="youtubeSubscribers" name="youtubeSubscribers" inputMode="numeric" defaultValue={values.youtubeSubscribers} placeholder="e.g. 5000" aria-invalid={!!errors.youtubeSubscribers} />
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground">Follower and subscriber counts are self-reported.</p>
+        </div>
+      ) : null}
+
+      <div className="space-y-4">
+        <Field label="Password" htmlFor="password" error={errors.password} hint="At least 8 characters with a letter and a number." required>
+          <Input id="password" name="password" type="password" autoComplete="new-password" required aria-invalid={!!errors.password} />
+        </Field>
+        <Field label="Confirm password" htmlFor="confirmPassword" error={errors.confirmPassword} required>
+          <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required aria-invalid={!!errors.confirmPassword} />
+        </Field>
+      </div>
+
+      <div className="rounded-lg border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
+        New accounts are reviewed by our team before you can sign in. You&apos;ll see your status right after signing up.
+      </div>
+
+      <SubmitButton className="w-full" pendingText="Submitting…">
         Create account
       </SubmitButton>
       <p className="text-center text-xs text-muted-foreground">

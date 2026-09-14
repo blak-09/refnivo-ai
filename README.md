@@ -173,4 +173,8 @@ Works only while both are running on your machine; the URL changes each restart.
 - Payout requests, reward redemption, admin management tools and AI features are scheduled for phases R3b/R4 (see `docs/PROGRESS.md`).
 - Images are URL fields; no file upload. One brand per owner account.
 - Creator social metrics are self-reported (no social API).
-- No rate limiting on auth endpoints yet.
+- New accounts require **manual admin approval** before first sign-in (temporary verification flow). Non-sensitive
+  registration details are exported to a spreadsheet (CSV by default; set `REGISTRATION_SHEET_PROVIDER=google` for
+  Google Sheets). The password hash is never exported.
+- Auth endpoints have basic **in-memory** rate limiting (per instance). For multi-instance/serverless, back
+  `lib/utils/rate-limit.ts` with a shared store (Redis/Upstash).

@@ -1,16 +1,18 @@
-import { setUserApprovalAction } from "@/app/actions/admin";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatusBadge } from "@/components/dashboard/primitives";
+import { RegistrationRowActions, type AdminRegistration } from "@/components/admin/registration-row-actions";
+import { ROLE_LABEL } from "@/lib/auth/roles";
 
-export function PendingUsers({
-  users,
-}: {
-  users: { id: string; name: string; role: string; status: string; createdAt: Date }[];
-}) {
+export function PendingUsers({ users }: { users: AdminRegistration[] }) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>Accounts awaiting approval ({users.length})</CardTitle>
+        <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/dashboard/admin/registrations" />}>
+          View all registrations
+        </Button>
       </CardHeader>
       <CardContent>
         {users.length === 0 ? (
@@ -19,24 +21,16 @@ export function PendingUsers({
           <div className="space-y-3">
             {users.map((user) => (
               <div key={user.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
-                <div>
-                  <p className="font-medium">{user.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {user.role.replaceAll("_", " ").toLowerCase()} · Joined {user.createdAt.toLocaleDateString()}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate font-medium">{user.name}</p>
+                    <StatusBadge status={user.status} />
+                  </div>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {user.email} · {ROLE_LABEL[user.role]} · Joined {user.createdAt.toLocaleDateString()}
                   </p>
                 </div>
-                <div className="flex gap-2">
-                  <form action={setUserApprovalAction}>
-                    <input type="hidden" name="userId" value={user.id} />
-                    <input type="hidden" name="status" value="APPROVED" />
-                    <Button type="submit" size="sm">Approve</Button>
-                  </form>
-                  <form action={setUserApprovalAction}>
-                    <input type="hidden" name="userId" value={user.id} />
-                    <input type="hidden" name="status" value="SUSPENDED" />
-                    <Button type="submit" size="sm" variant="outline">Reject</Button>
-                  </form>
-                </div>
+                <RegistrationRowActions reg={user} />
               </div>
             ))}
           </div>

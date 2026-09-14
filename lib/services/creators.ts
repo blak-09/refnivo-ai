@@ -40,7 +40,7 @@ export async function upsertCreatorProfile(userId: string, values: CreatorProfil
 /** Public creator profile + campaign history (no contact details). */
 export async function getPublicCreator(username: string) {
   const profile = await prisma.creatorProfile.findFirst({
-    where: { username, user: { status: "ACTIVE" } },
+    where: { username, user: { status: "APPROVED" } },
     select: {
       ...creatorReviewSelect,
       createdAt: true,
@@ -146,7 +146,7 @@ export type PublicCreatorCard = {
 export async function listPublicCreators(opts: { q?: string; category?: string } = {}): Promise<PublicCreatorCard[]> {
   return prisma.creatorProfile.findMany({
     where: {
-      user: { status: "ACTIVE" },
+      user: { status: "APPROVED" },
       ...(opts.category ? { category: opts.category } : {}),
       ...(opts.q
         ? {

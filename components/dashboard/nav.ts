@@ -55,6 +55,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
   ],
   admin: [
     { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboardIcon, exact: true },
+    { href: "/dashboard/admin/registrations", label: "Registrations", icon: UsersIcon },
     { href: "/dashboard/admin/settings", label: "Settings", icon: SettingsIcon },
   ],
 };

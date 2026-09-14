@@ -30,16 +30,54 @@ const validCampaign: CampaignFormInput = {
 };
 
 describe("auth validation", () => {
-  it("accepts a valid registration and normalises email", () => {
-    const r = registerSchema.safeParse({ name: "Rohan", email: "  Rohan@Example.com ", password: "Password1", role: "CREATOR" });
+  it("accepts a valid customer registration and normalises email", () => {
+    const r = registerSchema.safeParse({
+      name: "Rohan",
+      email: "  Rohan@Example.com ",
+      password: "Password1",
+      confirmPassword: "Password1",
+      role: "CUSTOMER",
+    });
     expect(r.success).toBe(true);
     if (r.success) expect(r.data.email).toBe("rohan@example.com");
   });
+  it("requires matching passwords", () => {
+    const r = registerSchema.safeParse({
+      name: "Rohan",
+      email: "r@x.com",
+      password: "Password1",
+      confirmPassword: "Password2",
+      role: "CUSTOMER",
+    });
+    expect(r.success).toBe(false);
+  });
+  it("requires role-specific fields", () => {
+    // Brand owner without brand name / category is rejected.
+    expect(
+      registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", confirmPassword: "Password1", role: "BRAND_OWNER" }).success,
+    ).toBe(false);
+    // With them it passes.
+    expect(
+      registerSchema.safeParse({
+        name: "Rohan",
+        email: "r@x.com",
+        password: "Password1",
+        confirmPassword: "Password1",
+        role: "BRAND_OWNER",
+        brandName: "Soundwave",
+        brandCategory: "Electronics",
+      }).success,
+    ).toBe(true);
+    // Creator needs a creator name + category.
+    expect(
+      registerSchema.safeParse({ name: "Sana", email: "s@x.com", password: "Password1", confirmPassword: "Password1", role: "CREATOR" }).success,
+    ).toBe(false);
+  });
   it("rejects weak passwords, bad emails and admin self-registration", () => {
-    expect(registerSchema.safeParse({ name: "R", email: "x", password: "short", role: "CREATOR" }).success).toBe(false);
-    expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "onlyletters", role: "CREATOR" }).success).toBe(false);
-    expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", role: "ADMIN" }).success).toBe(false);
-    expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", role: "RESTAURANT_OWNER" }).success).toBe(false);
+    expect(registerSchema.safeParse({ name: "R", email: "x", password: "short", confirmPassword: "short", role: "CUSTOMER" }).success).toBe(false);
+    expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "onlyletters", confirmPassword: "onlyletters", role: "CUSTOMER" }).success).toBe(false);
+    expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", confirmPassword: "Password1", role: "ADMIN" }).success).toBe(false);
+    expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", confirmPassword: "Password1", role: "RESTAURANT_OWNER" }).success).toBe(false);
     expect(loginSchema.safeParse({ email: "r@x.com", password: "" }).success).toBe(false);
   });
 });
