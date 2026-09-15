@@ -1,7 +1,6 @@
 "use server";
 
 import { AuthError } from "next-auth";
-import { headers } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { signIn, signOut } from "@/lib/auth";
@@ -11,13 +10,8 @@ import { createUser, EmailTakenError } from "@/lib/services/users";
 import { notifyRegistration } from "@/lib/services/notifications";
 import { buildRegistrationRow, exportRegistration } from "@/lib/registrations/sheet";
 import { extractRegistrationDetails, loginSchema, registerSchema } from "@/lib/validation/auth";
-import { rateLimit } from "@/lib/utils/rate-limit";
+import { clientIp, rateLimit } from "@/lib/utils/rate-limit";
 import { fail, firstError, formValues, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
-
-async function clientIp(): Promise<string> {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
-}
 
 function safeCallback(url: FormDataEntryValue | null): string | null {
   if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return null;

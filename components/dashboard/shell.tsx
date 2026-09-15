@@ -7,7 +7,7 @@ import { LogOutIcon, MenuIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
-import { Logo } from "@/components/brand/logo";
+import { SidebarLogo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { isDemoAccount } from "@/lib/utils/demo";
 import { NAV, type NavItem, type NavKey } from "./nav";
@@ -67,7 +67,7 @@ function SidebarBody({
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-5 pb-4">
-        <Logo />
+        <SidebarLogo />
       </div>
       <div className="mx-3 mb-3 rounded-lg border bg-card px-3 py-2">
         <p className="truncate text-sm font-medium">{workspaceName}</p>
@@ -118,7 +118,7 @@ export function DashboardShell(props: ShellProps) {
               <SidebarBody {...rest} onNavigate={() => setOpen(false)} />
             </SheetContent>
           </Sheet>
-          <Logo compact />
+          <SidebarLogo compact />
         </header>
 
         {isDemoAccount(rest.user.email) ? (

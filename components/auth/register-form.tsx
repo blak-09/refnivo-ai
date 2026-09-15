@@ -27,8 +27,12 @@ export function RegisterForm({ initialRole }: { initialRole?: string }) {
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
   const values = state && !state.ok ? state.values ?? {} : {};
   const attempt = useFormAttempt(state);
+  // The form remounts after a failed submit (see useFormAttempt), so seed the
+  // role from the value the user actually submitted — not the URL prop — to
+  // keep their selection and the matching role-specific fields intact.
+  const preferredRole = values.role ?? initialRole;
   const [role, setRole] = React.useState<Role>(
-    ROLE_OPTIONS.some((r) => r.value === initialRole) ? (initialRole as Role) : "BRAND_OWNER",
+    ROLE_OPTIONS.some((r) => r.value === preferredRole) ? (preferredRole as Role) : "BRAND_OWNER",
   );
 
   return (

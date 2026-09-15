@@ -46,11 +46,3 @@ export function FormError({ message }: { message?: string | null }) {
   );
 }
 
-export function FormSuccess({ message }: { message?: string | null }) {
-  if (!message) return null;
-  return (
-    <div role="status" className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-primary">
-      {message}
-    </div>
-  );
-}

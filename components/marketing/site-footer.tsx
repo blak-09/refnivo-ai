@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Logo } from "@/components/brand/logo";
+import { FooterLogo } from "@/components/brand/logo";
 
 const groups = [
   {
@@ -43,7 +43,7 @@ export function SiteFooter() {
     <footer className="border-t bg-muted/30">
       <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div className="space-y-3">
-          <Logo />
+          <FooterLogo />
           <p className="max-w-xs text-sm text-muted-foreground">
             Affiliate and referral infrastructure for product brands, creators and customers. India-first.
           </p>

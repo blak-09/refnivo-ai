@@ -10,18 +10,12 @@ import { RegistrationRowActions, type AdminRegistration } from "@/components/adm
 import { requireRole } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { ROLE_LABEL } from "@/lib/auth/roles";
+import { asRegistrationDetails } from "@/lib/services/registrations";
 
 export const metadata: Metadata = { title: "Registrations" };
 
 const STATUS_VALUES: UserStatus[] = ["PENDING", "APPROVED", "REJECTED", "SUSPENDED"];
 const ROLE_VALUES: UserRole[] = ["BRAND_OWNER", "CREATOR", "CUSTOMER", "ADMIN"];
-
-function asDetails(value: Prisma.JsonValue | null): Record<string, string | number> | null {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, string | number>;
-  }
-  return null;
-}
 
 export default async function AdminRegistrationsPage({
   searchParams,
@@ -85,7 +79,7 @@ export default async function AdminRegistrationsPage({
     approvedAt: r.approvedAt,
     rejectedAt: r.rejectedAt,
     rejectionReason: r.rejectionReason,
-    details: asDetails(r.registrationDetails),
+    details: asRegistrationDetails(r.registrationDetails),
   }));
 
   return (

@@ -49,10 +49,6 @@ export function isCampaignLive(c: Pick<CampaignLike, "status" | "startDate" | "e
   return true;
 }
 
-export function hasEnded(c: Pick<CampaignLike, "endDate">, now = new Date()): boolean {
-  return !!c.endDate && c.endDate < now;
-}
-
 /**
  * Validation that must pass before a campaign can go ACTIVE. Returns a list of
  * human-readable problems; an empty list means it can be published.

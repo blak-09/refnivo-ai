@@ -18,7 +18,6 @@ Only **APPROVED** users can sign in (enforced in `authorize()` and `getCurrentUs
 | --- | --- | --- |
 | `approveUserAction(prev, formData)` | `userId` | Sets status APPROVED (records `approvedAt`/`approvedById`); syncs the sheet; notifies. Cannot approve self. |
 | `rejectUserAction(prev, formData)` | `userId, reason` | Sets status REJECTED with reason (shown to the applicant); syncs the sheet; notifies. Cannot reject self. |
-| `suspendUserAction(prev, formData)` | `userId` | Sets status SUSPENDED. Cannot suspend self. |
 
 ### Registration status (`app/actions/registrations.ts`)
 

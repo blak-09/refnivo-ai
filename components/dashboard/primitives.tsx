@@ -1,5 +1,4 @@
 import * as React from "react";
-import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -104,13 +103,13 @@ export function EmptyState({
 // ---------------------------------------------------------------------------
 
 const STATUS_STYLES: Record<string, string> = {
-  ACTIVE: "bg-primary/10 text-primary border-primary/20",
-  VERIFIED: "bg-primary/10 text-primary border-primary/20",
-  APPROVED: "bg-primary/10 text-primary border-primary/20",
-  AVAILABLE: "bg-primary/10 text-primary border-primary/20",
-  PAID: "bg-primary/10 text-primary border-primary/20",
+  ACTIVE: "bg-success/10 text-success border-success/25",
+  VERIFIED: "bg-success/10 text-success border-success/25",
+  APPROVED: "bg-success/10 text-success border-success/25",
+  AVAILABLE: "bg-success/10 text-success border-success/25",
+  PAID: "bg-success/10 text-success border-success/25",
   DRAFT: "bg-muted text-muted-foreground border-border",
-  PENDING: "bg-warning/15 text-amber-800 border-warning/30 dark:text-amber-200",
+  PENDING: "bg-warning/15 text-amber-800 border-warning/40 dark:text-amber-200",
   PENDING_REVIEW: "bg-warning/15 text-amber-800 border-warning/30 dark:text-amber-200",
   PURCHASED: "bg-warning/15 text-amber-800 border-warning/30 dark:text-amber-200",
   UNDER_REVIEW: "bg-warning/15 text-amber-800 border-warning/30 dark:text-amber-200",
@@ -134,49 +133,3 @@ export function StatusBadge({ status, label, className }: { status: string; labe
   );
 }
 
-export function DemoBadge({ className }: { className?: string }) {
-  return (
-    <Badge variant="outline" className={cn("border-dashed text-muted-foreground", className)} title="This record was created by the demo seed script">
-      Demo data
-    </Badge>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Section
-// ---------------------------------------------------------------------------
-
-export function Section({
-  title,
-  description,
-  action,
-  children,
-  className,
-}: {
-  title: string;
-  description?: React.ReactNode;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={cn("space-y-3", className)}>
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold">{title}</h2>
-          {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
-        </div>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-export function TextLink({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) {
-  return (
-    <Link href={href} className={cn("font-medium text-primary underline-offset-4 hover:underline", className)}>
-      {children}
-    </Link>
-  );
-}

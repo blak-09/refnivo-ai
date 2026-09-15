@@ -1,4 +1,4 @@
-// LocalGrowth AI — Prisma schema
+// Refnivo AI — Prisma schema
 // Brand / product affiliate + referral platform.
 // All monetary amounts are stored as integers in minor units (paise for INR).
 // Percentage values (reward/commission) are stored in basis points (1000 = 10%).

@@ -1,15 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
 import { checkRegistrationSchema } from "@/lib/validation/auth";
 import { findRegistrationByEmail, findRegistrationById, type RegistrationInfo } from "@/lib/services/registrations";
-import { rateLimit } from "@/lib/utils/rate-limit";
+import { clientIp, rateLimit } from "@/lib/utils/rate-limit";
 import { fail, firstError, formValues, ok, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
-
-async function clientIp(): Promise<string> {
-  const h = await headers();
-  return h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
-}
 
 export type CheckResult = { lookedUpBy: "id" | "email"; registration: RegistrationInfo | null };
 

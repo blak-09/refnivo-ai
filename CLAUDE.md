@@ -1,4 +1,4 @@
-# LocalGrowth AI — working notes
+# Refnivo AI — working notes
 
 - Spec: `LocalGrowth_AI_MVP_Development_Spec.md`. Progress checklist: `docs/PROGRESS.md`. Architecture: `docs/ARCHITECTURE.md`.
 - Money is integer paise; percentages are basis points. Never use floats for ledgers (`lib/money`).

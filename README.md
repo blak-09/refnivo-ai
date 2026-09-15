@@ -1,4 +1,4 @@
-# LocalGrowth AI
+# Refnivo AI
 
 **Turn Creators and Customers Into Your Sales Engine.**
 

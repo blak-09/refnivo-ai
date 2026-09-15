@@ -95,14 +95,3 @@ export async function markVisited(linkCode: string, visitorId: string) {
     data: { status: "VISITED" },
   });
 }
-
-export function parseAttribution(raw: string | undefined): Attribution | null {
-  if (!raw) return null;
-  try {
-    const v = JSON.parse(raw) as Partial<Attribution>;
-    if (typeof v.code === "string" && typeof v.campaignId === "string" && typeof v.at === "number") return v as Attribution;
-  } catch {
-    /* ignore malformed cookie */
-  }
-  return null;
-}

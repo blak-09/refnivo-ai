@@ -125,22 +125,6 @@ export async function rejectUser(userId: string, adminId: string, reason: string
   });
 }
 
-/** Suspend a previously approved account. */
-export async function suspendUser(userId: string, adminId: string) {
-  return prisma.$transaction(async (tx) => {
-    const user = await tx.user.update({
-      where: { id: userId },
-      data: { status: "SUSPENDED" },
-      select: { id: true, name: true, email: true, role: true, status: true, registrationId: true },
-    });
-    await recordAudit(
-      { userId: adminId, action: "USER_SUSPENDED", entityType: "User", entityId: userId, metadata: { status: "SUSPENDED" } },
-      tx,
-    );
-    return user;
-  });
-}
-
 export async function updateAccount(userId: string, input: { name: string; phone?: string | null }) {
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({

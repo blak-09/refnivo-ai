@@ -284,12 +284,4 @@ export async function getPublicCampaign(slug: string) {
   return campaign;
 }
 
-export function estimatedCommissionMinor(c: {
-  creatorCommissionType: "FIXED_AMOUNT" | "PERCENTAGE";
-  creatorCommissionValue: number;
-  product: { price: number };
-}): number {
-  return c.creatorCommissionType === "PERCENTAGE" ? Math.round((c.product.price * c.creatorCommissionValue) / 10_000) : c.creatorCommissionValue;
-}
-
 export type { Campaign };

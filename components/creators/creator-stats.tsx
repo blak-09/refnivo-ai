@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AtSignIcon, ExternalLinkIcon, HashIcon, PlayIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -125,11 +124,3 @@ export function CreatorAudience({ profile }: { profile: CreatorStatsFields }) {
   );
 }
 
-export function CreatorProfileLink({ username, children }: { username: string | null; children: React.ReactNode }) {
-  if (!username) return <>{children}</>;
-  return (
-    <Link href={`/creators/${username}`} className="hover:underline">
-      {children}
-    </Link>
-  );
-}

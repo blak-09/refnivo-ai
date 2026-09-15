@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import type { Prisma } from "@prisma/client";
 import { ShieldCheckIcon } from "lucide-react";
 import { EmptyState, KpiCard, PageHeader } from "@/components/dashboard/primitives";
 import { PendingUsers } from "@/components/admin/pending-users";
@@ -7,13 +6,7 @@ import type { AdminRegistration } from "@/components/admin/registration-row-acti
 import { requireRole } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { formatMoney } from "@/lib/money";
-
-function asDetails(value: Prisma.JsonValue | null): Record<string, string | number> | null {
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    return value as Record<string, string | number>;
-  }
-  return null;
-}
+import { asRegistrationDetails } from "@/lib/services/registrations";
 
 export const metadata: Metadata = { title: "Admin overview" };
 
@@ -65,7 +58,7 @@ export default async function AdminOverviewPage() {
         title="Management tools arrive in the Admin phase"
         description="User, brand, creator, campaign, order, payout and audit-log management are built in the Admin phase of this MVP."
       />
-      <PendingUsers users={pendingUsers.map((u): AdminRegistration => ({ ...u, details: asDetails(u.registrationDetails) }))} />
+      <PendingUsers users={pendingUsers.map((u): AdminRegistration => ({ ...u, details: asRegistrationDetails(u.registrationDetails) }))} />
     </div>
   );
 }

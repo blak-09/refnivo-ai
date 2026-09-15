@@ -85,13 +85,6 @@ export async function assertBrandOwner(): Promise<{ user: SessionUser; brand: Br
   return { user, brand };
 }
 
-export async function assertCreator(): Promise<{ user: SessionUser; profile: CreatorProfile }> {
-  const user = await assertRole("CREATOR");
-  const profile = await prisma.creatorProfile.findUnique({ where: { userId: user.id } });
-  if (!profile) throw new AuthorizationError("Complete your creator profile first.");
-  return { user, profile };
-}
-
 /** Creators or customers — anyone who can join a campaign as a partner. */
 export async function assertPartner(): Promise<SessionUser> {
   const user = await assertUser();

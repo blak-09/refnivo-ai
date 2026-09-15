@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { assertRole } from "@/lib/auth/guards";
-import { approveUser, rejectUser, suspendUser } from "@/lib/services/users";
+import { approveUser, rejectUser } from "@/lib/services/users";
 import { notifyRegistration } from "@/lib/services/notifications";
 import { exportStatusUpdate } from "@/lib/registrations/sheet";
 import { fail, ok, safeErrorMessage, type ActionResult } from "@/lib/utils/action-result";
@@ -89,38 +89,6 @@ export async function rejectUserAction(_prev: ActionResult | null, formData: For
     registrationId: user.registrationId,
     rejectionReason: reason,
   });
-
-  revalidateAdmin();
-  return ok(undefined);
-}
-
-export async function suspendUserAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  let admin;
-  try {
-    admin = await assertRole("ADMIN");
-  } catch (err) {
-    return fail(safeErrorMessage(err));
-  }
-
-  const userId = formData.get("userId");
-  if (typeof userId !== "string" || !userId) return fail("Invalid request.");
-  if (userId === admin.id) return fail("You cannot change your own verification status.");
-
-  let user;
-  try {
-    user = await suspendUser(userId, admin.id);
-  } catch (err) {
-    console.error("[suspendUser] failed", err instanceof Error ? err.message : err);
-    return fail("Could not suspend this account.");
-  }
-
-  if (user.registrationId) {
-    await exportStatusUpdate(user.registrationId, {
-      verificationStatus: "SUSPENDED",
-      verifiedBy: admin.email,
-      verificationDate: new Date().toISOString(),
-    });
-  }
 
   revalidateAdmin();
   return ok(undefined);

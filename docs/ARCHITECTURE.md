@@ -43,7 +43,7 @@ Brand lists products → creates a product campaign (commission + customer rewar
   away from login/register, and enforces that `/dashboard/<segment>` matches the user's role.
 - Every page/layout re-checks server-side via `lib/auth/guards.ts`:
   - `requireUser()` / `requireRole()` / `requireBrand()` / `requireCreator()` — redirect (pages; brand/creator also require onboarding).
-  - `assertUser()` / `assertRole()` / `assertBrandOwner()` / `assertCreator()` / `assertPartner()` — throw `AuthorizationError` (server actions).
+  - `assertUser()` / `assertRole()` / `assertBrandOwner()` / `assertPartner()` — throw `AuthorizationError` (server actions).
 - Manual verification: new accounts are created **PENDING** and cannot sign in until an admin approves them
   (`/dashboard/admin/registrations`). Login distinguishes no-account / pending / rejected / suspended; only
   APPROVED users pass `authorize()` and `getCurrentUser()`. Non-sensitive registration details are mirrored to a

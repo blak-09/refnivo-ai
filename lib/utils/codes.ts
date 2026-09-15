@@ -3,7 +3,6 @@ import { customAlphabet } from "nanoid";
 // Unambiguous alphabet (no 0/O, 1/I/l) so codes can be read aloud or typed from a QR flyer.
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const random = customAlphabet(ALPHABET, 4);
-const legacy = customAlphabet(ALPHABET, 8);
 
 function token(input: string, max: number): string {
   const cleaned = input
@@ -22,11 +21,6 @@ function token(input: string, max: number): string {
  */
 export function generateReferralCode(partnerHandle: string, brandName: string): string {
   return `${token(partnerHandle, 12)}-${token(brandName, 8)}-${random()}`;
-}
-
-/** Fallback used when no handle/brand is available (e.g. legacy data). */
-export function generateOpaqueReferralCode(partnerType: "CREATOR" | "CUSTOMER"): string {
-  return `${partnerType === "CREATOR" ? "C" : "R"}-${legacy()}`;
 }
 
 export function isReferralCodeFormat(code: string): boolean {

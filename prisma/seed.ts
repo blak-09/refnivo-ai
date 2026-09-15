@@ -1,5 +1,5 @@
 /**
- * LocalGrowth AI — demo seed.
+ * Refnivo AI — demo seed.
  *
  * Everything created here is DEMO DATA. Demo accounts use the
  * `@localgrowth.demo` domain so the UI can label them. Brands and products are

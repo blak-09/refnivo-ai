@@ -1,6 +1,14 @@
 import "server-only";
-import type { UserRole, UserStatus } from "@prisma/client";
+import type { Prisma, UserRole, UserStatus } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+
+/** Narrow the stored JSON `registrationDetails` to a plain key/value record (or null). */
+export function asRegistrationDetails(value: Prisma.JsonValue | null): Record<string, string | number> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, string | number>;
+  }
+  return null;
+}
 
 export type RegistrationInfo = {
   name: string;
