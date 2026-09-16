@@ -3,10 +3,13 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
 import { loginSchema } from "@/lib/validation/auth";
+import { requireAuthSecret } from "@/lib/config/env";
 import { authConfig } from "./config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  // Fail at boot (not on first request) if the secret is missing.
+  secret: requireAuthSecret(),
   providers: [
     Credentials({
       name: "Email and password",

@@ -135,13 +135,29 @@ describe("campaign validation", () => {
 });
 
 describe("codes, slugs, roles", () => {
-  it("referral codes are human readable and unique", () => {
-    const codes = new Set<string>();
-    for (let i = 0; i < 500; i++) codes.add(generateReferralCode("Arjun Verma", "Soundwave Audio"));
-    expect(codes.size).toBe(500);
-    const code = generateReferralCode("arjun.tech", "boAt");
-    expect(code.startsWith("ARJUNTECH-BOAT-")).toBe(true);
+  it("referral codes are human readable: deterministic prefix, 4-char unambiguous suffix, valid format", () => {
+    // Prefix is derived deterministically: handle → max 12 chars, brand → max 8 chars, alphanumerics only, upper-cased.
+    const code = generateReferralCode("Arjun Verma", "Soundwave Audio");
+    const [handle, brand, suffix, ...rest] = code.split("-");
+    expect(rest).toEqual([]);
+    expect(handle).toBe("ARJUNVERMA");
+    expect(brand).toBe("SOUNDWAV");
+    // Suffix: exactly 4 characters from the unambiguous alphabet (no 0/O, 1/I/L) so codes can be read aloud or typed from a QR flyer.
+    expect(suffix).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/);
+    expect(suffix).not.toMatch(/[01OIL]/);
     expect(isReferralCodeFormat(code)).toBe(true);
+
+    // Every generated code is well-formed, and the suffix varies between calls. Global uniqueness is NOT
+    // a property of the generator: it is enforced by the `referral_links.code` unique constraint plus the
+    // collision retry in `ensureReferralLink` (lib/services/partners.ts), exercised by the integration tests.
+    const codes = Array.from({ length: 50 }, () => generateReferralCode("Arjun Verma", "Soundwave Audio"));
+    for (const c of codes) {
+      expect(c.startsWith("ARJUNVERMA-SOUNDWAV-")).toBe(true);
+      expect(isReferralCodeFormat(c)).toBe(true);
+    }
+    expect(new Set(codes).size).toBeGreaterThan(1);
+
+    expect(generateReferralCode("arjun.tech", "boAt").startsWith("ARJUNTECH-BOAT-")).toBe(true);
     expect(isReferralCodeFormat("bad code")).toBe(false);
     expect(normalizeReferralCode(" arjun-boat-4k7q ")).toBe("ARJUN-BOAT-4K7Q");
     expect(generateReferralCode("", "").startsWith("USER-USER-")).toBe(true);

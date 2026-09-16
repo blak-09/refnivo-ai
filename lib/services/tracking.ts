@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
+import { requireAuthSecret } from "@/lib/config/env";
 import { isCampaignLive } from "@/lib/domain/campaign-rules";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 
@@ -8,8 +9,13 @@ export const ATTRIBUTION_COOKIE = "lg_ref";
 
 export type Attribution = { code: string; campaignId: string; at: number };
 
+/**
+ * Salted SHA-256 for IPs and customer contacts. The salt is AUTH_SECRET and is
+ * REQUIRED — there is deliberately no fallback, so a misconfigured deployment
+ * fails instead of producing hashes that could be reversed by dictionary.
+ */
 export function hashValue(value: string): string {
-  const salt = process.env.AUTH_SECRET ?? "localgrowth";
+  const salt = requireAuthSecret();
   return createHash("sha256").update(`${salt}:${value.trim().toLowerCase()}`).digest("hex");
 }
 

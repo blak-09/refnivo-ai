@@ -431,6 +431,8 @@ model Referral {
   @@index([referredUserId])
   @@index([referredPhoneHash])
   @@index([anonymousVisitorId])
+  // Hot path for recordClick/markVisited and the FK to referral_links.
+  @@index([referralLinkId, anonymousVisitorId])
   @@map("referrals")
 }
 

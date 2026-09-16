@@ -42,7 +42,7 @@ npm run dev                  # http://localhost:3000
 
 ### Demo accounts (password for all: `Demo@1234`)
 
-Quick sign-in IDs — one per role. Outside production the login page shows these as one-click buttons (set `NEXT_PUBLIC_SHOW_DEMO_LOGINS=true` to show them on a demo deployment).
+Quick sign-in IDs — one per role. Outside production the login page shows these as one-click buttons; they are never rendered in production builds.
 
 | Role | Email | Workspace |
 | --- | --- | --- |
@@ -70,15 +70,12 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | Variable | Required | Description |
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string. |
-| `AUTH_SECRET` | yes | Secret for Auth.js JWT/session signing (also salts hashed IPs / customer contacts). `openssl rand -base64 32`. |
+| `AUTH_SECRET` | yes | Secret for Auth.js JWT/session signing (also salts hashed IPs / customer contacts). **The app refuses to start without it.** `openssl rand -base64 32`. |
 | `NEXTAUTH_URL` | deploy only | Canonical URL for Auth.js on deployments. Leave empty locally so tunnels work (`trustHost` uses the request host). |
 | `NEXT_PUBLIC_APP_URL` | yes | Public origin used to build referral links (`/r/CODE`) and QR codes. |
-| `AI_PROVIDER` | no | `anthropic`, `openai` or `mock` (default). AI features are added in phase R4; `mock` needs no key. |
-| `ANTHROPIC_API_KEY` | no | Used when `AI_PROVIDER=anthropic`. Server-side only. |
-| `OPENAI_API_KEY` | no | Used when `AI_PROVIDER=openai`. Server-side only. |
 | `PAYOUT_MINIMUM_AMOUNT` | no | Minimum payout request in minor units (default `50000` = ₹500). |
 | `STORAGE_PROVIDER` | no | Image storage driver — `local` (default; writes to `public/uploads`). The `lib/storage` abstraction lets you add an R2/S3/Cloudinary/Supabase driver without touching callers. |
-| `NEXT_PUBLIC_SHOW_DEMO_LOGINS` | no | `true` shows the quick sign-in buttons on the login page in production builds (demo deployments only). |
+| `NEXT_PUBLIC_SHOW_DEMO_LOGINS` | no | Demo quick sign-in buttons show only in non-production builds (never in production). Set `false` to hide them on a shared dev server. |
 | `TEST_DATABASE_URL` | no | Database for `npm test` integration tests (defaults to the local `localgrowth_test`). |
 
 ## Scripts
@@ -93,8 +90,9 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | `npm test` | Vitest — unit tests + DB integration tests (needs `TEST_DATABASE_URL` reachable). |
 | `npm run db:local` | Start the embedded local PostgreSQL. |
 | `npm run db:migrate` | `prisma migrate dev` (development). |
-| `npm run db:deploy` | `prisma migrate deploy` (production). |
-| `npm run db:seed` | Load / reload demo data. |
+| `npm run db:deploy` | Safe production migrations: prints target + pending migrations, then `prisma migrate deploy` only (`DB_DEPLOY_DRY_RUN=1` to preview). See `docs/PRODUCTION.md`. |
+| `npm run admin:create` | Bootstrap a real admin from `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env vars (never prints the password). |
+| `npm run db:seed` | Load / reload demo data — **local databases only** (refuses non-local hosts). |
 | `npm run db:studio` | Prisma Studio. |
 | `npm run tunnel` | Cloudflare quick tunnel for a temporary public link. |
 
@@ -158,6 +156,8 @@ npm run tunnel   # terminal 2 — prints a https://….trycloudflare.com URL
 Works only while both are running on your machine; the URL changes each restart. `allowedDevOrigins` already permits `*.trycloudflare.com`.
 
 ## Deployment (Vercel)
+
+Read **[docs/PRODUCTION.md](docs/PRODUCTION.md)** first — backups, migration baseline, pooling, health check, admin bootstrap and the pre-launch checklist.
 
 1. Push the repo and import it in Vercel.
 2. Provision PostgreSQL (Neon / Supabase / Vercel Postgres) and set every variable from `.env.example` (`NEXT_PUBLIC_APP_URL` = your public URL so referral links are correct).

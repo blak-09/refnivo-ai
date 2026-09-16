@@ -26,7 +26,32 @@ const daysAgo = (n: number, hour = 12) => {
   return d;
 };
 
+/**
+ * Demo data is for local development only. The seed refuses to run against a
+ * non-local database (or in production) unless SEED_ALLOW_REMOTE=1 is set
+ * explicitly — every seeded account shares a public password.
+ */
+function assertSeedTargetIsSafe() {
+  const url = process.env.DATABASE_URL ?? "";
+  let host = "";
+  try {
+    host = new URL(url).hostname;
+  } catch {
+    /* handled below */
+  }
+  const local = host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (process.env.SEED_ALLOW_REMOTE === "1") return;
+  if (process.env.NODE_ENV === "production" || !local) {
+    console.error(
+      `[seed] Refusing to seed demo data into ${host || "an unknown host"} — demo accounts use a public password. ` +
+        "Seeding is for local development only. Set SEED_ALLOW_REMOTE=1 to override on a throwaway database.",
+    );
+    process.exit(1);
+  }
+}
+
 async function main() {
+  assertSeedTargetIsSafe();
   console.log("Seeding demo data…");
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
 

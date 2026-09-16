@@ -12,14 +12,16 @@
     "test:watch": "vitest",
     "db:local": "tsx scripts/local-db.ts",
     "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
+    "db:deploy": "tsx scripts/db-deploy.ts",
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
     "postinstall": "prisma generate",
     "tunnel": "cloudflared tunnel --url http://localhost:3000 --no-autoupdate",
-    "dev:all": "concurrently -n db,web -c blue,green \"tsx scripts/local-db.ts\" \"next dev\""
+    "dev:all": "concurrently -n db,web -c blue,green \"tsx scripts/local-db.ts\" \"next dev\"",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "db:target": "tsx scripts/db-target.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

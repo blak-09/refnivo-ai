@@ -52,3 +52,10 @@ next-env.d.ts
 
 # registration CSV export (csv registration-sheet driver)
 /.data/
+
+# local audit / planning reports (kept out of the repository)
+/PROJECT_AUDIT_REPORT.md
+/PROJECT_REBUILD_MASTER_PLAN.md
+/GIT_PRODUCTION_SAFETY_REPORT.md
+/GIT_CLEANUP_DRY_RUN.md
+/GIT_CLEANUP_EXECUTION_REPORT.md

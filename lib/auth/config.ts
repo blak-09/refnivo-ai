@@ -16,6 +16,8 @@ export const authConfig = {
     maxAge: 60 * 60 * 24 * 7, // 7 days
   },
   trustHost: true,
+  // Explicit so Auth.js throws MissingSecret (never signs with an empty secret).
+  secret: process.env.AUTH_SECRET,
   callbacks: {
     jwt({ token, user }) {
       if (user) {

@@ -119,9 +119,25 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
   });
 }
 
-/** Approves a recorded order: referral → VERIFIED, ledger entries → APPROVED / AVAILABLE. */
+/**
+ * Approves a recorded order: referral → VERIFIED, ledger entries → APPROVED / AVAILABLE.
+ *
+ * Concurrency: the campaign row is locked (SELECT … FOR UPDATE) for the whole
+ * transaction, so simultaneous verifications on the same campaign run one at a
+ * time. Each verifier re-reads the referral and the spent totals *after*
+ * acquiring the lock, so the budget check always sees the previous verifier's
+ * committed ledger rows and the campaign can never be over-committed.
+ */
 export async function verifyConversion(brandId: string, actorId: string, referralId: string, now = new Date()) {
   return prisma.$transaction(async (tx) => {
+    // 1. Ownership-scoped lookup to learn the campaign (no lock yet).
+    const target = await tx.referral.findFirst({ where: { id: referralId, campaign: { brandId } }, select: { campaignId: true } });
+    if (!target) throw new ConversionError("Order not found.");
+
+    // 2. Serialize verifications per campaign. Held until commit/rollback.
+    await tx.$queryRaw`SELECT "id" FROM "campaigns" WHERE "id" = ${target.campaignId} FOR UPDATE`;
+
+    // 3. Everything below is read under the lock.
     const referral = await tx.referral.findFirst({
       where: { id: referralId, campaign: { brandId } },
       include: { conversion: true, campaign: { select: { budget: true, id: true } }, commissions: true, rewards: true },

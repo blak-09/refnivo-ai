@@ -15,9 +15,12 @@ export const QUICK_DEMO_ACCOUNTS = [
 ] as const;
 
 /**
- * Quick sign-in buttons are only shown outside production, or when explicitly
- * enabled for a demo deployment via NEXT_PUBLIC_SHOW_DEMO_LOGINS=true.
+ * Quick sign-in buttons are a development convenience only. They are NEVER
+ * rendered in production builds — no environment flag can enable them there.
+ * Outside production they show by default; set NEXT_PUBLIC_SHOW_DEMO_LOGINS=false
+ * to hide them (e.g. on a shared staging server).
  */
-export function showDemoLogins(): boolean {
-  return process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_SHOW_DEMO_LOGINS === "true";
+export function showDemoLogins(env: NodeJS.ProcessEnv = process.env): boolean {
+  if (env.NODE_ENV === "production") return false;
+  return env.NEXT_PUBLIC_SHOW_DEMO_LOGINS !== "false";
 }
