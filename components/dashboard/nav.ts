@@ -1,5 +1,8 @@
 import {
+  ActivityIcon,
+  BadgeCheckIcon,
   BarChart3Icon,
+  BellIcon,
   CompassIcon,
   GiftIcon,
   LayoutDashboardIcon,
@@ -7,6 +10,7 @@ import {
   MegaphoneIcon,
   PackageIcon,
   ReceiptIcon,
+  ScrollTextIcon,
   SettingsIcon,
   ShoppingCartIcon,
   StoreIcon,
@@ -16,7 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean };
+export type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: "notifications" };
 export type NavKey = "brand" | "creator" | "customer" | "admin";
 
 /**
@@ -34,6 +38,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/brand/payouts", label: "Commissions & Rewards", icon: WalletIcon },
     { href: "/dashboard/brand/analytics", label: "Analytics", icon: BarChart3Icon },
     { href: "/dashboard/brand/profile", label: "Brand Profile", icon: StoreIcon },
+    { href: "/dashboard/brand/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/brand/settings", label: "Settings", icon: SettingsIcon },
   ],
   creator: [
@@ -44,6 +49,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/creator/conversions", label: "Conversions", icon: ReceiptIcon },
     { href: "/dashboard/creator/earnings", label: "Earnings", icon: WalletIcon },
     { href: "/dashboard/creator/profile", label: "Profile", icon: UserCircleIcon },
+    { href: "/dashboard/creator/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/creator/settings", label: "Settings", icon: SettingsIcon },
   ],
   customer: [
@@ -51,11 +57,20 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/campaigns", label: "Discover Products", icon: CompassIcon },
     { href: "/dashboard/customer/referrals", label: "My Links", icon: LinkIcon },
     { href: "/dashboard/customer/rewards", label: "Rewards", icon: GiftIcon },
+    { href: "/dashboard/customer/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/customer/settings", label: "Settings", icon: SettingsIcon },
   ],
   admin: [
     { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboardIcon, exact: true },
     { href: "/dashboard/admin/registrations", label: "Registrations", icon: UsersIcon },
+    { href: "/dashboard/admin/users", label: "Users", icon: UserCircleIcon },
+    { href: "/dashboard/admin/verification", label: "Verification", icon: BadgeCheckIcon },
+    { href: "/dashboard/admin/campaigns", label: "Campaigns", icon: MegaphoneIcon },
+    { href: "/dashboard/admin/conversions", label: "Conversions", icon: ReceiptIcon },
+    { href: "/dashboard/admin/payouts", label: "Payouts", icon: WalletIcon },
+    { href: "/dashboard/admin/audit", label: "Audit log", icon: ScrollTextIcon },
+    { href: "/dashboard/admin/health", label: "System health", icon: ActivityIcon },
+    { href: "/dashboard/admin/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/admin/settings", label: "Settings", icon: SettingsIcon },
   ],
 };

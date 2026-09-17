@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import type { Brand, CreatorProfile, User, UserRole } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { securityEvent } from "@/lib/utils/security-log";
 import { roleHome } from "./roles";
+import { isSessionCurrent } from "./session-version";
 
 export class AuthorizationError extends Error {
   constructor(message = "You are not allowed to perform this action.") {
@@ -12,19 +14,28 @@ export class AuthorizationError extends Error {
   }
 }
 
-export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status">;
+export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status" | "mustChangePassword">;
 
-/** Returns the current user from the DB, or null. Never throws. */
+/**
+ * Returns the current user from the DB, or null. Never throws.
+ * Re-checks status AND session version on every request, so a suspension or a
+ * password change (which bumps `sessionVersion`) takes effect immediately even
+ * though the JWT itself is still within its lifetime.
+ */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const session = await auth();
   const id = session?.user?.id;
   if (!id) return null;
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, status: true },
+    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true },
   });
   if (!user || user.status !== "APPROVED") return null;
-  return user;
+  if (!isSessionCurrent(session?.user?.sessionVersion, user.sessionVersion)) {
+    securityEvent("SESSION_STALE", { userId: user.id, tokenVersion: session?.user?.sessionVersion ?? null, currentVersion: user.sessionVersion });
+    return null;
+  }
+  return { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword };
 }
 
 // ---------------------------------------------------------------------------

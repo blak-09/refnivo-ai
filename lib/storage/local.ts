@@ -1,7 +1,8 @@
 import "server-only";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import path from "node:path";
-import { makeObjectName, type StorageDriver, type StoredFile } from "./index";
+import { makeObjectName, sanitizePrefix } from "./image-validation";
+import type { StorageDriver, StoredFile } from "./index";
 
 /**
  * Development / self-hosted driver. Files land in `public/uploads/<prefix>/…`
@@ -13,7 +14,7 @@ export class LocalStorageDriver implements StorageDriver {
   private readonly baseDir = path.join(process.cwd(), "public", "uploads");
 
   async put(input: { data: Buffer; contentType: string; ext: string; prefix?: string }): Promise<StoredFile> {
-    const prefix = (input.prefix ?? "misc").replace(/[^a-z0-9/_-]/gi, "");
+    const prefix = sanitizePrefix(input.prefix);
     const dir = path.join(this.baseDir, prefix);
     await mkdir(dir, { recursive: true });
     const name = makeObjectName(input.data, input.ext);

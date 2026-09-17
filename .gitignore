@@ -50,7 +50,7 @@ next-env.d.ts
 # uploaded files (local storage driver)
 /public/uploads/
 
-# registration CSV export (csv registration-sheet driver)
+# local data exports (never committed)
 /.data/
 
 # local audit / planning reports (kept out of the repository)
@@ -59,3 +59,8 @@ next-env.d.ts
 /GIT_PRODUCTION_SAFETY_REPORT.md
 /GIT_CLEANUP_DRY_RUN.md
 /GIT_CLEANUP_EXECUTION_REPORT.md
+/PRODUCTION_BACKEND_DATABASE_AUDIT.md
+/PHASE_1_IMPLEMENTATION_PLAN.md
+/PHASE_1A_CHANGE_PLAN.md
+/PHASE_1A_IMPLEMENTATION_REPORT.md
+/PRODUCTION_READINESS_REPORT.md

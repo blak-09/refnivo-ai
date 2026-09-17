@@ -1,0 +1,78 @@
+name: CI
+
+# Quality gates for every push and pull request. Runs against a DISPOSABLE
+# PostgreSQL service container only — no production or remote database is ever
+# reachable from this workflow, and no repository secrets are used.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: localgrowth_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Throw-away values for the ephemeral CI database and test-only auth secret.
+      # They are not secrets: they exist only inside this job's containers.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5433/localgrowth_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5433/localgrowth_test?schema=public
+      AUTH_SECRET: ci-only-auth-secret-not-used-anywhere-else-0123456789
+      NEXTAUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies (runs `prisma generate` via postinstall)
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Prisma schema check
+        run: npx prisma validate
+
+      - name: Lint (zero warnings)
+        run: npx eslint . --max-warnings 0
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests (migrates the disposable CI database only)
+        run: npm test
+
+      - name: Production build
+        run: npm run build

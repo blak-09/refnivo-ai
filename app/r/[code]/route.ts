@@ -1,5 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isProduction } from "@/lib/config/env";
 import { ATTRIBUTION_COOKIE, newVisitorId, recordClick, resolveReferralCode, VISITOR_COOKIE } from "@/lib/services/tracking";
+import { rateLimit } from "@/lib/utils/rate-limit";
+import { securityEvent } from "@/lib/utils/security-log";
+
+/** Clicks per IP per minute before tracking is skipped (the redirect always happens). */
+const CLICKS_PER_MINUTE = 60;
 
 /**
  * Referral entry point: /r/[code] (append ?src=qr for QR scans).
@@ -27,16 +33,22 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
   const ip = forwarded ? forwarded.split(",")[0].trim() : null;
 
   try {
-    await recordClick({
-      linkId: link.id,
-      campaignId: link.campaignId,
-      referrerId: link.ownerId,
-      visitorId,
-      source,
-      ip,
-      userAgent: req.headers.get("user-agent"),
-      referer: req.headers.get("referer"),
-    });
+    // Abuse guard: a flood of hits from one address is redirected but not counted.
+    const limit = await rateLimit(`click:${ip ?? "local"}`, CLICKS_PER_MINUTE, 60 * 1000);
+    if (limit.ok) {
+      await recordClick({
+        linkId: link.id,
+        campaignId: link.campaignId,
+        referrerId: link.ownerId,
+        visitorId,
+        source,
+        ip,
+        userAgent: req.headers.get("user-agent"),
+        referer: req.headers.get("referer"),
+      });
+    } else {
+      securityEvent("RATE_LIMITED", { scope: "click", code: link.code });
+    }
   } catch (err) {
     // Tracking must never block the visitor from reaching the offer.
     console.error("[referral] click tracking failed", err instanceof Error ? err.message : err);
@@ -47,7 +59,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
   const res = NextResponse.redirect(dest, { status: 302 });
 
   const windowSeconds = link.campaign.attributionWindowDays * 24 * 60 * 60;
-  const secure = base.protocol === "https:";
+  // Behind a TLS-terminating proxy the request URL may be http; trust the forwarded protocol / production flag.
+  const secure = isProduction() || base.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
   res.cookies.set(VISITOR_COOKIE, visitorId, { httpOnly: true, sameSite: "lax", secure, path: "/", maxAge: 60 * 60 * 24 * 365 });
   res.cookies.set(ATTRIBUTION_COOKIE, JSON.stringify({ code: link.code, campaignId: link.campaignId, at: Date.now() }), {
     httpOnly: true,

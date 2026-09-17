@@ -119,11 +119,16 @@ export function LoginForm({
         <SubmitButton className="w-full" pendingText="Signing in…">
           Log in
         </SubmitButton>
-        <p className="text-center text-sm text-muted-foreground">
-          New here?{" "}
-          <Link href="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
-            Create an account
+        <p className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+          <Link href="/auth/forgot-password" className="font-medium text-primary underline-offset-4 hover:underline">
+            Forgot password?
           </Link>
+          <span>
+            New here?{" "}
+            <Link href="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
+              Create an account
+            </Link>
+          </span>
         </p>
       </form>
     </div>

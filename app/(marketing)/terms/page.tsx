@@ -17,11 +17,6 @@ export default function TermsPage() {
         Creators can request a payout once their approved commissions reach the minimum threshold. Payouts are reviewed and
         processed manually by the Refnivo AI team; there is no automatic UPI payout in this version.
       </p>
-      <h2>AI features</h2>
-      <p>
-        AI-generated campaign drafts, content and insights are suggestions. Financial amounts proposed by AI are never
-        applied without explicit approval from the brand owner.
-      </p>
       <h2>Accounts</h2>
       <p>Accounts that abuse the referral system may be suspended. Decisions are recorded in an audit log.</p>
     </ProsePage>

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { signOut } from "@/lib/auth";
 import { assertUser } from "@/lib/auth/guards";
 import { changePassword, updateAccount, WrongPasswordError } from "@/lib/services/users";
 import { accountSchema, changePasswordSchema } from "@/lib/validation/account";
@@ -47,5 +48,8 @@ export async function changePasswordAction(_prev: ActionResult | null, formData:
     console.error("[changePassword] failed", err instanceof Error ? err.message : err);
     return fail("Could not change your password.");
   }
+  // The session version just changed, so every existing session — including this
+  // one — is now invalid. Sign out cleanly and ask the user to log in again.
+  await signOut({ redirectTo: "/auth/login?reason=password-changed" });
   return ok(undefined);
 }

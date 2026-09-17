@@ -122,6 +122,14 @@ const STATUS_STYLES: Record<string, string> = {
   REJECTED: "bg-destructive/10 text-destructive border-destructive/20",
   CANCELLED: "bg-destructive/10 text-destructive border-destructive/20",
   SUSPENDED: "bg-destructive/10 text-destructive border-destructive/20",
+  REVERSED: "bg-destructive/10 text-destructive border-destructive/20",
+  REFUNDED: "bg-destructive/10 text-destructive border-destructive/20",
+  FAILED: "bg-destructive/10 text-destructive border-destructive/20",
+  REMOVED: "bg-destructive/10 text-destructive border-destructive/20",
+  WITHDRAWN: "bg-muted text-muted-foreground border-border",
+  REQUESTED: "bg-warning/15 text-amber-800 border-warning/40 dark:text-amber-200",
+  PROCESSING: "bg-secondary text-secondary-foreground border-border",
+  UNVERIFIED: "bg-muted text-muted-foreground border-border",
 };
 
 export function StatusBadge({ status, label, className }: { status: string; label?: string; className?: string }) {

@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { assertBrandOwner } from "@/lib/auth/guards";
 import { rupeesToPaise } from "@/lib/money";
-import { ConversionError, recordOrder, rejectConversion, verifyConversion } from "@/lib/services/conversions";
-import { conversionDecisionSchema, recordOrderSchema } from "@/lib/validation/conversion";
+import { ConversionError, reverseConversion, recordOrder, rejectConversion, verifyConversion } from "@/lib/services/conversions";
+import { conversionDecisionSchema, conversionReversalSchema, recordOrderSchema } from "@/lib/validation/conversion";
 import { fail, firstError, formValues, ok, safeErrorMessage, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 
 function revalidate() {
@@ -65,5 +65,26 @@ export async function conversionDecisionAction(input: unknown): Promise<ActionRe
     if (err instanceof ConversionError) return fail(err.message);
     console.error("[conversionDecision] failed", err instanceof Error ? err.message : err);
     return fail("Could not update the order.");
+  }
+}
+
+/** Brand records a refund for a verified order: ledger entries are reversed. */
+export async function conversionReversalAction(input: unknown): Promise<ActionResult> {
+  let ctx;
+  try {
+    ctx = await assertBrandOwner();
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = conversionReversalSchema.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid request.");
+  try {
+    await reverseConversion(ctx.brand.id, ctx.user.id, parsed.data.referralId, parsed.data.reason);
+    revalidatePath("/dashboard/brand", "layout");
+    return ok(undefined);
+  } catch (err) {
+    if (err instanceof ConversionError) return fail(err.message);
+    console.error("[conversionReversal] failed", err instanceof Error ? err.message : err);
+    return fail("Could not record the refund.");
   }
 }

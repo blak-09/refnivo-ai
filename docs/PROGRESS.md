@@ -23,27 +23,30 @@ Legend: ✅ done · 🔜 next · ⬜ pending
 - ✅ Creator dashboard: overview KPIs, my campaigns, links & QR (copy / download / WhatsApp / X / Telegram / native share), conversions, earnings
 - ✅ Customer dashboard (simpler, no creator metrics): links, clicks, purchases, rewards
 
-### R3 — Tracking & money ✅ (payout requests 🔜)
-- ✅ `/r/[code]` records click (link vs QR), anonymous visitor id, hashed IP, referral session; last-click attribution cookie sized to the campaign window; redirect with `?ref=`
+### R3 — Tracking & money ✅
+- ✅ `/r/[code]` records click (link vs QR), anonymous visitor id, hashed IP, referral session; duplicate hits from the same visitor within 30 s are not counted; per-IP click throttle; last-click attribution cookie sized to the campaign window; redirect with `?ref=`
 - ✅ Campaign page marks session VISITED; purchase link carries `?ref=CODE`
 - ✅ Brand records orders (code, order ref, value, quantity, source, hashed customer contact) → pending commission/reward
-- ✅ Verify / reject orders → APPROVED / AVAILABLE or REJECTED; budget enforcement
+- ✅ Verify / reject orders → APPROVED / AVAILABLE or REJECTED; budget enforcement under a campaign row lock
+- ✅ Refunds: brand reverses a verified order → REFUNDED, ledger entries REVERSED, budget freed
 - ✅ Guards: paused/expired campaigns, minimum order value, duplicate order reference, self-referral, duplicate customer on new-customer-only campaigns
-- ✅ Commission & reward ledger views (brand, creator, customer)
-- 🔜 Payout request flow (threshold shown; request/approve arrives with Admin)
-- 🔜 Customer reward redemption
+- ✅ Commission & reward ledger views (brand, creator, customer); campaign CSV export
+- ✅ Manual payout / redemption workflow: partner requests → admin reviews → settles off-platform → marks paid with reference (only path to PAID / REDEEMED)
+- ✅ Partner lifecycle: creators withdraw pending applications; brands remove approved partners (link disabled)
 
-### R4 — Admin & AI ⬜
-- ⬜ Admin: users, brands, creators (verification), campaigns, orders, payouts, audit logs
-- ⬜ AI campaign generator (product + goal → title, description, commission, reward, rules — labelled suggestions)
-- ⬜ AI creator matching (rule-based + explanation)
-- ⬜ AI content assistant (Instagram captions, reel ideas, YouTube descriptions, WhatsApp messages)
-- ⬜ AI campaign insights (LLM phrasing over real metrics)
+### R4 — Admin, notifications & security ✅ (AI ⬜)
+- ✅ Admin: registrations, users (suspend / reactivate with session revocation), brand & creator verification, campaign moderation, conversions oversight, payouts, audit log viewer, system health
+- ✅ Database-backed notifications for every role (unread badge, mark read / all), per-user e-mail opt-out, e-mail abstraction (console / Resend)
+- ✅ Password reset by e-mail (hashed single-use tokens, session revocation), forced password rotation for the bootstrap admin, session versioning
+- ✅ Production hardening: start-up env validation, guarded DB scripts, admin bootstrap, distributed rate limiting (Upstash), magic-byte upload validation, redacting security logs, CI workflow
+- ⬜ AI campaign generator / creator matching / content assistant / insights (not started; `AI_*` env reserved)
+- ⬜ E-mail verification at signup (accounts are admin-approved instead)
+- ⬜ Store webhooks (Shopify / WooCommerce) — orders stay manual
 
 ### Quality (current build)
 - [x] TypeScript passes
-- [x] Lint passes
-- [x] Unit + integration tests pass (54)
+- [x] Lint passes (zero warnings)
+- [x] Unit + integration tests pass (see `npm test` output; CI enforces)
 - [x] Production build passes
 - [x] Mobile layout works
 - [ ] Playwright e2e

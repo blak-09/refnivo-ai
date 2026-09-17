@@ -1,9 +1,11 @@
 import { logoutAction } from "@/app/actions/auth";
 import { DashboardShell } from "@/components/dashboard/shell";
+import { countUnread } from "@/lib/services/notify";
 import { requireBrand } from "@/lib/auth/guards";
 
 export default async function BrandLayout({ children }: { children: React.ReactNode }) {
   const { user, brand } = await requireBrand();
+  const unreadNotifications = await countUnread(user.id);
   return (
     <DashboardShell
       navKey="brand"
@@ -11,6 +13,7 @@ export default async function BrandLayout({ children }: { children: React.ReactN
       workspaceName={brand.name}
       workspaceSubtitle={brand.industry ?? "Brand"}
       user={{ name: user.name, email: user.email }}
+      unreadNotifications={unreadNotifications}
       onLogout={logoutAction}
     >
       {children}

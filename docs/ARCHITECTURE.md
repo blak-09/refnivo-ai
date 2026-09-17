@@ -46,8 +46,9 @@ Brand lists products → creates a product campaign (commission + customer rewar
   - `assertUser()` / `assertRole()` / `assertBrandOwner()` / `assertPartner()` — throw `AuthorizationError` (server actions).
 - Manual verification: new accounts are created **PENDING** and cannot sign in until an admin approves them
   (`/dashboard/admin/registrations`). Login distinguishes no-account / pending / rejected / suspended; only
-  APPROVED users pass `authorize()` and `getCurrentUser()`. Non-sensitive registration details are mirrored to a
-  spreadsheet (`lib/registrations`, csv default / Google Sheets optional) — the password hash never leaves the DB.
+  APPROVED users pass `authorize()` and `getCurrentUser()`. Approval/rejection creates an in-app notification
+  (`lib/services/notify.ts`) and an e-mail outbox row (`lib/email/outbox.ts`) in the same transaction; e-mails are
+  delivered only after commit (`lib/email`, console driver unless `EMAIL_PROVIDER=resend`).
 - Suspended (and pending/rejected) users are refused at login and on every request.
 - Services take `brandId` / `ownerId` explicitly and scope every query by it, so ownership is enforced in the data layer.
 - Brands see a creator's public profile and self-reported metrics, never their email/phone. Customers never see creator metrics.

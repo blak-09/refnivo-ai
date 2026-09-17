@@ -1,8 +1,9 @@
 import type { ApplicationStatus, PartnerType, Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, transaction } from "@/lib/db/prisma";
 import { isCampaignLive } from "@/lib/domain/campaign-rules";
 import { generateReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
+import { notify } from "./notify";
 
 export class PartnerError extends Error {
   constructor(message: string) {
@@ -68,7 +69,7 @@ export async function countPartnersByStatus(brandId: string) {
     where: { campaign: { brandId } },
     _count: { _all: true },
   });
-  const out: Record<ApplicationStatus, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0 };
+  const out: Record<ApplicationStatus, number> = { PENDING: 0, APPROVED: 0, REJECTED: 0, WITHDRAWN: 0, REMOVED: 0 };
   for (const r of rows) out[r.status] = r._count._all;
   return out;
 }
@@ -83,11 +84,11 @@ export async function decideApplication(
   applicationId: string,
   decision: Extract<ApplicationStatus, "APPROVED" | "REJECTED">,
 ) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     const application = await tx.partnerApplication.findFirst({
       where: { id: applicationId, campaign: { brandId } },
       include: {
-        campaign: { select: { id: true, status: true, brand: { select: { name: true } } } },
+        campaign: { select: { id: true, name: true, status: true, brand: { select: { name: true } } } },
         user: { select: { name: true, creatorProfile: { select: { username: true } } } },
       },
     });
@@ -95,6 +96,22 @@ export async function decideApplication(
     if (application.status !== "PENDING") throw new PartnerError("This application has already been reviewed.");
 
     const updated = await tx.partnerApplication.update({ where: { id: applicationId }, data: { status: decision } });
+    const partnerHome = application.partnerType === "CREATOR" ? "/dashboard/creator" : "/dashboard/customer";
+    await notify(
+      {
+        userId: application.userId,
+        type: decision === "APPROVED" ? "APPLICATION_APPROVED" : "APPLICATION_REJECTED",
+        idempotencyKey: `application:${applicationId}:${decision}`,
+        title: decision === "APPROVED" ? `You're in: ${application.campaign.name}` : `Application not approved: ${application.campaign.name}`,
+        body:
+          decision === "APPROVED"
+            ? `${application.campaign.brand.name} approved your application. Your referral link and QR code are ready.`
+            : `${application.campaign.brand.name} did not approve your application this time.`,
+        href: decision === "APPROVED" ? `${partnerHome}/links` : `${partnerHome}/campaigns`,
+        email: true,
+      },
+      tx,
+    );
 
     if (decision === "APPROVED") {
       await ensureReferralLink(tx, {
@@ -137,11 +154,12 @@ export async function joinCampaign(
   campaignId: string,
   message?: string | null,
 ): Promise<JoinResult> {
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     const campaign = await tx.campaign.findUnique({
       where: { id: campaignId },
       select: {
         id: true,
+        name: true,
         status: true,
         startDate: true,
         endDate: true,
@@ -165,6 +183,7 @@ export async function joinCampaign(
 
     const existing = await tx.partnerApplication.findUnique({ where: { campaignId_userId: { campaignId, userId: user.id } } });
     if (existing?.status === "REJECTED") throw new PartnerError("Your application to this campaign was not approved.");
+    if (existing?.status === "REMOVED") throw new PartnerError("The brand removed you from this campaign.");
 
     const profile = partnerType === "CREATOR" ? await tx.creatorProfile.findUnique({ where: { userId: user.id }, select: { username: true } }) : null;
     const handle = profile?.username ?? user.name;
@@ -188,6 +207,20 @@ export async function joinCampaign(
       code = link.code;
     }
 
+    if (!autoApprove) {
+      await notify(
+        {
+          userId: campaign.brand.ownerId,
+          type: "APPLICATION_RECEIVED",
+          title: `New creator application: ${campaign.name}`,
+          body: `${handle} applied to join your campaign. Review it in Applications.`,
+          href: "/dashboard/brand/creators",
+          email: true,
+        },
+        tx,
+      );
+    }
+
     await recordAudit(
       {
         userId: user.id,
@@ -199,6 +232,60 @@ export async function joinCampaign(
       tx,
     );
     return { status, code };
+  });
+}
+
+/** A partner withdraws their own PENDING application. Approved partners cannot withdraw (their link may already be in use). */
+export async function withdrawApplication(userId: string, applicationId: string) {
+  return transaction(async (tx) => {
+    const application = await tx.partnerApplication.findFirst({
+      where: { id: applicationId, userId },
+      select: { id: true, status: true, campaignId: true, campaign: { select: { brandId: true } } },
+    });
+    if (!application) throw new PartnerError("Application not found.");
+    if (application.status !== "PENDING") throw new PartnerError("Only pending applications can be withdrawn.");
+    const updated = await tx.partnerApplication.update({ where: { id: application.id }, data: { status: "WITHDRAWN" } });
+    await recordAudit(
+      { userId, action: "APPLICATION_WITHDRAWN", entityType: "PartnerApplication", entityId: application.id, metadata: { campaignId: application.campaignId, brandId: application.campaign.brandId } },
+      tx,
+    );
+    return updated;
+  });
+}
+
+/**
+ * A brand removes an approved partner from a campaign: the application becomes
+ * REMOVED and the referral link is DISABLED so it stops resolving. Existing
+ * verified conversions and ledger entries are untouched.
+ */
+export async function removePartner(brandId: string, actorId: string, applicationId: string, reason?: string | null) {
+  return transaction(async (tx) => {
+    const application = await tx.partnerApplication.findFirst({
+      where: { id: applicationId, campaign: { brandId } },
+      select: { id: true, status: true, userId: true, partnerType: true, campaignId: true, campaign: { select: { name: true, brand: { select: { name: true } } } } },
+    });
+    if (!application) throw new PartnerError("Application not found.");
+    if (application.status !== "APPROVED") throw new PartnerError("Only approved partners can be removed.");
+
+    await tx.partnerApplication.update({ where: { id: application.id }, data: { status: "REMOVED" } });
+    await tx.referralLink.updateMany({ where: { campaignId: application.campaignId, ownerId: application.userId }, data: { status: "DISABLED" } });
+    const partnerHome = application.partnerType === "CREATOR" ? "/dashboard/creator" : "/dashboard/customer";
+    await notify(
+      {
+        userId: application.userId,
+        type: "PARTNER_REMOVED",
+        idempotencyKey: `application:${application.id}:REMOVED`,
+        title: `Removed from ${application.campaign.name}`,
+        body: `${application.campaign.brand.name} removed you from this campaign. Your referral link for it no longer works.${reason ? ` Reason: ${reason}` : ""}`,
+        href: `${partnerHome}/campaigns`,
+        email: true,
+      },
+      tx,
+    );
+    await recordAudit(
+      { userId: actorId, action: "PARTNER_REMOVED", entityType: "PartnerApplication", entityId: application.id, metadata: { brandId, campaignId: application.campaignId, partnerUserId: application.userId, reason: reason ?? null } },
+      tx,
+    );
   });
 }
 

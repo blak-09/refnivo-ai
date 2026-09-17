@@ -47,21 +47,35 @@ export async function resolveReferralCode(rawCode: string) {
   return { ok: true as const, link };
 }
 
+/** Repeat hits from the same visitor on the same link inside this window are not counted again. */
+export const DUPLICATE_CLICK_WINDOW_MS = 30_000;
+
 /**
  * Records a click (link or QR) and a referral session for the visitor.
  * Clicks are never treated as sales; they only establish attribution.
+ * Returns `counted: false` when the hit was a duplicate (refresh / double tap)
+ * — the visitor is still redirected, only the count is suppressed.
  */
-export async function recordClick(input: {
-  linkId: string;
-  campaignId: string;
-  referrerId: string;
-  visitorId: string;
-  source: "LINK" | "QR";
-  ip?: string | null;
-  userAgent?: string | null;
-  referer?: string | null;
-}) {
-  await prisma.$transaction(async (tx) => {
+export async function recordClick(
+  input: {
+    linkId: string;
+    campaignId: string;
+    referrerId: string;
+    visitorId: string;
+    source: "LINK" | "QR";
+    ip?: string | null;
+    userAgent?: string | null;
+    referer?: string | null;
+  },
+  now = new Date(),
+): Promise<{ counted: boolean }> {
+  return prisma.$transaction(async (tx) => {
+    const recent = await tx.referralClick.findFirst({
+      where: { referralLinkId: input.linkId, anonymousVisitorId: input.visitorId, createdAt: { gt: new Date(now.getTime() - DUPLICATE_CLICK_WINDOW_MS) } },
+      select: { id: true },
+    });
+    if (recent) return { counted: false };
+
     await tx.referralClick.create({
       data: {
         referralLinkId: input.linkId,
@@ -89,6 +103,7 @@ export async function recordClick(input: {
         },
       });
     }
+    return { counted: true };
   });
 }
 

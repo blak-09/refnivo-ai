@@ -4,6 +4,7 @@ import { CompassIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
+import { WithdrawApplication } from "@/components/partners/withdraw-application";
 import { describeCreatorCommission, describeDuration } from "@/components/campaigns/campaign-summary";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireCreator } from "@/lib/auth/guards";
@@ -44,7 +45,21 @@ export default async function CreatorCampaignsPage() {
                         <Link href={`/campaigns/${c.slug}`} className="text-sm font-semibold hover:underline">
                           {c.product.name}
                         </Link>
-                        <StatusBadge status={a.status} label={a.status === "APPROVED" ? "Approved" : a.status === "PENDING" ? "Awaiting approval" : "Not approved"} />
+                        <StatusBadge
+                          status={a.status}
+                          label={
+                            a.status === "APPROVED"
+                              ? "Approved"
+                              : a.status === "PENDING"
+                                ? "Awaiting approval"
+                                : a.status === "WITHDRAWN"
+                                  ? "Withdrawn"
+                                  : a.status === "REMOVED"
+                                    ? "Removed by brand"
+                                    : "Not approved"
+                          }
+                        />
+                        {a.status === "PENDING" ? <WithdrawApplication applicationId={a.id} /> : null}
                         {c.status !== "ACTIVE" ? <StatusBadge status={c.status} /> : null}
                       </div>
                       <p className="text-sm text-muted-foreground">

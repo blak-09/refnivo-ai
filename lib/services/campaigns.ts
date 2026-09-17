@@ -1,8 +1,9 @@
 import { Prisma, type Campaign, type CampaignStatus } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, transaction } from "@/lib/db/prisma";
 import { canEdit, canTransition, isCampaignLive, publishProblems, TRANSITIONS } from "@/lib/domain/campaign-rules";
 import { toCampaignData, type CampaignAction, type CampaignFormValues } from "@/lib/validation/campaign";
 import { recordAudit } from "./audit";
+import { notify } from "./notify";
 import { uniqueSlug } from "./brands";
 
 export class CampaignError extends Error {
@@ -86,7 +87,7 @@ async function assertProductBelongsToBrand(tx: Prisma.TransactionClient, brandId
 
 export async function createCampaign(brandId: string, brandName: string, userId: string, values: CampaignFormValues) {
   const data = toCampaignData(values);
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     await assertProductBelongsToBrand(tx, brandId, values.productId);
     const slug = await uniqueSlug(`${brandName} ${values.name}`, slugExists(tx));
     const campaign = await tx.campaign.create({ data: { brandId, slug, status: "DRAFT", ...data } });
@@ -100,7 +101,7 @@ export async function createCampaign(brandId: string, brandName: string, userId:
 
 export async function updateCampaign(brandId: string, brandName: string, userId: string, campaignId: string, values: CampaignFormValues) {
   const data = toCampaignData(values);
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     const existing = await tx.campaign.findFirst({ where: { id: campaignId, brandId } });
     if (!existing) throw new CampaignError("Campaign not found.");
     if (!canEdit(existing.status)) throw new CampaignError("Ended or archived campaigns cannot be edited.");
@@ -143,11 +144,12 @@ export async function transitionCampaign(
   opts: { confirmed?: boolean; now?: Date } = {},
 ) {
   const now = opts.now ?? new Date();
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     const existing = await tx.campaign.findFirst({ where: { id: campaignId, brandId }, include: { product: { select: { status: true } } } });
     if (!existing) throw new CampaignError("Campaign not found.");
     if (!canTransition(existing.status, action)) {
-      throw new CampaignError(`This campaign cannot be ${action.toLowerCase()}ed from its current status.`);
+      const verb: Record<CampaignAction, string> = { PUBLISH: "published", PAUSE: "paused", RESUME: "resumed", END: "ended", ARCHIVE: "archived" };
+      throw new CampaignError(`This campaign cannot be ${verb[action]} from its current status.`);
     }
 
     if (action === "PUBLISH" || action === "RESUME") {
@@ -162,6 +164,27 @@ export async function transitionCampaign(
       where: { id: campaignId },
       data: { status: to, ...(action === "PUBLISH" ? { publishedAt: now } : {}) },
     });
+
+    // Partners with a link learn when the campaign stops accepting referrals (and when it resumes).
+    if (action === "PAUSE" || action === "END" || action === "RESUME") {
+      const partners = await tx.referralLink.findMany({ where: { campaignId, status: "ACTIVE" }, select: { ownerId: true, partnerType: true } });
+      for (const p of partners) {
+        await notify(
+          {
+            userId: p.ownerId,
+            type: action === "RESUME" ? "CAMPAIGN_PUBLISHED" : "CAMPAIGN_PAUSED",
+            title:
+              action === "PAUSE" ? `Campaign paused: ${existing.name}` : action === "END" ? `Campaign ended: ${existing.name}` : `Campaign resumed: ${existing.name}`,
+            body:
+              action === "RESUME"
+                ? "Your referral link is live again."
+                : "Your referral link for this campaign no longer resolves while it is not active. Verified orders and earnings are unaffected.",
+            href: p.partnerType === "CREATOR" ? "/dashboard/creator/campaigns" : "/dashboard/customer/referrals",
+          },
+          tx,
+        );
+      }
+    }
     await recordAudit(
       { userId, action: `CAMPAIGN_${action}`, entityType: "Campaign", entityId: campaignId, metadata: { brandId, from: existing.status, to } },
       tx,
@@ -171,7 +194,7 @@ export async function transitionCampaign(
 }
 
 export async function deleteDraftCampaign(brandId: string, userId: string, campaignId: string) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     const existing = await tx.campaign.findFirst({ where: { id: campaignId, brandId } });
     if (!existing) throw new CampaignError("Campaign not found.");
     if (existing.status !== "DRAFT") throw new CampaignError("Only draft campaigns can be deleted. Archive it instead.");

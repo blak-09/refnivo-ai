@@ -8,9 +8,9 @@ import { prisma } from "@/lib/db/prisma";
 import { roleHome } from "@/lib/auth/roles";
 import { createUser, EmailTakenError } from "@/lib/services/users";
 import { notifyRegistration } from "@/lib/services/notifications";
-import { buildRegistrationRow, exportRegistration } from "@/lib/registrations/sheet";
 import { extractRegistrationDetails, loginSchema, registerSchema } from "@/lib/validation/auth";
 import { clientIp, rateLimit } from "@/lib/utils/rate-limit";
+import { securityEvent } from "@/lib/utils/security-log";
 import { fail, firstError, formValues, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 
 function safeCallback(url: FormDataEntryValue | null): string | null {
@@ -22,7 +22,7 @@ export async function registerAction(
   _prev: ActionResult | null,
   formData: FormData,
 ): Promise<ActionResult> {
-  const limit = rateLimit(`register:${await clientIp()}`, 5, 10 * 60 * 1000);
+  const limit = await rateLimit(`register:${await clientIp()}`, 5, 10 * 60 * 1000);
   if (!limit.ok) {
     return fail(`Too many attempts. Please try again in ${limit.retryAfterSeconds} seconds.`, undefined, formValues(formData));
   }
@@ -51,19 +51,9 @@ export async function registerAction(
     return fail("Could not create your account. Please try again.");
   }
 
-  // Best-effort side-effects — never block the registration if these fail.
-  await exportRegistration(
-    buildRegistrationRow({
-      registrationId: user.registrationId ?? "",
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      details,
-      createdAt: user.createdAt,
-    }),
-  );
+  // Best-effort side-effect — never blocks the registration if it fails.
   await notifyRegistration("received", {
+    id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
@@ -83,7 +73,7 @@ export async function loginAction(
     return fail(firstError(fieldErrors), fieldErrors, formValues(formData));
   }
 
-  const limit = rateLimit(`login:${await clientIp()}:${parsed.data.email}`, 10, 10 * 60 * 1000);
+  const limit = await rateLimit(`login:${await clientIp()}:${parsed.data.email}`, 10, 10 * 60 * 1000);
   if (!limit.ok) {
     return fail(`Too many attempts. Please try again in ${limit.retryAfterSeconds} seconds.`, undefined, formValues(formData));
   }
@@ -98,6 +88,7 @@ export async function loginAction(
 
   // Case 1 — no account.
   if (!user) {
+    securityEvent("LOGIN_FAILED", { reason: "NO_ACCOUNT", email: parsed.data.email });
     return fail("No account found. Please sign up first.", { _status: "NO_ACCOUNT" }, formValues(formData));
   }
 
@@ -105,6 +96,7 @@ export async function loginAction(
   // cannot be probed without the correct credentials.
   const passwordOk = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!passwordOk) {
+    securityEvent("LOGIN_FAILED", { reason: "BAD_PASSWORD", email: parsed.data.email });
     return fail("Invalid email or password.", undefined, formValues(formData));
   }
 
@@ -121,6 +113,7 @@ export async function loginAction(
     );
   }
   if (user.status === "SUSPENDED") {
+    securityEvent("LOGIN_FAILED", { reason: "SUSPENDED", email: parsed.data.email });
     return fail("Your account has been suspended. Please contact support.", { _status: "SUSPENDED" }, formValues(formData));
   }
 

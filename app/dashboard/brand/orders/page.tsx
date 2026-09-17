@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { RecordOrderForm } from "@/components/orders/record-order-form";
 import { ConversionDecision } from "@/components/orders/conversion-decision";
+import { ConversionReversal } from "@/components/orders/conversion-reversal";
 import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
 import { countOrdersByStatus, listBrandOrders } from "@/lib/services/conversions";
@@ -21,9 +22,10 @@ const FILTERS: { value: ReferralStatus | "ALL"; label: string }[] = [
   { value: "PURCHASED", label: "Pending verification" },
   { value: "VERIFIED", label: "Verified" },
   { value: "REJECTED", label: "Rejected" },
+  { value: "REFUNDED", label: "Refunded" },
 ];
 
-const STATUS_LABEL: Record<string, string> = { PURCHASED: "Pending verification", VERIFIED: "Verified", REJECTED: "Rejected" };
+const STATUS_LABEL: Record<string, string> = { PURCHASED: "Pending verification", VERIFIED: "Verified", REJECTED: "Rejected", REFUNDED: "Refunded" };
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
   const { brand } = await requireBrand();
@@ -39,11 +41,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         description="Record online orders that carried a referral code, then verify them to release commissions and rewards. A click is never counted as a sale."
       />
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <KpiCard label="Orders recorded" value={total} />
         <KpiCard label="Pending verification" value={counts.PURCHASED ?? 0} />
         <KpiCard label="Verified conversions" value={counts.VERIFIED ?? 0} />
         <KpiCard label="Rejected" value={counts.REJECTED ?? 0} />
+        <KpiCard label="Refunded" value={counts.REFUNDED ?? 0} hint="Ledger entries reversed" />
       </div>
 
       <Card>
@@ -93,7 +96,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               {orders.map((o) => {
                 const r = o.referral;
                 const partnerName = r.referrer.creatorProfile?.displayName ?? r.referrer.name;
-                const owed = [...r.rewards, ...r.commissions].filter((x) => x.status !== "REJECTED").reduce((s, x) => s + x.amount, 0);
+                const owed = [...r.rewards, ...r.commissions].filter((x) => x.status !== "REJECTED" && x.status !== "REVERSED").reduce((s, x) => s + x.amount, 0);
                 const owedLabel = r.referralLink.partnerType === "CREATOR" ? `${formatMoney(owed)} commission` : `${formatMoney(owed)} reward`;
                 return (
                   <TableRow key={o.id}>
@@ -127,8 +130,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     <TableCell className="text-right tabular-nums">{owed ? formatMoney(owed) : "—"}</TableCell>
                     <TableCell>
                       <StatusBadge status={r.status} label={STATUS_LABEL[r.status]} />
+                      {o.reversalReason ? <span className="block max-w-40 truncate text-xs text-muted-foreground" title={o.reversalReason}>{o.reversalReason}</span> : null}
                     </TableCell>
-                    <TableCell>{r.status === "PURCHASED" ? <ConversionDecision referralId={r.id} owedLabel={owedLabel} /> : null}</TableCell>
+                    <TableCell>
+                      {r.status === "PURCHASED" ? <ConversionDecision referralId={r.id} owedLabel={owedLabel} /> : null}
+                      {r.status === "VERIFIED" ? <ConversionReversal referralId={r.id} /> : null}
+                    </TableCell>
                   </TableRow>
                 );
               })}

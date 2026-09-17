@@ -86,11 +86,15 @@ Do **not** mark `20260916090000_referral_link_visitor_index` as applied — it m
 
 ```bash
 export DATABASE_URL="<production URL>"
+export DB_DEPLOY_CONFIRM_HOST="<database hostname, e.g. aws-0-ap-northeast-1.pooler.supabase.com>"
 DB_DEPLOY_DRY_RUN=1 npm run db:deploy   # shows target host + pending migrations, applies nothing
 npm run db:deploy                       # runs `prisma migrate deploy` only
 ```
 
 `scripts/db-deploy.ts` refuses to run without `DATABASE_URL`, prints only host/db (never the password), and never calls `db push` or `reset`.
+Remote targets additionally require `DB_DEPLOY_CONFIRM_HOST` to equal the parsed hostname, and the script refuses a database that has no
+migration history yet (P3005) so the baseline in section 3 can never be skipped by accident.
+The developer commands `db:migrate`, `db:push:local` and `db:reset:local` run only against `localhost` (no override flag exists).
 On Vercel, run migrations from CI or your machine **before** promoting the deployment; do not run them in the build step.
 
 ## 5. Connection pooling
@@ -117,19 +121,63 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
    ```
 3. Create the real admin **from the same shell session**, never by inserting a known password:
    ```powershell
+   $env:ADMIN_BOOTSTRAP_CONFIRM = "<database hostname exactly as printed by db:target>"
    $env:ADMIN_EMAIL    = "you@yourcompany.com"
    $env:ADMIN_NAME     = "Your Name"
-   $env:ADMIN_PASSWORD = Read-Host "Admin password (12+ chars, letter+number)"
+   $env:ADMIN_PASSWORD = Read-Host "Admin password (12+ chars, letter+number, not a previously shared one)"
    npm run admin:create
-   Remove-Item Env:ADMIN_PASSWORD, Env:ADMIN_EMAIL, Env:ADMIN_NAME, Env:DATABASE_URL
+   Remove-Item Env:ADMIN_PASSWORD, Env:ADMIN_EMAIL, Env:ADMIN_NAME, Env:ADMIN_BOOTSTRAP_CONFIRM, Env:DATABASE_URL
    ```
-   The script prints the target database first, **refuses LOCAL hosts** unless `ADMIN_ALLOW_LOCAL=1`, upserts an APPROVED `ADMIN`, writes an audit row, and never prints the password or hash.
-4. Sign in, open `/dashboard/admin/registrations`, and confirm approvals work.
+   The script prints the target database first and then **refuses** when: the host is LOCAL (unless `ADMIN_ALLOW_LOCAL=1`);
+   `ADMIN_BOOTSTRAP_CONFIRM` is missing or differs from the hostname; the e-mail already exists (it **never** overwrites or
+   promotes an account — an existing *admin* can only be password-rotated with `ADMIN_ROTATE_EXISTING=1`, which also revokes its
+   sessions); an approved admin already exists (unless `ADMIN_ALLOW_ADDITIONAL=1`); the password is weak or on the exposed-password
+   deny-list. On success it creates an APPROVED `ADMIN` with `mustChangePassword = true`, writes an `ADMIN_BOOTSTRAPPED` audit row,
+   and never prints the password or hash.
+4. Sign in. You are redirected to Settings until you set a new password; doing so signs out every session (including this one) —
+   log in again with the new password, then open `/dashboard/admin/registrations` and confirm approvals work.
 5. Rotate `AUTH_SECRET` if it was ever shared in chat/tickets — rotating invalidates all sessions (users simply log in again).
 
-## 8. Pre-launch checklist
+## 8. Start-up validation, rate limiting and security logs
 
-- [ ] `AUTH_SECRET`, `DATABASE_URL` (pooler), `NEXT_PUBLIC_APP_URL`, `NEXTAUTH_URL` set in Vercel → Production
+- On boot in production, `instrumentation.ts` runs `validateProductionEnv()` and **refuses to start** if `AUTH_SECRET` (≥ 32 chars),
+  a non-local pooled `DATABASE_URL`, an https `NEXT_PUBLIC_APP_URL` or an https `NEXTAUTH_URL`/`AUTH_URL` is missing, or if any payment
+  flag (`PAYMENTS_ENABLED`, `PAYMENT_PROVIDER` ≠ `NONE`) is enabled. Messages name variables only — values are never printed.
+- Rate limiting: `RATE_LIMIT_PROVIDER=memory` (default) counts per instance; set `upstash` with `UPSTASH_REDIS_REST_URL` /
+  `UPSTASH_REDIS_REST_TOKEN` for a shared counter across serverless instances. The limiter is **fail-open**: if the shared store is
+  unreachable, requests are allowed and a `RATE_LIMIT_STORE_ERROR` security event is logged once per minute — during such an outage,
+  brute-force protection is reduced to what the platform provides. `RATE_LIMIT_ALLOW_MEMORY=1` silences the production warning.
+- Security events are single JSON lines on stderr prefixed `[security]` (`LOGIN_FAILED`, `RATE_LIMITED`, `SESSION_STALE`,
+  `UPLOAD_REJECTED`, `ADMIN_BOOTSTRAP_REFUSED`, `ENV_VALIDATION_*`). Values pass through a redactor that drops password/token/cookie/
+  authorization/key fields, masks e-mails and strips credentials from URLs. Ship stderr to your log drain (Vercel → Logs / a drain).
+- Audit rows now carry `actorRole`, a salted `ipHash`, a truncated `userAgent` and `requestId` (from `x-vercel-id` / `x-request-id`).
+- Sessions: a password change bumps `users.sessionVersion`, which invalidates every existing JWT for that user immediately.
+
+## 9. Manual payouts, e-mail and notifications
+
+- **Payouts / redemptions** are manual: creators and customers request settlement from Earnings / Rewards once their
+  approved balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins review at `/dashboard/admin/payouts`, settle off-platform and
+  record the external reference with **Mark paid** — the only path that sets commissions `PAID` / rewards `REDEEMED`.
+  Refunds recorded by a brand reverse the related ledger entries (`REVERSED`), including ones already settled (visible
+  as `alreadySettled` in the audit log so the balance can be recovered manually).
+- **E-mail**: set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` and a verified `EMAIL_FROM` to deliver registration
+  decisions, notifications (per-user opt-out in Settings) and password-reset links. With the default `console`
+  driver nothing is sent and the forgot-password page says so.
+- **Notifications** are stored in `notifications` (per user, read/unread) and shown under each dashboard's
+  Notifications page; the sidebar shows the unread count.
+- **Transactional outbox**: e-mails are never sent from inside a database transaction. Business code writes an
+  `email_outbox` row in the same transaction as the notification (unique `idempotencyKey` per event, so nothing is
+  ever queued twice); if the transaction rolls back the row disappears with it. Delivery runs after commit
+  (`lib/db/prisma.ts` → `transaction()`), claims each row atomically (`PENDING → SENDING`) and retries failures with
+  backoff up to 5 attempts. Schedule `npm run email:outbox` (cron / Vercel cron / GitHub Actions schedule, e.g. every
+  5 minutes) as the retry safety net; `/dashboard/admin/health` shows waiting/failed counts.
+
+## 10. Pre-launch checklist
+
+- [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; `PAYMENT_PROVIDER=NONE`, `PAYMENTS_ENABLED=false`
+- [ ] `RATE_LIMIT_PROVIDER=upstash` + Upstash credentials set (or `RATE_LIMIT_ALLOW_MEMORY=1` accepted knowingly)
+- [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)
+- [ ] `/dashboard/admin/health` shows the database reachable, migrations applied and no configuration errors
 - [ ] Separate values set for Preview
 - [ ] Backup taken; `_prisma_migrations` baselined (section 3); `npx prisma migrate status` clean
 - [ ] Demo admin suspended; real admin created via `npm run admin:create`

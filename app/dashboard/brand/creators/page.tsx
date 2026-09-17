@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { ApplicationDecision } from "@/components/partners/application-decision";
+import { RemovePartner } from "@/components/partners/remove-partner";
 import { CreatorAudience, CreatorSocialStats } from "@/components/creators/creator-stats";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
@@ -115,6 +116,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
                         </Button>
                       ) : null}
                       {a.status === "PENDING" ? <ApplicationDecision applicationId={a.id} /> : null}
+                      {a.status === "APPROVED" ? <RemovePartner applicationId={a.id} /> : null}
                     </div>
                   </div>
                   {profile ? (

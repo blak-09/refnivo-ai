@@ -16,6 +16,7 @@ export default async function setup() {
   const prisma = new PrismaClient({ datasources: { db: { url: TEST_DATABASE_URL } } });
   try {
     await prisma.auditLog.deleteMany();
+    await prisma.emailOutbox.deleteMany(); // userId is SetNull on user delete, so clear explicitly
     await prisma.user.deleteMany(); // cascades to brands, products, campaigns, links, referrals, ledgers
   } finally {
     await prisma.$disconnect();

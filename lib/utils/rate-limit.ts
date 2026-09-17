@@ -1,5 +1,9 @@
 import "server-only";
 import { headers } from "next/headers";
+import { checkRateLimit, FailOpenStore, MemoryStore, type RateLimitResult, type RateLimitStore } from "./rate-limit-core";
+import { securityEvent } from "./security-log";
+
+export type { RateLimitResult } from "./rate-limit-core";
 
 /** Best-effort client IP for rate-limit keys (respects proxies; falls back to "local"). */
 export async function clientIp(): Promise<string> {
@@ -8,41 +12,43 @@ export async function clientIp(): Promise<string> {
 }
 
 /**
- * Minimal in-memory, fixed-window rate limiter for auth endpoints.
- *
- * This is deliberately simple: it protects a single running instance against
- * brute-force / abuse without adding infrastructure. On a multi-instance or
- * serverless deployment, swap this for a shared store (Redis / Upstash) behind
- * the same `rateLimit()` signature — no callers change.
+ * Server wrapper around the rate-limit core. The store is chosen once from
+ * RATE_LIMIT_PROVIDER:
+ *   memory  (default) — per-instance Map; correct for `next dev` / single node.
+ *   upstash           — shared Redis via REST; needs UPSTASH_REDIS_REST_URL + TOKEN.
+ * Every store is wrapped in FailOpenStore: an outage logs a security event and
+ * allows the request rather than locking everyone out (see rate-limit-core.ts).
  */
+let store: RateLimitStore | null = null;
+let memory: MemoryStore | null = null;
 
-type Bucket = { count: number; resetAt: number };
-const buckets = new Map<string, Bucket>();
+async function getStore(): Promise<RateLimitStore> {
+  if (store) return store;
+  const provider = (process.env.RATE_LIMIT_PROVIDER ?? "memory").trim().toLowerCase();
+  const onError = (err: unknown) =>
+    securityEvent("RATE_LIMIT_STORE_ERROR", { provider, message: err instanceof Error ? err.message : "unknown error" });
 
-export type RateLimitResult = { ok: true } | { ok: false; retryAfterSeconds: number };
-
-export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
-  const now = Date.now();
-  const existing = buckets.get(key);
-
-  if (!existing || existing.resetAt <= now) {
-    buckets.set(key, { count: 1, resetAt: now + windowMs });
-    return { ok: true };
+  if (provider === "upstash" && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    const { UpstashRestStore } = await import("./rate-limit-upstash");
+    store = new FailOpenStore(new UpstashRestStore(process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN), onError);
+    return store;
   }
-
-  if (existing.count >= limit) {
-    return { ok: false, retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)) };
+  if (provider !== "memory") {
+    securityEvent("RATE_LIMIT_STORE_ERROR", { provider, message: "provider unavailable or misconfigured — falling back to memory" });
   }
-
-  existing.count += 1;
-  return { ok: true };
+  memory = new MemoryStore();
+  const m = memory;
+  setInterval(() => m.sweep(Date.now()), 10 * 60 * 1000).unref?.();
+  store = new FailOpenStore(memory, onError);
+  return store;
 }
 
-// Opportunistic cleanup so the map cannot grow unbounded over a long uptime.
-function sweep() {
-  const now = Date.now();
-  for (const [key, bucket] of buckets) {
-    if (bucket.resetAt <= now) buckets.delete(key);
-  }
+/**
+ * Fixed-window limiter: at most `limit` hits per `windowMs` for `key`.
+ * Blocked calls are logged as RATE_LIMITED (key prefix only — never the e-mail).
+ */
+export async function rateLimit(key: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  const result = await checkRateLimit(await getStore(), key, limit, windowMs);
+  if (!result.ok) securityEvent("RATE_LIMITED", { scope: key.split(":")[0], retryAfterSeconds: result.retryAfterSeconds });
+  return result;
 }
-setInterval(sweep, 10 * 60 * 1000).unref?.();

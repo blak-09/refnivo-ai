@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertPartner, assertRole } from "@/lib/auth/guards";
 import { CreatorError, getCreatorProfile, upsertCreatorProfile } from "@/lib/services/creators";
-import { joinCampaign, PartnerError, type JoinResult } from "@/lib/services/partners";
+import { joinCampaign, PartnerError, withdrawApplication, type JoinResult } from "@/lib/services/partners";
 import { applyToCampaignSchema, creatorProfileSchema } from "@/lib/validation/creator";
+import { withdrawApplicationSchema } from "@/lib/validation/partner";
 import { fail, firstError, formValues, ok, safeErrorMessage, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 
 export async function saveCreatorProfileAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
@@ -65,5 +66,27 @@ export async function joinCampaignAction(input: unknown): Promise<ActionResult<J
     if (err instanceof PartnerError) return fail(err.message);
     console.error("[joinCampaign] failed", err instanceof Error ? err.message : err);
     return fail("Could not join the campaign. Please try again.");
+  }
+}
+
+/** A creator or customer withdraws their own pending application. */
+export async function withdrawApplicationAction(input: unknown): Promise<ActionResult> {
+  let user;
+  try {
+    user = await assertPartner();
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = withdrawApplicationSchema.safeParse(input);
+  if (!parsed.success) return fail("Invalid request.");
+  try {
+    await withdrawApplication(user.id, parsed.data.applicationId);
+    revalidatePath("/dashboard/creator", "layout");
+    revalidatePath("/dashboard/customer", "layout");
+    return ok(undefined);
+  } catch (err) {
+    if (err instanceof PartnerError) return fail(err.message);
+    console.error("[withdrawApplication] failed", err instanceof Error ? err.message : err);
+    return fail("Could not withdraw the application.");
   }
 }

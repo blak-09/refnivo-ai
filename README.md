@@ -40,9 +40,11 @@ npm run dev                  # http://localhost:3000
 
 `npm run db:local` downloads a real PostgreSQL binary (via `embedded-postgres`) and runs it in `.localdb/` — handy on machines without Postgres or Docker. Keep it running in a separate terminal. Any hosted Postgres (Neon, Supabase, Railway, Vercel Postgres) works the same way by changing `DATABASE_URL`.
 
-### Demo accounts (password for all: `Demo@1234`)
+### Demo accounts — local development only
 
-Quick sign-in IDs — one per role. Outside production the login page shows these as one-click buttons; they are never rendered in production builds.
+`npm run db:seed` loads fictional demo data into a **local** database (the seed refuses remote hosts). The shared demo
+password is printed by the seed and lives only in `prisma/seed.ts`; quick sign-in buttons appear on the login page
+outside production and are never rendered in production builds. Never seed demo accounts into a real database.
 
 | Role | Email | Workspace |
 | --- | --- | --- |
@@ -71,10 +73,13 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | --- | --- | --- |
 | `DATABASE_URL` | yes | PostgreSQL connection string. |
 | `AUTH_SECRET` | yes | Secret for Auth.js JWT/session signing (also salts hashed IPs / customer contacts). **The app refuses to start without it.** `openssl rand -base64 32`. |
-| `NEXTAUTH_URL` | deploy only | Canonical URL for Auth.js on deployments. Leave empty locally so tunnels work (`trustHost` uses the request host). |
-| `NEXT_PUBLIC_APP_URL` | yes | Public origin used to build referral links (`/r/CODE`) and QR codes. |
-| `PAYOUT_MINIMUM_AMOUNT` | no | Minimum payout request in minor units (default `50000` = ₹500). |
+| `NEXTAUTH_URL` | production | Canonical https URL for Auth.js (required by the production start-up check; `AUTH_URL` accepted). Leave empty locally so tunnels work. |
+| `NEXT_PUBLIC_APP_URL` | yes | Public origin used to build referral links (`/r/CODE`), QR codes and e-mail links. |
+| `EMAIL_PROVIDER` | no | `console` (default, logs only) or `resend` (needs `RESEND_API_KEY` + `EMAIL_FROM`). Password reset by e-mail is only offered when configured. |
+| `RATE_LIMIT_PROVIDER` | production | `memory` (default, per instance) or `upstash` (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) for a shared limiter. |
+| `PAYOUT_MINIMUM_AMOUNT` | no | Minimum payout / redemption request in minor units (default `50000` = ₹500). |
 | `STORAGE_PROVIDER` | no | Image storage driver — `local` (default; writes to `public/uploads`). The `lib/storage` abstraction lets you add an R2/S3/Cloudinary/Supabase driver without touching callers. |
+| `PAYMENT_PROVIDER` / `PAYMENTS_ENABLED` | no | Must stay `NONE` / `false` — payouts are settled manually by an admin; the app refuses to start in production if payments are enabled. |
 | `NEXT_PUBLIC_SHOW_DEMO_LOGINS` | no | Demo quick sign-in buttons show only in non-production builds (never in production). Set `false` to hide them on a shared dev server. |
 | `TEST_DATABASE_URL` | no | Database for `npm test` integration tests (defaults to the local `localgrowth_test`). |
 
@@ -89,9 +94,12 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm test` | Vitest — unit tests + DB integration tests (needs `TEST_DATABASE_URL` reachable). |
 | `npm run db:local` | Start the embedded local PostgreSQL. |
-| `npm run db:migrate` | `prisma migrate dev` (development). |
-| `npm run db:deploy` | Safe production migrations: prints target + pending migrations, then `prisma migrate deploy` only (`DB_DEPLOY_DRY_RUN=1` to preview). See `docs/PRODUCTION.md`. |
-| `npm run admin:create` | Bootstrap a real admin from `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env vars (never prints the password). |
+| `npm run db:migrate` | `prisma migrate dev` — **localhost only** (refuses remote hosts and `NODE_ENV=production`). |
+| `npm run db:push:local` / `npm run db:reset:local` | `prisma db push` / `prisma migrate reset` — **localhost only**, same guard, no override flag. |
+| `npm run db:deploy` | Safe production migrations: prints target + pending migrations, then `prisma migrate deploy` only. Remote targets need `DB_DEPLOY_CONFIRM_HOST=<hostname>`; `DB_DEPLOY_DRY_RUN=1` to preview. See `docs/PRODUCTION.md`. |
+| `npm run db:target` | Prints which database the scripts will use (host/port/db only, never credentials). |
+| `npm run email:outbox` | Delivers/retries queued e-mails from the transactional outbox (schedule it from cron). |
+| `npm run admin:create` | Bootstrap the single admin from `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env vars; requires `ADMIN_BOOTSTRAP_CONFIRM=<db hostname>`; never overwrites or promotes an existing account; the admin must change the password at first login. Never prints the password. |
 | `npm run db:seed` | Load / reload demo data — **local databases only** (refuses non-local hosts). |
 | `npm run db:studio` | Prisma Studio. |
 | `npm run tunnel` | Cloudflare quick tunnel for a temporary public link. |
@@ -103,11 +111,12 @@ Public      /  /how-it-works  /pricing  /about  /contact  /privacy  /terms
             /campaigns (marketplace + filters)  /campaigns/[slug]
             /products  /products/[slug]   /brands  /brands/[slug]   /creators/[username]
             /r/[code]  (referral entry: records click/QR scan, sets attribution, redirects to campaign page)
-Auth        /auth/login  /auth/register  /auth/onboarding (brand or creator profile)
-Brand       /dashboard/brand  products  campaigns (new/[id]/edit)  creators  orders  payouts  analytics  profile  settings
-Creator     /dashboard/creator  campaigns  links  conversions  earnings  profile  settings
-Customer    /dashboard/customer  referrals  rewards  settings
-Admin       /dashboard/admin  settings
+Auth        /auth/login  /auth/register  /auth/forgot-password  /auth/reset-password  /auth/onboarding (brand or creator profile)
+Brand       /dashboard/brand  products  campaigns (new/[id]/edit)  creators  orders  payouts  analytics  profile  notifications  settings
+            /api/exports/campaigns/[id]  (CSV export, brand-scoped)
+Creator     /dashboard/creator  campaigns  links  conversions  earnings (payout requests)  profile  notifications  settings
+Customer    /dashboard/customer  referrals  rewards (redemption requests)  notifications  settings
+Admin       /dashboard/admin  registrations  users  verification  campaigns  conversions  payouts  audit  health  notifications  settings
 ```
 
 ## Project structure
@@ -160,21 +169,21 @@ Works only while both are running on your machine; the URL changes each restart.
 Read **[docs/PRODUCTION.md](docs/PRODUCTION.md)** first — backups, migration baseline, pooling, health check, admin bootstrap and the pre-launch checklist.
 
 1. Push the repo and import it in Vercel.
-2. Provision PostgreSQL (Neon / Supabase / Vercel Postgres) and set every variable from `.env.example` (`NEXT_PUBLIC_APP_URL` = your public URL so referral links are correct).
-3. Run migrations against production: `npx prisma migrate deploy`.
-4. Optionally seed demo data on a staging database only: `npm run db:seed`.
-5. Deploy — `next build` is verified to pass.
+2. Provision PostgreSQL (Neon / Supabase / Vercel Postgres) and set every variable from `.env.example` (`NEXT_PUBLIC_APP_URL` = your public https URL so referral links are correct). The app validates the configuration at start-up and refuses to boot with a missing/insecure value.
+3. Run migrations against production with the guarded runner: `DB_DEPLOY_CONFIRM_HOST=<db host> npm run db:deploy` (only ever `prisma migrate deploy`).
+4. Create the single admin with `npm run admin:create` (see `docs/PRODUCTION.md` §7). Never seed demo data into production.
+5. Deploy — `next build` is verified to pass. CI (`.github/workflows/ci.yml`) runs lint, typecheck, tests and build on every push.
 
 ## Known limitations (current build)
 
 - Product images are uploaded from the device to local disk (`public/uploads`) via the `local` storage driver — great for dev/self-hosted. On ephemeral/serverless hosts, switch `STORAGE_PROVIDER` to a cloud driver (interface in `lib/storage`). Existing external image URLs keep working.
 
-- Orders are recorded manually by the brand (referral code + order reference). Store integrations (Shopify/WooCommerce webhooks) are on the roadmap; the `?ref=CODE` parameter is already passed to the purchase URL.
-- Payout requests, reward redemption, admin management tools and AI features are scheduled for phases R3b/R4 (see `docs/PROGRESS.md`).
-- Images are URL fields; no file upload. One brand per owner account.
-- Creator social metrics are self-reported (no social API).
-- New accounts require **manual admin approval** before first sign-in (temporary verification flow). Non-sensitive
-  registration details are exported to a spreadsheet (CSV by default; set `REGISTRATION_SHEET_PROVIDER=google` for
-  Google Sheets). The password hash is never exported.
+- Orders are recorded manually by the brand (referral code + order reference) and verified/refunded by the brand. Store integrations (Shopify/WooCommerce webhooks) are on the roadmap; the `?ref=CODE` parameter is already passed to the purchase URL.
+- Payouts and reward redemptions are a **manual settlement workflow**: partners request, an admin approves, settles off-platform (UPI / bank / voucher) and records the reference. No money moves through the platform and no payment provider is integrated.
+- E-mail verification at signup is not implemented (accounts are admin-approved instead). Password reset needs `EMAIL_PROVIDER=resend`.
+- AI features are not implemented; the `AI_*` variables are reserved.
+- One brand per owner account. Creator social metrics are self-reported until an admin marks the profile verified (no social API).
+- New accounts require **manual admin approval** before first sign-in (`/dashboard/admin/registrations`). Applicants
+  receive an in-app notification and, when `EMAIL_PROVIDER` is configured, an e-mail on approval/rejection.
 - Auth endpoints have basic **in-memory** rate limiting (per instance). For multi-instance/serverless, back
   `lib/utils/rate-limit.ts` with a shared store (Redis/Upstash).

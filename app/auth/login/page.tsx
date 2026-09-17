@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { AuthCard } from "@/components/auth/auth-card";
 import { LoginForm } from "@/components/auth/login-form";
 import { prisma } from "@/lib/db/prisma";
-import { QUICK_DEMO_ACCOUNTS, showDemoLogins } from "@/lib/utils/demo";
+import { showDemoLogins } from "@/lib/utils/demo";
+import { QUICK_DEMO_ACCOUNTS } from "@/lib/utils/demo-accounts";
 
 export const metadata: Metadata = { title: "Log in" };
 
@@ -24,15 +25,17 @@ async function getQuickAccounts() {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; error?: string; registered?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string; registered?: string; reason?: string }>;
 }) {
-  const { callbackUrl, error, registered } = await searchParams;
+  const { callbackUrl, error, registered, reason } = await searchParams;
   const safeCallback = callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : undefined;
   const notice = registered
     ? "Your account was created and is waiting for admin approval. You can log in after approval."
-    : error
-      ? "Please log in to continue."
-      : undefined;
+    : reason === "password-changed"
+      ? "Your password was changed and all sessions were signed out. Log in with your new password."
+      : error
+        ? "Please log in to continue."
+        : undefined;
   const quickAccounts = await getQuickAccounts();
 
   return (

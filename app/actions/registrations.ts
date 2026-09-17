@@ -11,7 +11,7 @@ export async function checkRegistrationAction(
   _prev: ActionResult<CheckResult> | null,
   formData: FormData,
 ): Promise<ActionResult<CheckResult>> {
-  const limit = rateLimit(`check:${await clientIp()}`, 10, 10 * 60 * 1000);
+  const limit = await rateLimit(`check:${await clientIp()}`, 10, 10 * 60 * 1000);
   if (!limit.ok) {
     return fail(`Too many attempts. Please try again in ${limit.retryAfterSeconds} seconds.`, undefined, formValues(formData));
   }

@@ -25,7 +25,7 @@ type Props = {
   brandName: string;
   productName: string;
   viewer: { role: "CREATOR" | "CUSTOMER" | "BRAND_OWNER" | "ADMIN"; name: string; hasCreatorProfile: boolean } | null;
-  applicationStatus: "PENDING" | "APPROVED" | "REJECTED" | null;
+  applicationStatus: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "REMOVED" | null;
   requiresApproval: boolean;
   campaignType: "CREATOR_AFFILIATE" | "CUSTOMER_REFERRAL" | "HYBRID";
   live: boolean;
@@ -113,6 +113,9 @@ export function JoinCampaignPanel({
   }
   if (applicationStatus === "REJECTED") {
     return <Notice tone="rejected" icon={XCircleIcon}>Your application to this campaign was not approved.</Notice>;
+  }
+  if (applicationStatus === "REMOVED") {
+    return <Notice tone="rejected" icon={XCircleIcon}>The brand removed you from this campaign. Your referral link for it is disabled.</Notice>;
   }
 
   const needsApplication = viewer.role === "CREATOR" && requiresApproval;

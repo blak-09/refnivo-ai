@@ -95,9 +95,12 @@ describe("tracking, orders and ledger", () => {
     expect(await resolveReferralCode("NOPE-NOPE-XXXX")).toEqual({ ok: false, reason: "NOT_FOUND" });
 
     const base = { linkId: link.id, campaignId, referrerId: link.ownerId, visitorId: "visitor-1" as string };
-    await recordClick({ ...base, source: "LINK" });
-    await recordClick({ ...base, source: "QR" });
-    await recordClick({ ...base, source: "LINK", visitorId: "visitor-2" });
+    const t0 = new Date();
+    await recordClick({ ...base, source: "LINK" }, t0);
+    // Repeat hits inside the de-duplication window are not counted; a later QR scan is.
+    expect((await recordClick({ ...base, source: "LINK" }, new Date(t0.getTime() + 1000))).counted).toBe(false);
+    await recordClick({ ...base, source: "QR" }, new Date(t0.getTime() + 60_000));
+    await recordClick({ ...base, source: "LINK", visitorId: "visitor-2" }, t0);
     expect(await prisma.referralClick.count({ where: { referralLinkId: link.id } })).toBe(3);
     expect(await prisma.referralClick.count({ where: { referralLinkId: link.id, source: "QR" } })).toBe(1);
     expect(await prisma.referral.count({ where: { referralLinkId: link.id, status: "CLICKED" } })).toBe(2);

@@ -4,26 +4,17 @@ import { BrandLogo } from "@/components/products/product-thumb";
 export type TrustedBrand = { name: string; slug: string | null; logoUrl: string | null };
 
 /**
- * Neutral placeholders shown only when the database has no brands yet.
- * Replace or remove once real brands are onboarded. These are fictional names,
- * never real trademarks.
+ * "Brands on Refnivo AI" logo strip built from real, active brands only.
+ * Renders nothing until at least one brand exists — no placeholder logos.
+ * Scrolls horizontally on small screens.
  */
-const FALLBACK_BRANDS: TrustedBrand[] = [
-  { name: "Soundwave", slug: null, logoUrl: null },
-  { name: "GlowLab", slug: null, logoUrl: null },
-  { name: "FitFuel", slug: null, logoUrl: null },
-  { name: "Northwind", slug: null, logoUrl: null },
-  { name: "Bloom Skincare", slug: null, logoUrl: null },
-  { name: "Acme Audio", slug: null, logoUrl: null },
-];
-
-/** "Trusted by growing brands" logo strip. Scrolls horizontally on small screens. */
 export function TrustedBrands({ brands }: { brands: TrustedBrand[] }) {
-  const items = brands.length ? brands : FALLBACK_BRANDS;
+  const items = brands;
+  if (!items.length) return null;
   return (
     <section aria-label="Trusted brands" className="border-y bg-background">
       <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <p className="text-center text-xs font-semibold tracking-wider text-muted-foreground uppercase">Trusted by growing brands</p>
+        <p className="text-center text-xs font-semibold tracking-wider text-muted-foreground uppercase">Brands running campaigns on Refnivo AI</p>
         <ul className="mt-5 -mx-4 flex snap-x gap-8 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 [&::-webkit-scrollbar]:hidden">
           {items.map((b) => {
             const inner = (

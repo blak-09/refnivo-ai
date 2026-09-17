@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, BadgeIndianRupeeIcon, ExternalLinkIcon, MousePointerClickIcon, QrCodeIcon, ShoppingCartIcon, UsersIcon, WalletIcon } from "lucide-react";
+import { ArrowLeftIcon, BadgeIndianRupeeIcon, ExternalLinkIcon, MousePointerClickIcon, QrCodeIcon, ShoppingCartIcon, UsersIcon, WalletIcon, DownloadIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { CampaignActions } from "@/components/campaigns/campaign-actions";
 import { CampaignRulesGrid } from "@/components/campaigns/campaign-summary";
@@ -50,7 +51,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             ) : null}
           </span>
         }
-        actions={<CampaignActions campaignId={campaign.id} status={campaign.status} problems={problems} />}
+        actions={
+          <span className="flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="outline" nativeButton={false} render={<a href={`/api/exports/campaigns/${campaign.id}`} download />}>
+              <DownloadIcon /> Export CSV
+            </Button>
+            <CampaignActions campaignId={campaign.id} status={campaign.status} problems={problems} />
+          </span>
+        }
       />
 
       {campaign.status === "DRAFT" && problems.length ? (

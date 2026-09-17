@@ -142,9 +142,9 @@ describe("codes, slugs, roles", () => {
     expect(rest).toEqual([]);
     expect(handle).toBe("ARJUNVERMA");
     expect(brand).toBe("SOUNDWAV");
-    // Suffix: exactly 4 characters from the unambiguous alphabet (no 0/O, 1/I/L) so codes can be read aloud or typed from a QR flyer.
+    // Suffix: exactly 4 characters from the unambiguous alphabet (no 0/O, 1/I) so codes can be read aloud or typed from a QR flyer.
     expect(suffix).toMatch(/^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/);
-    expect(suffix).not.toMatch(/[01OIL]/);
+    expect(suffix).not.toMatch(/[01OI]/);
     expect(isReferralCodeFormat(code)).toBe(true);
 
     // Every generated code is well-formed, and the suffix varies between calls. Global uniqueness is NOT

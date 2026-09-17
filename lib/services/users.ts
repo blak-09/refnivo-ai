@@ -144,14 +144,36 @@ export class WrongPasswordError extends Error {
   }
 }
 
-export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+/**
+ * Changes the password and bumps `sessionVersion`, which invalidates every
+ * existing session (including the current one — the caller signs the user out
+ * and asks them to log in again). Clears `mustChangePassword`.
+ */
+export async function changePassword(userId: string, currentPassword: string, newPassword: string, now = new Date()) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
   if (!user) throw new WrongPasswordError();
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok) throw new WrongPasswordError();
   const passwordHash = await bcrypt.hash(newPassword, 12);
-  await prisma.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: userId }, data: { passwordHash } });
-    await recordAudit({ userId, action: "PASSWORD_CHANGED", entityType: "User", entityId: userId }, tx);
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: { passwordHash, passwordChangedAt: now, mustChangePassword: false, sessionVersion: { increment: 1 } },
+      select: { id: true, role: true, sessionVersion: true },
+    });
+    await recordAudit(
+      { userId, actorRole: updated.role, action: "PASSWORD_CHANGED", entityType: "User", entityId: userId, metadata: { sessionsRevoked: true } },
+      tx,
+    );
+    return updated;
+  });
+}
+
+/** Invalidates every session of a user (e.g. on suspension or admin request) without touching the password. */
+export async function revokeSessions(userId: string, actorId: string | null, reason: string) {
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } }, select: { id: true, sessionVersion: true } });
+    await recordAudit({ userId: actorId, action: "SESSIONS_REVOKED", entityType: "User", entityId: userId, metadata: { reason } }, tx);
+    return updated;
   });
 }

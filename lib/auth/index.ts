@@ -30,12 +30,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!ok) return null;
         if (user.status !== "APPROVED") return null;
 
+        // Best-effort: never block a login on this bookkeeping write.
+        prisma.user.updateMany({ where: { id: user.id }, data: { lastLoginAt: new Date() } }).catch(() => {});
+
         return {
           id: user.id,
           name: user.name,
           email: user.email,
           role: user.role,
           status: user.status,
+          sessionVersion: user.sessionVersion,
+          mustChangePassword: user.mustChangePassword,
         };
       },
     }),

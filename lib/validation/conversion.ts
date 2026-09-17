@@ -15,6 +15,11 @@ export const recordOrderSchema = z.object({
 
 export type RecordOrderInput = z.input<typeof recordOrderSchema>;
 
+export const conversionReversalSchema = z.object({
+  referralId: z.string().min(1),
+  reason: z.string().trim().min(3, "Please give a reason (e.g. order returned).").max(300),
+});
+
 export const conversionDecisionSchema = z.object({
   referralId: z.string().min(1),
   decision: z.enum(["VERIFY", "REJECT"]),

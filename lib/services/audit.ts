@@ -1,5 +1,6 @@
-import type { Prisma, PrismaClient } from "@prisma/client";
+import type { Prisma, PrismaClient, UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { getRequestContext, type RequestContext } from "@/lib/utils/request-context";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -10,6 +11,13 @@ export type AuditEntry = {
   entityId?: string | null;
   /** Keep this free of secrets and unnecessary personal data. */
   metadata?: Prisma.InputJsonValue;
+  /** Role of the actor at the time of the action (optional). */
+  actorRole?: UserRole | null;
+  /**
+   * Request context (hashed IP, truncated user agent, request id). Resolved from
+   * the current request when omitted; pass `null` to skip explicitly.
+   */
+  context?: RequestContext | null;
 };
 
 /**
@@ -17,6 +25,7 @@ export type AuditEntry = {
  * with the change it records.
  */
 export async function recordAudit(entry: AuditEntry, db: Db = prisma) {
+  const context = entry.context === undefined ? await getRequestContext() : entry.context;
   await db.auditLog.create({
     data: {
       userId: entry.userId,
@@ -24,6 +33,10 @@ export async function recordAudit(entry: AuditEntry, db: Db = prisma) {
       entityType: entry.entityType,
       entityId: entry.entityId ?? null,
       metadata: entry.metadata,
+      actorRole: entry.actorRole ?? null,
+      ipHash: context?.ipHash ?? null,
+      userAgent: context?.userAgent ?? null,
+      requestId: context?.requestId ?? null,
     },
   });
 }

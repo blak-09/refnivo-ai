@@ -1,7 +1,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/primitives";
 import { AccountDetailsForm, ChangePasswordForm } from "@/components/account/account-forms";
+import { NotificationPreferences } from "@/components/account/notification-preferences";
 import { prisma } from "@/lib/db/prisma";
+import { isEmailConfigured } from "@/lib/email";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/guards";
 
@@ -9,12 +11,20 @@ import type { SessionUser } from "@/lib/auth/guards";
 export async function SettingsPage({ user, extra }: { user: SessionUser; extra?: React.ReactNode }) {
   const full = await prisma.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { name: true, email: true, phone: true, createdAt: true },
+    select: { name: true, email: true, phone: true, createdAt: true, emailNotifications: true },
   });
 
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description={`Signed in as ${ROLE_LABEL[user.role].toLowerCase()}.`} />
+      {user.mustChangePassword ? (
+        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          <p className="font-medium">Set a new password to continue.</p>
+          <p className="mt-1">
+            This account was created with a temporary password. Choose a new one below — you will be signed out everywhere and asked to log in again.
+          </p>
+        </div>
+      ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -32,6 +42,15 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
           </CardHeader>
           <CardContent>
             <ChangePasswordForm />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications</CardTitle>
+            <CardDescription>Choose whether important updates are also sent by e-mail.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <NotificationPreferences emailNotifications={full.emailNotifications} emailConfigured={isEmailConfigured()} />
           </CardContent>
         </Card>
         {extra}

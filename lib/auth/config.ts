@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 import type { UserRole, UserStatus } from "@prisma/client";
+import { sessionCookieOptions, tokenSessionVersion } from "./session-version";
 
 /**
  * Edge-safe Auth.js configuration (no database imports). Used by `proxy.ts`
@@ -18,6 +19,10 @@ export const authConfig = {
   trustHost: true,
   // Explicit so Auth.js throws MissingSecret (never signs with an empty secret).
   secret: process.env.AUTH_SECRET,
+  // Explicit cookie hardening (matches Auth.js defaults; Secure + __Secure- prefix under https).
+  cookies: {
+    sessionToken: sessionCookieOptions(process.env.NEXTAUTH_URL || process.env.AUTH_URL),
+  },
   callbacks: {
     jwt({ token, user }) {
       if (user) {
@@ -25,6 +30,8 @@ export const authConfig = {
         token.role = user.role;
         token.status = user.status;
         token.name = user.name;
+        token.sv = tokenSessionVersion(user.sessionVersion);
+        token.mcp = user.mustChangePassword === true;
       }
       return token;
     },
@@ -34,6 +41,9 @@ export const authConfig = {
         session.user.role = token.role as UserRole;
         session.user.status = token.status as UserStatus;
         session.user.name = (token.name as string) ?? session.user.name;
+        // Old tokens (issued before versioning) carry no `sv` → version 1.
+        session.user.sessionVersion = tokenSessionVersion(token.sv);
+        session.user.mustChangePassword = token.mcp === true;
       }
       return session;
     },

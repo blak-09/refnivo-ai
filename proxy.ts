@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth/config";
 import { roleForDashboardPath, roleHome } from "@/lib/auth/roles";
+import { rotationRedirect } from "@/lib/auth/session-version";
 
 const { auth } = NextAuth(authConfig);
 
@@ -36,6 +37,10 @@ export default auth((req) => {
     if (isDashboard && requiredRole !== user.role) {
       return NextResponse.redirect(new URL(roleHome(user.role), nextUrl));
     }
+    // Forced password rotation: the JWT claim is fresh because completing a
+    // change bumps the session version and signs the user out.
+    const rotate = rotationRedirect({ mustChangePassword: user.mustChangePassword, pathname, roleHome: roleHome(user.role) });
+    if (rotate) return NextResponse.redirect(new URL(rotate, nextUrl));
   }
 
   return NextResponse.next();

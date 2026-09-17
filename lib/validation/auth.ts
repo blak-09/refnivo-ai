@@ -130,11 +130,23 @@ export const checkRegistrationSchema = z
     }
   });
 
+export const forgotPasswordSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address").max(120),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(20, "Reset link is invalid").max(200),
+    password: passwordField,
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+  })
+  .refine((v) => v.password === v.confirmPassword, { path: ["confirmPassword"], message: "Passwords do not match" });
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CheckRegistrationInput = z.infer<typeof checkRegistrationSchema>;
 
-/** Non-sensitive role-specific details, ready to persist (JSON) and export to the sheet. */
+/** Non-sensitive role-specific details, ready to persist (JSON) for admin review. */
 export function extractRegistrationDetails(data: RegisterInput): Record<string, string | number> {
   const clean = (v: string | undefined) => (v && v.trim() ? v.trim() : "");
   const num = (v: string | undefined) => {

@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LogOutIcon, MenuIcon } from "lucide-react";
+import { BellIcon, LogOutIcon, MenuIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
@@ -18,6 +18,8 @@ type ShellProps = {
   workspaceName: string;
   workspaceSubtitle?: string;
   user: { name: string; email: string };
+  /** Unread in-app notifications (server-computed). */
+  unreadNotifications?: number;
   onLogout: () => Promise<void>;
   children: React.ReactNode;
 };
@@ -27,7 +29,7 @@ function isActive(pathname: string, item: NavItem) {
   return pathname === item.href || pathname.startsWith(item.href + "/");
 }
 
-function NavList({ nav, onNavigate }: { nav: NavItem[]; onNavigate?: () => void }) {
+function NavList({ nav, onNavigate, unread = 0 }: { nav: NavItem[]; onNavigate?: () => void; unread?: number }) {
   const pathname = usePathname();
   return (
     <nav className="flex flex-col gap-0.5" aria-label="Dashboard">
@@ -48,6 +50,11 @@ function NavList({ nav, onNavigate }: { nav: NavItem[]; onNavigate?: () => void 
           >
             <item.icon className="size-4 shrink-0" aria-hidden />
             <span className="truncate">{item.label}</span>
+            {item.badge === "notifications" && unread > 0 ? (
+              <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground" aria-label={`${unread} unread`}>
+                {unread > 99 ? "99+" : unread}
+              </span>
+            ) : null}
           </Link>
         );
       })}
@@ -61,6 +68,7 @@ function SidebarBody({
   workspaceSubtitle,
   roleLabel,
   user,
+  unreadNotifications = 0,
   onLogout,
   onNavigate,
 }: Omit<ShellProps, "children"> & { onNavigate?: () => void }) {
@@ -74,7 +82,7 @@ function SidebarBody({
         <p className="truncate text-xs text-muted-foreground">{workspaceSubtitle ?? roleLabel}</p>
       </div>
       <div className="flex-1 overflow-y-auto px-3">
-        <NavList nav={NAV[navKey]} onNavigate={onNavigate} />
+        <NavList nav={NAV[navKey]} onNavigate={onNavigate} unread={unreadNotifications} />
       </div>
       <Separator />
       <div className="flex items-center gap-2 p-3">
@@ -119,6 +127,14 @@ export function DashboardShell(props: ShellProps) {
             </SheetContent>
           </Sheet>
           <SidebarLogo compact />
+          <Link
+            href={`/dashboard/${rest.navKey}/notifications`}
+            className="relative ml-auto inline-flex size-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+            aria-label={rest.unreadNotifications ? `Notifications, ${rest.unreadNotifications} unread` : "Notifications"}
+          >
+            <BellIcon className="size-4" aria-hidden />
+            {rest.unreadNotifications ? <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" aria-hidden /> : null}
+          </Link>
         </header>
 
         {isDemoAccount(rest.user.email) ? (

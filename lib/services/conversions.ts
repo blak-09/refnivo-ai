@@ -1,9 +1,10 @@
 import { Prisma, type ConversionSource, type ReferralStatus } from "@prisma/client";
-import { prisma } from "@/lib/db/prisma";
+import { prisma, transaction } from "@/lib/db/prisma";
 import { isCampaignLive } from "@/lib/domain/campaign-rules";
 import { computeCreatorCommission, computeCustomerReward, meetsMinimumPurchase } from "@/lib/domain/rewards";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
+import { notify } from "./notify";
 import { hashValue } from "./tracking";
 
 export class ConversionError extends Error {
@@ -32,7 +33,7 @@ export type RecordOrderInput = {
  */
 export async function recordOrder(brandId: string, actorId: string, input: RecordOrderInput, now = new Date()) {
   const code = normalizeReferralCode(input.code);
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     const link = await tx.referralLink.findUnique({
       where: { code },
       include: {
@@ -105,6 +106,16 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
       }
     }
 
+    await notify(
+      {
+        userId: link.ownerId,
+        type: "ORDER_RECORDED",
+        title: `New order through your link: ${link.campaign.name}`,
+        body: "The brand recorded an order that came through your referral. Your commission or reward is pending verification.",
+        href: link.partnerType === "CREATOR" ? "/dashboard/creator/conversions" : "/dashboard/customer/rewards",
+      },
+      tx,
+    );
     await recordAudit(
       {
         userId: actorId,
@@ -129,7 +140,7 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
  * committed ledger rows and the campaign can never be over-committed.
  */
 export async function verifyConversion(brandId: string, actorId: string, referralId: string, now = new Date()) {
-  return prisma.$transaction(async (tx) => {
+  return transaction(async (tx) => {
     // 1. Ownership-scoped lookup to learn the campaign (no lock yet).
     const target = await tx.referral.findFirst({ where: { id: referralId, campaign: { brandId } }, select: { campaignId: true } });
     if (!target) throw new ConversionError("Order not found.");
@@ -140,7 +151,13 @@ export async function verifyConversion(brandId: string, actorId: string, referra
     // 3. Everything below is read under the lock.
     const referral = await tx.referral.findFirst({
       where: { id: referralId, campaign: { brandId } },
-      include: { conversion: true, campaign: { select: { budget: true, id: true } }, commissions: true, rewards: true },
+      include: {
+        conversion: true,
+        campaign: { select: { budget: true, id: true, name: true } },
+        referralLink: { select: { partnerType: true } },
+        commissions: true,
+        rewards: true,
+      },
     });
     if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
     if (referral.status !== "PURCHASED") throw new ConversionError("Only orders pending verification can be verified.");
@@ -161,6 +178,18 @@ export async function verifyConversion(brandId: string, actorId: string, referra
     await tx.conversion.update({ where: { id: referral.conversion.id }, data: { verifiedById: actorId, verifiedAt: now } });
     await tx.commission.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "APPROVED" } });
     await tx.reward.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "AVAILABLE" } });
+    await notify(
+      {
+        userId: referral.referrerId,
+        type: "CONVERSION_VERIFIED",
+        idempotencyKey: `conversion:${referralId}:VERIFIED`,
+        title: `Order verified: ${referral.campaign.name}`,
+        body: referral.referralLink.partnerType === "CREATOR" ? "Your commission for this order is now approved." : "Your reward for this order is now available.",
+        href: referral.referralLink.partnerType === "CREATOR" ? "/dashboard/creator/earnings" : "/dashboard/customer/rewards",
+        email: true,
+      },
+      tx,
+    );
     await recordAudit(
       { userId: actorId, action: "CONVERSION_VERIFIED", entityType: "Referral", entityId: referralId, metadata: { brandId, orderReference: referral.conversion.orderReference, owed } },
       tx,
@@ -169,18 +198,95 @@ export async function verifyConversion(brandId: string, actorId: string, referra
 }
 
 export async function rejectConversion(brandId: string, actorId: string, referralId: string, reason?: string | null) {
-  return prisma.$transaction(async (tx) => {
-    const referral = await tx.referral.findFirst({ where: { id: referralId, campaign: { brandId } }, include: { conversion: true } });
+  return transaction(async (tx) => {
+    const referral = await tx.referral.findFirst({
+      where: { id: referralId, campaign: { brandId } },
+      include: { conversion: true, campaign: { select: { name: true } }, referralLink: { select: { partnerType: true } } },
+    });
     if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
     if (referral.status !== "PURCHASED") throw new ConversionError("Only orders pending verification can be rejected.");
 
     await tx.referral.update({ where: { id: referralId }, data: { status: "REJECTED", qualifyingEvent: reason?.trim() || referral.qualifyingEvent } });
     await tx.commission.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "REJECTED" } });
     await tx.reward.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "REJECTED" } });
+    await notify(
+      {
+        userId: referral.referrerId,
+        type: "CONVERSION_REJECTED",
+        title: `Order not verified: ${referral.campaign.name}`,
+        body: reason?.trim() ? `The brand rejected this order. Reason: ${reason.trim()}` : "The brand rejected this order, so no commission or reward is owed.",
+        href: referral.referralLink.partnerType === "CREATOR" ? "/dashboard/creator/conversions" : "/dashboard/customer/rewards",
+      },
+      tx,
+    );
     await recordAudit(
       { userId: actorId, action: "CONVERSION_REJECTED", entityType: "Referral", entityId: referralId, metadata: { brandId, orderReference: referral.conversion.orderReference, reason: reason ?? null } },
       tx,
     );
+  });
+}
+
+/**
+ * Refund / reversal of a VERIFIED order. The referral becomes REFUNDED and every
+ * approved (or already paid / redeemed) ledger entry becomes REVERSED, which
+ * removes it from budget maths and from payout eligibility. Entries that were
+ * already settled through a payout stay linked to that payout so the admin can
+ * see the negative balance; nothing is deleted. Serialised per campaign with
+ * the same row lock as verification so budget totals stay consistent.
+ */
+export async function reverseConversion(brandId: string, actorId: string, referralId: string, reason: string, now = new Date()) {
+  return transaction(async (tx) => {
+    const target = await tx.referral.findFirst({ where: { id: referralId, campaign: { brandId } }, select: { campaignId: true } });
+    if (!target) throw new ConversionError("Order not found.");
+    await tx.$queryRaw`SELECT "id" FROM "campaigns" WHERE "id" = ${target.campaignId} FOR UPDATE`;
+
+    const referral = await tx.referral.findFirst({
+      where: { id: referralId, campaign: { brandId } },
+      include: {
+        conversion: true,
+        campaign: { select: { name: true } },
+        referralLink: { select: { partnerType: true } },
+        commissions: { select: { id: true, status: true, amount: true } },
+        rewards: { select: { id: true, status: true, amount: true } },
+      },
+    });
+    if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
+    if (referral.status !== "VERIFIED") throw new ConversionError("Only verified orders can be refunded.");
+    if (referral.conversion.reversedAt) throw new ConversionError("This order has already been refunded.");
+
+    const reversedCommissions = referral.commissions.filter((c) => c.status === "APPROVED" || c.status === "PAID");
+    const reversedRewards = referral.rewards.filter((r) => r.status === "AVAILABLE" || r.status === "APPROVED" || r.status === "REDEEMED");
+    const alreadySettled = referral.commissions.some((c) => c.status === "PAID") || referral.rewards.some((r) => r.status === "REDEEMED");
+
+    await tx.referral.update({ where: { id: referralId }, data: { status: "REFUNDED" } });
+    await tx.conversion.update({ where: { id: referral.conversion.id }, data: { reversedAt: now, reversalReason: reason.trim() } });
+    await tx.commission.updateMany({ where: { id: { in: reversedCommissions.map((c) => c.id) } }, data: { status: "REVERSED" } });
+    await tx.reward.updateMany({ where: { id: { in: reversedRewards.map((r) => r.id) } }, data: { status: "REVERSED" } });
+
+    const reversedAmount = [...reversedCommissions, ...reversedRewards].reduce((s, e) => s + e.amount, 0);
+    await notify(
+      {
+        userId: referral.referrerId,
+        type: "CONVERSION_REVERSED",
+        idempotencyKey: `conversion:${referralId}:REVERSED`,
+        title: `Order refunded: ${referral.campaign.name}`,
+        body: `The brand recorded a refund for this order, so the related ${referral.referralLink.partnerType === "CREATOR" ? "commission" : "reward"} was reversed. Reason: ${reason.trim()}`,
+        href: referral.referralLink.partnerType === "CREATOR" ? "/dashboard/creator/earnings" : "/dashboard/customer/rewards",
+        email: true,
+      },
+      tx,
+    );
+    await recordAudit(
+      {
+        userId: actorId,
+        action: "CONVERSION_REVERSED",
+        entityType: "Referral",
+        entityId: referralId,
+        metadata: { brandId, orderReference: referral.conversion.orderReference, reason: reason.trim(), reversedAmount, alreadySettled },
+      },
+      tx,
+    );
+    return { reversedAmount, alreadySettled };
   });
 }
 
@@ -198,6 +304,8 @@ export async function listBrandOrders(brandId: string, status?: ReferralStatus |
       source: true,
       createdAt: true,
       verifiedAt: true,
+      reversedAt: true,
+      reversalReason: true,
       referral: {
         select: {
           id: true,

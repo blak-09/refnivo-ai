@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { ConfigurationError, isLocalDatabaseUrl, requireAuthSecret, requireEnv } from "@/lib/config/env";
+import { AUTH_SECRET_MIN_LENGTH, ConfigurationError, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
 import { hashValue } from "@/lib/services/tracking";
 import { showDemoLogins } from "@/lib/utils/demo";
 import { contentSecurityPolicy, securityHeaders } from "@/lib/config/security-headers";
@@ -101,5 +101,116 @@ describe("security headers", () => {
     expect(dev["Strict-Transport-Security"]).toBeUndefined();
     expect(dev["Content-Security-Policy"]).toContain("unsafe-eval");
     expect(dev["Content-Security-Policy"]).toContain("ws:");
+  });
+});
+
+describe("validateProductionEnv", () => {
+  const SECRET = "x".repeat(AUTH_SECRET_MIN_LENGTH) + "Kq9";
+  const DB_PASSWORD = "ProdDbPw-8f3a";
+  const valid: NodeJS.ProcessEnv = {
+    NODE_ENV: "production",
+    AUTH_SECRET: SECRET,
+    DATABASE_URL: `postgresql://postgres.ref:${DB_PASSWORD}@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true`,
+    NEXT_PUBLIC_APP_URL: "https://app.refnivo.example",
+    NEXTAUTH_URL: "https://app.refnivo.example",
+    RATE_LIMIT_PROVIDER: "memory",
+    RATE_LIMIT_ALLOW_MEMORY: "1",
+    STORAGE_PROVIDER: "local",
+    STORAGE_ALLOW_LOCAL: "1",
+    PAYMENT_PROVIDER: "NONE",
+    PAYMENTS_ENABLED: "false",
+    EMAIL_PROVIDER: "resend",
+    RESEND_API_KEY: "re_test_key_value",
+    EMAIL_FROM: "Refnivo AI <no-reply@refnivo.example>",
+  };
+
+  it("never blocks development or test environments", () => {
+    expect(validateProductionEnv({ NODE_ENV: "development" })).toEqual({ errors: [], warnings: [] });
+    expect(validateProductionEnv({ NODE_ENV: "test", AUTH_SECRET: "short" })).toEqual({ errors: [], warnings: [] });
+    expect(validateProductionEnv({} as unknown as NodeJS.ProcessEnv)).toEqual({ errors: [], warnings: [] });
+  });
+
+  it("accepts a complete production configuration", () => {
+    expect(validateProductionEnv(valid)).toEqual({ errors: [], warnings: [] });
+    expect(validateProductionEnv({ ...valid, NEXTAUTH_URL: undefined, AUTH_URL: "https://app.refnivo.example" }).errors).toEqual([]);
+  });
+
+  it("reports every missing required variable by name", () => {
+    const { errors } = validateProductionEnv({ NODE_ENV: "production" });
+    expect(errors.join(" ")).toContain("AUTH_SECRET");
+    expect(errors.join(" ")).toContain("DATABASE_URL");
+    expect(errors.join(" ")).toContain("NEXT_PUBLIC_APP_URL");
+    expect(errors.join(" ")).toContain("NEXTAUTH_URL");
+  });
+
+  it("requires AUTH_SECRET to be long and not a placeholder", () => {
+    expect(validateProductionEnv({ ...valid, AUTH_SECRET: "tooshort" }).errors.join(" ")).toMatch(/AUTH_SECRET must be at least/);
+    expect(validateProductionEnv({ ...valid, AUTH_SECRET: "replace-with-a-long-random-secret-value-xx" }).errors.join(" ")).toMatch(/placeholder/);
+  });
+
+  it("refuses a local database, an unparseable URL, and a pooler port without pgbouncer=true", () => {
+    expect(validateProductionEnv({ ...valid, DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/localgrowth" }).errors.join(" ")).toMatch(/local database/);
+    expect(validateProductionEnv({ ...valid, DATABASE_URL: "nope" }).errors.join(" ")).toMatch(/could not be parsed/);
+    expect(
+      validateProductionEnv({ ...valid, DATABASE_URL: "postgresql://u:p@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres" }).errors.join(" "),
+    ).toMatch(/pgbouncer=true/);
+  });
+
+  it("requires https public and canonical URLs", () => {
+    expect(validateProductionEnv({ ...valid, NEXT_PUBLIC_APP_URL: "http://app.refnivo.example" }).errors.join(" ")).toMatch(/NEXT_PUBLIC_APP_URL must be an https/);
+    expect(validateProductionEnv({ ...valid, NEXTAUTH_URL: "http://app.refnivo.example" }).errors.join(" ")).toMatch(/NEXTAUTH_URL \/ AUTH_URL must be an https/);
+    expect(validateProductionEnv({ ...valid, NEXTAUTH_URL: "" }).errors.join(" ")).toMatch(/NEXTAUTH_URL \(or AUTH_URL\) is not set/);
+  });
+
+  it("refuses start-up when live payment flags are enabled", () => {
+    expect(validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true" }).errors.join(" ")).toMatch(/PAYMENTS_ENABLED=true is not supported/);
+    expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "PHONEPE" }).errors.join(" ")).toMatch(/PAYMENT_PROVIDER must be NONE/);
+    expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "" }).errors).toEqual([]); // blank == NONE
+  });
+
+  it("warns (does not fail) about payment keys present while payments are disabled, naming variables only", () => {
+    const r = validateProductionEnv({ ...valid, PHONEPE_SALT_KEY: "live-salt-value-123" });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings.join(" ")).toContain("PHONEPE_SALT_KEY");
+    expect(r.warnings.join(" ")).not.toContain("live-salt-value-123");
+  });
+
+  it("validates the e-mail provider configuration and warns when e-mail is console-only", () => {
+    expect(validateProductionEnv({ ...valid, EMAIL_PROVIDER: "resend", RESEND_API_KEY: "" }).errors.join(" ")).toMatch(/RESEND_API_KEY and EMAIL_FROM/);
+    expect(validateProductionEnv({ ...valid, EMAIL_PROVIDER: "sendgrid" }).errors.join(" ")).toMatch(/EMAIL_PROVIDER must be one of/);
+    const console_ = validateProductionEnv({ ...valid, EMAIL_PROVIDER: "console", RESEND_API_KEY: undefined, EMAIL_FROM: undefined });
+    expect(console_.errors).toEqual([]);
+    expect(console_.warnings.join(" ")).toMatch(/EMAIL_PROVIDER is console/);
+    expect(console_.warnings.join(" ")).not.toContain("re_test_key_value");
+  });
+
+  it("validates the rate-limit provider configuration", () => {
+    expect(validateProductionEnv({ ...valid, RATE_LIMIT_PROVIDER: "upstash" }).errors.join(" ")).toMatch(/UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN/);
+    expect(
+      validateProductionEnv({ ...valid, RATE_LIMIT_PROVIDER: "upstash", UPSTASH_REDIS_REST_URL: "https://x.upstash.io", UPSTASH_REDIS_REST_TOKEN: "tok" }).errors,
+    ).toEqual([]);
+    expect(validateProductionEnv({ ...valid, RATE_LIMIT_PROVIDER: "redis" }).errors.join(" ")).toMatch(/must be one of/);
+    const memory = validateProductionEnv({ ...valid, RATE_LIMIT_ALLOW_MEMORY: undefined });
+    expect(memory.errors).toEqual([]);
+    expect(memory.warnings.join(" ")).toMatch(/per-instance/);
+  });
+
+  it("warns about dev escape hatches and local storage in production", () => {
+    const r = validateProductionEnv({ ...valid, SEED_ALLOW_REMOTE: "1", ADMIN_ALLOW_LOCAL: "1", STORAGE_ALLOW_LOCAL: undefined });
+    expect(r.errors).toEqual([]);
+    expect(r.warnings.join(" ")).toContain("SEED_ALLOW_REMOTE");
+    expect(r.warnings.join(" ")).toContain("ADMIN_ALLOW_LOCAL");
+    expect(r.warnings.join(" ")).toMatch(/STORAGE_PROVIDER is local/);
+  });
+
+  it("never includes secret values in any message", () => {
+    const broken = { ...valid, NEXT_PUBLIC_APP_URL: "http://x", PAYMENTS_ENABLED: "true", RATE_LIMIT_PROVIDER: "upstash", UPSTASH_REDIS_REST_TOKEN: "tok-secret-1" };
+    const r = validateProductionEnv(broken);
+    const all = [...r.errors, ...r.warnings].join(" ");
+    expect(all).not.toContain("re_test_key_value");
+    expect(all).not.toContain(SECRET);
+    expect(all).not.toContain(DB_PASSWORD);
+    expect(all).not.toContain("tok-secret-1");
+    expect(all).not.toContain("postgresql://");
   });
 });
