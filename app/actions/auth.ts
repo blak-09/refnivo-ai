@@ -11,6 +11,7 @@ import { notifyRegistration } from "@/lib/services/notifications";
 import { extractRegistrationDetails, loginSchema, registerSchema } from "@/lib/validation/auth";
 import { clientIp, rateLimit } from "@/lib/utils/rate-limit";
 import { securityEvent } from "@/lib/utils/security-log";
+import { logServerError } from "@/lib/utils/server-log";
 import { fail, firstError, formValues, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 
 function safeCallback(url: FormDataEntryValue | null): string | null {
@@ -47,7 +48,7 @@ export async function registerAction(
     });
   } catch (err) {
     if (err instanceof EmailTakenError) return fail(err.message, { email: err.message }, formValues(formData));
-    console.error("[register] failed", err instanceof Error ? err.message : err);
+    logServerError("register", err, { role: parsed.data.role });
     return fail("Could not create your account. Please try again.");
   }
 
@@ -81,10 +82,17 @@ export async function loginAction(
   const callbackUrl = safeCallback(formData.get("callbackUrl"));
 
   // Look up the account so we can give the user a precise, safe reason.
-  const user = await prisma.user.findUnique({
-    where: { email: parsed.data.email },
-    select: { passwordHash: true, status: true, role: true, rejectionReason: true },
-  });
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { email: parsed.data.email },
+      select: { passwordHash: true, status: true, role: true, rejectionReason: true },
+    });
+  } catch (err) {
+    // Infrastructure failure (database unreachable, pending migration, pooler misconfiguration) — never a user error.
+    logServerError("login", err);
+    return fail("Sign-in is temporarily unavailable. Please try again in a moment.", undefined, formValues(formData));
+  }
 
   // Case 1 — no account.
   if (!user) {
@@ -129,7 +137,7 @@ export async function loginAction(
     if (err instanceof AuthError) {
       return fail("Invalid email or password.", undefined, formValues(formData));
     }
-    console.error("[login] failed", err instanceof Error ? err.message : err);
+    logServerError("login", err);
     return fail("Could not sign you in. Please try again.");
   }
   return { ok: true, data: undefined };

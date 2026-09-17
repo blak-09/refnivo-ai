@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { AUTH_SECRET_MIN_LENGTH, ConfigurationError, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
+import { AUTH_SECRET_MIN_LENGTH, authSecretAtBoot, ConfigurationError, isBuildPhase, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
 import { hashValue } from "@/lib/services/tracking";
 import { showDemoLogins } from "@/lib/utils/demo";
 import { contentSecurityPolicy, securityHeaders } from "@/lib/config/security-headers";
@@ -212,5 +212,27 @@ describe("validateProductionEnv", () => {
     expect(all).not.toContain(DB_PASSWORD);
     expect(all).not.toContain("tok-secret-1");
     expect(all).not.toContain("postgresql://");
+  });
+});
+
+describe("AUTH_SECRET at boot vs at build", () => {
+  const env = (v: Record<string, string | undefined>) => v as unknown as NodeJS.ProcessEnv;
+
+  it("hard-fails at runtime when the secret is missing or blank", () => {
+    expect(() => authSecretAtBoot(env({}))).toThrow(ConfigurationError);
+    expect(() => authSecretAtBoot(env({ AUTH_SECRET: "   " }))).toThrow(/AUTH_SECRET is not configured/);
+    expect(() => authSecretAtBoot(env({ NODE_ENV: "production" }))).toThrow(ConfigurationError);
+  });
+
+  it("returns the secret when present, in any phase", () => {
+    expect(authSecretAtBoot(env({ AUTH_SECRET: "s".repeat(40) }))).toBe("s".repeat(40));
+    expect(authSecretAtBoot(env({ AUTH_SECRET: "s".repeat(40), NEXT_PHASE: "phase-production-build" }))).toBe("s".repeat(40));
+  });
+
+  it("does not throw during `next build` (no secrets are needed to compile) — the runtime boot check still enforces it", () => {
+    expect(isBuildPhase(env({ NEXT_PHASE: "phase-production-build" }))).toBe(true);
+    expect(isBuildPhase(env({}))).toBe(false);
+    expect(authSecretAtBoot(env({ NEXT_PHASE: "phase-production-build" }))).toBeUndefined();
+    expect(validateProductionEnv(env({ NODE_ENV: "production", NEXT_PHASE: "phase-production-build" })).errors.join(" ")).toContain("AUTH_SECRET");
   });
 });

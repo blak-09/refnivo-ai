@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { formatSecurityEvent, maskEmail, redact, REDACTED, securityEvent, stripUrlCredentials } from "@/lib/utils/security-log";
+import { describeError, errorHint, logServerError } from "@/lib/utils/server-log";
 
 const PASSWORD = "Hunter2-Very-Secret-42";
 const TOKEN = "eyJhbGciOiJIUzI1NiJ9.super.secret";
@@ -84,5 +85,43 @@ describe("security log redaction", () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
     expect(() => securityEvent("RATE_LIMITED", circular as never)).not.toThrow();
+  });
+});
+
+describe("server error logging", () => {
+  it("summarises Prisma-style errors with code and target but strips credentials and never logs secrets", () => {
+    const prismaLike = Object.assign(new Error(`Can't reach database server at postgresql://user:${DB_URL.split(":")[2].split("@")[0]}@db.example.com:5432`), {
+      name: "PrismaClientInitializationError",
+      code: "P1001",
+    });
+    const s = describeError(prismaLike);
+    expect(s.code).toBe("P1001");
+    expect(errorHint(s)).toMatch(/unreachable/);
+
+    const missingColumn = Object.assign(new Error("The column `users.sessionVersion` does not exist in the current database."), {
+      name: "PrismaClientKnownRequestError",
+      code: "P2022",
+      meta: { modelName: "User", column: "users.sessionVersion" },
+    });
+    expect(describeError(missingColumn)).toMatchObject({ code: "P2022", target: "User users.sessionVersion" });
+    expect(errorHint(describeError(missingColumn))).toMatch(/db:deploy/);
+    expect(errorHint(describeError(new Error("prepared statement \"s0\" already exists")))).toMatch(/pgbouncer=true/);
+    expect(errorHint(describeError(new Error("something else")))).toBeNull();
+
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    logServerError("register", Object.assign(new Error(`connect to ${DB_URL} failed`), { code: "P1001" }), { password: PASSWORD, token: TOKEN, role: "CUSTOMER" });
+    const line = String(error.mock.calls[0][0]);
+    expect(line.startsWith("[register] {")).toBe(true);
+    expect(line).toContain('"code":"P1001"');
+    expect(line).toContain('"role":"CUSTOMER"');
+    expect(line).not.toContain(PASSWORD);
+    expect(line).not.toContain(TOKEN);
+    expect(line).not.toContain("DbPassw0rd!");
+    error.mockRestore();
+  });
+
+  it("handles non-Error values", () => {
+    expect(describeError("boom")).toMatchObject({ name: "UnknownError", message: "boom", code: null });
+    expect(describeError(null)).toMatchObject({ name: "UnknownError" });
   });
 });

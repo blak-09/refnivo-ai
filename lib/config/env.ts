@@ -28,6 +28,26 @@ export function isProduction(): boolean {
   return process.env.NODE_ENV === "production";
 }
 
+/** True while `next build` is collecting page data / prerendering. No secrets are needed to compile. */
+export function isBuildPhase(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env.NEXT_PHASE === "phase-production-build";
+}
+
+/**
+ * Auth.js secret resolved at module load. At RUNTIME a missing secret still
+ * hard-fails (ConfigurationError, no fallback). During `next build` it must not
+ * throw: the build machine has no business holding the secret, and a build
+ * that dies on a runtime variable is a deploy-pipeline outage, not a safety
+ * feature — the runtime boot check (instrumentation.ts) and Auth.js's own
+ * MissingSecret guard remain in force.
+ */
+export function authSecretAtBoot(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  const value = env.AUTH_SECRET?.trim();
+  if (value) return value;
+  if (isBuildPhase(env)) return undefined;
+  throw new ConfigurationError("AUTH_SECRET is not configured. Set it in the environment (see .env.example).");
+}
+
 /** True for the embedded/local Postgres used in development and tests. */
 export function isLocalDatabaseUrl(url: string | undefined): boolean {
   if (!url) return false;
