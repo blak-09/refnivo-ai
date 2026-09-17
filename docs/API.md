@@ -6,9 +6,16 @@ The app uses Next.js Server Actions (no public JSON API yet). Every action valid
 
 | Action | Input | Result |
 | --- | --- | --- |
-| `registerAction(prev, formData)` | `name, email, password, confirmPassword, role (BRAND_OWNER/CREATOR/CUSTOMER), phone?` + role-specific fields (brand: `brandName, brandWebsite?, brandCategory, brandDescription?`; creator: `creatorName, creatorCategory, instagramHandle?, instagramFollowers?, youtubeChannel?, youtubeSubscribers?`) | Creates a **PENDING** user (no auto-login), mirrors non-sensitive details to the registration spreadsheet, redirects to `/registration-pending?rid=…`. Rate-limited. |
+| `registerAction(prev, formData)` | `name, email, password, confirmPassword, role (BRAND_OWNER/CREATOR/CUSTOMER), phone?` + role-specific fields (brand: `brandName, brandWebsite?, brandCategory, brandDescription?`; creator: `creatorName, creatorCategory, instagramHandle?, instagramFollowers?, youtubeChannel?, youtubeSubscribers?`) | Creates a **PENDING** user (no auto-login), queues the "received" e-mail (outbox), redirects to `/registration-pending?rid=…`. Rate-limited. |
 | `loginAction(prev, formData)` | `email, password, callbackUrl?` | Verifies the password, then gates on status: no account, PENDING, REJECTED (with reason), SUSPENDED each return a distinct message; APPROVED signs in and redirects by role. Rate-limited. |
 | `logoutAction()` | — | Signs out → `/` |
+
+## Password reset (`app/actions/password-reset.ts`)
+
+| Action | Input | Result |
+| --- | --- | --- |
+| `forgotPasswordAction(prev, formData)` | `email` | Neutral response whether or not the account exists; queues a one-hour single-use reset link (hashed token) when `EMAIL_PROVIDER` is configured; rate-limited per IP and per e-mail. |
+| `resetPasswordAction(prev, formData)` | `token, password, confirmPassword` | Consumes the token, sets the password, bumps `sessionVersion` (all sessions signed out) → `/auth/login?reason=password-changed`. |
 
 Only **APPROVED** users can sign in (enforced in `authorize()` and `getCurrentUser()`).
 
@@ -16,8 +23,15 @@ Only **APPROVED** users can sign in (enforced in `authorize()` and `getCurrentUs
 
 | Action | Input | Notes |
 | --- | --- | --- |
-| `approveUserAction(prev, formData)` | `userId` | Sets status APPROVED (records `approvedAt`/`approvedById`); syncs the sheet; notifies. Cannot approve self. |
-| `rejectUserAction(prev, formData)` | `userId, reason` | Sets status REJECTED with reason (shown to the applicant); syncs the sheet; notifies. Cannot reject self. |
+| `approveUserAction(prev, formData)` | `userId` | Sets status APPROVED (records `approvedAt`/`approvedById`); in-app notification + e-mail. Cannot approve self. |
+| `rejectUserAction(prev, formData)` | `userId, reason` | Sets status REJECTED with reason (shown to the applicant); in-app notification + e-mail. Cannot reject self. |
+| `suspendUserAction({ userId, reason })` | | APPROVED → SUSPENDED, sessions revoked; self and last active admin refused |
+| `reactivateUserAction({ userId })` | | SUSPENDED → APPROVED |
+| `verificationAction({ target, id, decision, note? })` | `target ∈ BRAND, CREATOR`; `decision ∈ VERIFIED, REJECTED, UNVERIFIED` | Public verified badge; owner notified |
+| `moderateCampaignAction({ campaignId, action, reason })` | `action ∈ PAUSE, END, ARCHIVE` | Same lifecycle rules as brands; owner notified |
+| `payoutReviewAction({ payoutId, action, reference?, note? })` | `action ∈ UNDER_REVIEW, APPROVE, MARK_PAID, FAIL, REJECT` | `MARK_PAID` needs an external reference and is the only path to commission `PAID` / reward `REDEEMED`; `REJECT` releases the ledger rows |
+
+All admin actions require `role = ADMIN`, validate with Zod, write an audit row with the admin as actor and notify the affected user.
 
 ### Registration status (`app/actions/registrations.ts`)
 
@@ -53,7 +67,9 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 
 | Action | Input | Notes |
 | --- | --- | --- |
-| `decideApplicationAction({ applicationId, decision })` | `decision ∈ APPROVED, REJECTED` | Brand side; approval creates the partner's referral link |
+| `decideApplicationAction({ applicationId, decision })` | `decision ∈ APPROVED, REJECTED` | Brand side; approval creates the partner's referral link; partner notified |
+| `removePartnerAction({ applicationId, reason? })` | | Brand side; APPROVED → REMOVED, referral link DISABLED |
+| `withdrawApplicationAction({ applicationId })` | | Partner side; PENDING → WITHDRAWN (can re-apply) |
 | `joinCampaignAction({ campaignId, message? })` | | Creator/customer side; returns `{ status, code }` — customers and no-approval campaigns get a code instantly |
 | `saveCreatorProfileAction(prev, formData)` | | Creates/updates the creator profile (username unique) |
 
@@ -62,7 +78,16 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 | Action | Input | Notes |
 | --- | --- | --- |
 | `recordOrderAction(prev, formData)` | `code, orderReference, amount (₹), quantity, source, customerContact?, note?` | Creates PURCHASED referral + conversion + PENDING commission/reward |
-| `conversionDecisionAction({ referralId, decision, reason? })` | `decision ∈ VERIFY, REJECT` | VERIFY → VERIFIED + APPROVED/AVAILABLE ledger (budget-checked); REJECT → REJECTED |
+| `conversionDecisionAction({ referralId, decision, reason? })` | `decision ∈ VERIFY, REJECT` | VERIFY → VERIFIED + APPROVED/AVAILABLE ledger (budget-checked, campaign row lock); REJECT → REJECTED |
+| `conversionReversalAction({ referralId, reason })` | VERIFIED only | Refund: referral REFUNDED, commissions/rewards REVERSED, budget freed; partner notified |
+
+## Payouts & notifications (`app/actions/payouts.ts`, `app/actions/notifications.ts`)
+
+| Action | Notes |
+| --- | --- |
+| `requestPayoutAction({ kind, method })` | `kind ∈ COMMISSION (creators), REWARD (customers)`; `method ∈ UPI, Bank transfer, Brand voucher`. Bundles every eligible ledger row into a REQUESTED payout once the balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins notified. Nothing is paid here. |
+| `markNotificationReadAction({ id })` / `markAllNotificationsReadAction()` | Owner-scoped |
+| `setEmailNotificationsAction(enabled)` | Per-user e-mail opt-out (security e-mails ignore it) |
 
 ## Account (`app/actions/account.ts`)
 
@@ -79,13 +104,17 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 /campaigns/[slug]?ref=CODE                 campaign page (join, link + QR, purchase link with ?ref)
 /products /products/[slug] /brands /brands/[slug] /creators/[username]
 /r/[code]?src=qr           GET → records click, sets attribution cookies, 302 → /campaigns/[slug]?ref=CODE
-/auth/login /auth/register /auth/onboarding
+/auth/login /auth/register /auth/forgot-password /auth/reset-password?token=… /auth/onboarding
 /registration-pending?rid=…         post-signup status page (opaque Registration ID)
 /check-registration                 public status lookup (Registration ID or email)
 /admin/registrations                → /dashboard/admin/registrations (ADMIN)
 /dashboard                 → role home
-/dashboard/brand           overview · products[/new|/[id]] · campaigns[/new|/[id]|/[id]/edit] · creators?status&type · orders?status · payouts · analytics · profile · settings
-/dashboard/creator         overview · campaigns · links · conversions · earnings · profile · settings
-/dashboard/customer        overview · referrals · rewards · settings
-/dashboard/admin           overview · settings
+/dashboard/brand           overview · products[/new|/[id]] · campaigns[/new|/[id]|/[id]/edit] · creators?status&type · orders?status · payouts · analytics · profile · notifications · settings
+/dashboard/creator         overview · campaigns · links · conversions · earnings · profile · notifications · settings
+/dashboard/customer        overview · referrals · rewards · notifications · settings
+/dashboard/admin           overview · registrations · users?q&role&status · verification · campaigns · conversions · payouts?status · audit?action&entityType&userId · health · notifications · settings
+
+/api/health                        GET → 200 {ok,db,latencyMs} · 503 {status:"database-down"} · 503 {status:"misconfigured", errors:[rule names]}
+/api/uploads/product-image         POST (brand owner) multipart `file` → {url}; JPEG/PNG/WebP ≤ 5 MB, magic-byte checked, rate-limited
+/api/exports/campaigns/[id]        GET (brand owner, own campaign) → CSV of partners + orders, audited, rate-limited
 ```

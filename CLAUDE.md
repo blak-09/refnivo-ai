@@ -1,6 +1,6 @@
 # Refnivo AI — working notes
 
-- Spec: `LocalGrowth_AI_MVP_Development_Spec.md`. Progress checklist: `docs/PROGRESS.md`. Architecture: `docs/ARCHITECTURE.md`.
+- Docs: `README.md` (setup), `docs/ARCHITECTURE.md`, `docs/API.md` (actions & routes), `docs/PRODUCTION.md` (runbook), `docs/PROGRESS.md` (checklist).
 - Money is integer paise; percentages are basis points. Never use floats for ledgers (`lib/money`).
 - Product is the unit: every campaign has a `productId`; every brand query is scoped by `brandId`. Use `lib/auth/guards.ts` (`require*` in pages, `assert*` in actions).
 - Clicks are never sales: `/r/[code]` only records clicks/attribution; ledger entries come from `lib/services/conversions.ts` (record → verify).
