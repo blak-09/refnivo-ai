@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { getBootState, isMisconfigured, resetBootState } from "@/lib/config/boot-state";
 import { AUTH_SECRET_MIN_LENGTH, authSecretAtBoot, ConfigurationError, isBuildPhase, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
 import { hashValue } from "@/lib/services/tracking";
 import { showDemoLogins } from "@/lib/utils/demo";
@@ -234,5 +235,31 @@ describe("AUTH_SECRET at boot vs at build", () => {
     expect(isBuildPhase(env({}))).toBe(false);
     expect(authSecretAtBoot(env({ NEXT_PHASE: "phase-production-build" }))).toBeUndefined();
     expect(validateProductionEnv(env({ NODE_ENV: "production", NEXT_PHASE: "phase-production-build" })).errors.join(" ")).toContain("AUTH_SECRET");
+  });
+});
+
+describe("boot state (self-diagnosing misconfiguration)", () => {
+  const env = (v: Record<string, string | undefined>) => v as unknown as NodeJS.ProcessEnv;
+  afterEach(() => resetBootState());
+
+  it("reports failing rules by name in production and caches the verdict", () => {
+    resetBootState();
+    const state = getBootState(env({ NODE_ENV: "production", AUTH_SECRET: "short" }));
+    expect(state.ok).toBe(false);
+    expect(state.errors.join(" ")).toContain("AUTH_SECRET");
+    expect(state.errors.join(" ")).toContain("DATABASE_URL");
+    expect(JSON.stringify(state)).not.toContain("short");
+    // Cached: a later call (e.g. from a request) sees the same verdict without re-reading the environment.
+    expect(getBootState(env({}))).toBe(state);
+  });
+
+  it("is ok outside production and during `next build` (never bakes the maintenance page into static HTML)", () => {
+    resetBootState();
+    expect(getBootState(env({ NODE_ENV: "development" })).ok).toBe(true);
+    resetBootState();
+    expect(getBootState(env({ NODE_ENV: "production", NEXT_PHASE: "phase-production-build" })).ok).toBe(true);
+    resetBootState();
+    // The test process itself is not production, so the app is never marked misconfigured here.
+    expect(isMisconfigured()).toBe(false);
   });
 });
