@@ -124,8 +124,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = loginSchema.safeParse(raw);
         if (!parsed.success) return null;
 
+        // Explicit columns: a full-row select would fail on a database that is one migration behind.
         const user = await prisma.user.findUnique({
           where: { email: parsed.data.email },
+          select: { id: true, name: true, email: true, role: true, status: true, passwordHash: true, sessionVersion: true, mustChangePassword: true },
         });
         // Google-only accounts have no password to compare.
         if (!user || !user.passwordHash) return null;

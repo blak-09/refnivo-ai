@@ -134,7 +134,7 @@ describe("schema currency probe (/api/health)", () => {
   it("the migration the code requires is applied on a migrated database", async () => {
     const rows = await prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM "_prisma_migrations"
-      WHERE "migration_name" = ${"20260918120000_google_oauth"} AND "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL`;
+      WHERE "migration_name" = ${"20260918150000_user_deleted_at"} AND "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL`;
     expect(Number(rows[0]?.n)).toBe(1);
   });
 });

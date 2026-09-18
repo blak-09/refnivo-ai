@@ -38,6 +38,8 @@ export class AccountDeletionError extends Error {
 }
 
 export const DELETE_CONFIRMATION = "DELETE";
+/** Marker written into users.suspensionReason: lets every code path recognise a deleted account even before `deletedAt` exists. */
+export const DELETED_SUSPENSION_REASON = "Account deleted by the user";
 const OPEN_PAYOUT = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING"] as const;
 
 export type DeletionPreview = {
@@ -78,8 +80,8 @@ export type DeleteAccountInput = { confirmation: string; currentPassword?: strin
 export async function deleteOwnAccount(userId: string, input: DeleteAccountInput, now = new Date()) {
   if (input.confirmation.trim() !== DELETE_CONFIRMATION) throw new AccountDeletionError(`Type ${DELETE_CONFIRMATION} to confirm.`);
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, email: true, passwordHash: true, deletedAt: true } });
-  if (!user || user.deletedAt) throw new AccountDeletionError("Account not found.");
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, role: true, email: true, passwordHash: true, suspensionReason: true } });
+  if (!user || user.suspensionReason === DELETED_SUSPENSION_REASON) throw new AccountDeletionError("Account not found.");
   if (user.role === "ADMIN") throw new AccountDeletionError("Admin accounts cannot be deleted from Settings. Ask another admin to remove your admin access first.");
 
   if (user.passwordHash) {
@@ -138,7 +140,7 @@ export async function deleteOwnAccount(userId: string, input: DeleteAccountInput
         registrationDetails: { deleted: true },
         status: "SUSPENDED",
         suspendedAt: now,
-        suspensionReason: "Account deleted by the user",
+        suspensionReason: DELETED_SUSPENSION_REASON,
         deletedAt: now,
         emailNotifications: false,
         mustChangePassword: false,

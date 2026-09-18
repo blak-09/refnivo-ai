@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { securityEvent } from "@/lib/utils/security-log";
 import { roleHome } from "./roles";
+import { DELETED_SUSPENSION_REASON } from "@/lib/services/account-deletion";
 import { classifySession, signedOutPath, type SessionProblem } from "./session-state";
 
 export class AuthorizationError extends Error {
@@ -35,9 +36,12 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   if (!id) return { user: null, problem: "no-session" };
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true, avatarUrl: true, deletedAt: true },
+    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true, avatarUrl: true, suspendedAt: true, suspensionReason: true },
   });
-  const problem = classifySession({ id, sessionVersion: session?.user?.sessionVersion }, user);
+  const problem = classifySession(
+    { id, sessionVersion: session?.user?.sessionVersion },
+    user ? { ...user, deletedAt: user.suspensionReason === DELETED_SUSPENSION_REASON ? user.suspendedAt : null } : null,
+  );
   if (problem === "stale" && user) {
     securityEvent("SESSION_STALE", { userId: user.id, tokenVersion: session?.user?.sessionVersion ?? null, currentVersion: user.sessionVersion });
   }

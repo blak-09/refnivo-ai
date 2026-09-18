@@ -18,7 +18,7 @@
 import { normalizeDatabaseUrl } from "../lib/config/database-url";
 import { describeDatabaseUrl, formatTarget } from "./lib/db-url";
 
-const REQUIRED_MIGRATION = "20260918120000_google_oauth";
+const REQUIRED_MIGRATION = "20260918150000_user_deleted_at";
 
 function fail(msg: string): never {
   console.error(`[admin:check] ${msg}`);
