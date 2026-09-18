@@ -134,6 +134,11 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
    sessions); an approved admin already exists (unless `ADMIN_ALLOW_ADDITIONAL=1`); the password is weak or on the exposed-password
    deny-list. On success it creates an APPROVED `ADMIN` with `mustChangePassword = true`, writes an `ADMIN_BOOTSTRAPPED` audit row,
    and never prints the password or hash.
+   On Windows PowerShell (where `npm` may be blocked by the execution policy and quoting is error-prone) use the
+   prompt-driven wrapper instead — it asks for the URL and password hidden and never echoes them:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\create-admin.ps1
+   ```
 4. Sign in. You are redirected to Settings until you set a new password; doing so signs out every session (including this one) —
    log in again with the new password, then open `/dashboard/admin/registrations` and confirm approvals work.
 5. Rotate `AUTH_SECRET` if it was ever shared in chat/tickets — rotating invalidates all sessions (users simply log in again).
