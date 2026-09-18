@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getBootState } from "@/lib/config/boot-state";
+import { describeDatabaseTarget } from "@/lib/config/database-url";
 import { checkDatabase } from "@/lib/db/health";
 
 export const runtime = "nodejs";
@@ -25,6 +26,17 @@ export async function GET() {
   const db = await checkDatabase();
   const body = db.ok
     ? { ok: true, status: "ok", db: "up", latencyMs: db.latencyMs, time: new Date().toISOString() }
-    : { ok: false, status: "database-down", db: "down", reason: db.reason, code: db.code, hint: db.hint, latencyMs: db.latencyMs, time: new Date().toISOString() };
+    : {
+        ok: false,
+        status: "database-down",
+        db: "down",
+        reason: db.reason,
+        code: db.code,
+        hint: db.hint,
+        // Where the app is trying to connect (host/port/database, masked user) — never the password.
+        target: describeDatabaseTarget(process.env.DATABASE_URL),
+        latencyMs: db.latencyMs,
+        time: new Date().toISOString(),
+      };
   return NextResponse.json(body, { status: db.ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
 }

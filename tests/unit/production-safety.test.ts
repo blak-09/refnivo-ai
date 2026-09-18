@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getBootState, isMisconfigured, resetBootState } from "@/lib/config/boot-state";
-import { databaseUrlNeedsPgbouncerFlag, encodeDatabasePassword, normalizeDatabaseUrl } from "@/lib/config/database-url";
+import { databaseUrlNeedsPgbouncerFlag, describeDatabaseTarget, encodeDatabasePassword, normalizeDatabaseUrl } from "@/lib/config/database-url";
 import { AUTH_SECRET_MIN_LENGTH, authSecretAtBoot, ConfigurationError, isBuildPhase, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
 import { hashValue } from "@/lib/services/tracking";
 import { showDemoLogins } from "@/lib/utils/demo";
@@ -314,5 +314,15 @@ describe("DATABASE_URL password encoding", () => {
     const enc = "postgresql://postgres.ref:p%23ss@host.example:5432/db";
     expect(encodeDatabasePassword(enc)).toBe(enc);
     expect(encodeDatabasePassword("not a url")).toBe("not a url");
+  });
+});
+
+describe("describeDatabaseTarget", () => {
+  it("reports host/port/database and a masked user, never the password", () => {
+    const t = describeDatabaseTarget("postgresql://postgres.abcdefghijklmnop:S3cretPw@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres");
+    expect(t).toEqual({ host: "aws-0-ap-northeast-1.pooler.supabase.com", port: "6543", database: "postgres", user: "********mnop" });
+    expect(JSON.stringify(t)).not.toContain("S3cretPw");
+    expect(describeDatabaseTarget(undefined)).toBeNull();
+    expect(describeDatabaseTarget("nonsense")).toBeNull();
   });
 });

@@ -57,3 +57,21 @@ export function databaseUrlNeedsPgbouncerFlag(url: string | undefined): boolean 
     return false;
   }
 }
+
+/**
+ * Credential-free description of the configured database target, for health
+ * output. The username is masked to its last 4 characters (enough to tell two
+ * Supabase projects apart); the password is never read.
+ */
+export function describeDatabaseTarget(url: string | undefined): { host: string; port: string; database: string; user: string } | null {
+  const normalized = normalizeDatabaseUrl(url);
+  if (!normalized) return null;
+  try {
+    const u = new URL(normalized);
+    const user = decodeURIComponent(u.username);
+    const masked = user.length > 4 ? `${"*".repeat(Math.min(8, user.length - 4))}${user.slice(-4)}` : "****";
+    return { host: u.hostname, port: u.port || "5432", database: u.pathname.replace(/^\//, "") || "(default)", user: masked };
+  } catch {
+    return null;
+  }
+}
