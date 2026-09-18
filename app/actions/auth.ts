@@ -53,13 +53,24 @@ export async function registerAction(
   }
 
   // Best-effort side-effect — never blocks the registration if it fails.
-  await notifyRegistration("received", {
+  await notifyRegistration(user.status === "APPROVED" ? "approved" : "received", {
     id: user.id,
     name: user.name,
     email: user.email,
     role: user.role,
     registrationId: user.registrationId,
   });
+
+  if (user.status === "APPROVED") {
+    // Self-service signup (SIGNUP_APPROVAL): sign the new account in straight away.
+    try {
+      await signIn("credentials", { email: parsed.data.email, password: parsed.data.password, redirectTo: roleHome(user.role) });
+    } catch (err) {
+      unstable_rethrow(err);
+      logServerError("register", err, { stage: "auto-login" });
+      redirect("/auth/login?registered=1");
+    }
+  }
 
   redirect(`/registration-pending?rid=${encodeURIComponent(user.registrationId ?? "")}`);
 }

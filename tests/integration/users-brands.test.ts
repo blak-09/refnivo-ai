@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
 import { changePassword, createUser, EmailTakenError, WrongPasswordError } from "@/lib/services/users";
@@ -77,5 +77,34 @@ describe("products", () => {
     await expect(archiveProduct(a.brand.id, a.user.id, a.product.id)).rejects.toThrow(/live campaigns/i);
     await transitionCampaign(a.brand.id, a.user.id, c.id, "END");
     expect((await archiveProduct(a.brand.id, a.user.id, a.product.id)).status).toBe("ARCHIVED");
+  });
+});
+
+describe("signup approval policy (SIGNUP_APPROVAL)", () => {
+  const original = process.env.SIGNUP_APPROVAL;
+  afterEach(() => {
+    if (original === undefined) delete process.env.SIGNUP_APPROVAL;
+    else process.env.SIGNUP_APPROVAL = original;
+  });
+
+  it("auto: every registrable role is APPROVED on signup with approvedAt set and the audit row says so", async () => {
+    process.env.SIGNUP_APPROVAL = "auto";
+    for (const role of ["BRAND_OWNER", "CREATOR", "CUSTOMER"] as const) {
+      const u = await createUser({ name: "Auto", email: `${uniq("auto")}@test.local`, password: "Password1", role });
+      expect(u.status).toBe("APPROVED");
+      const row = await prisma.user.findUniqueOrThrow({ where: { id: u.id } });
+      expect(row.approvedAt).not.toBeNull();
+      expect(row.approvedById).toBeNull(); // nobody approved it — the policy did
+      const audit = await prisma.auditLog.findFirst({ where: { action: "USER_REGISTERED", entityId: u.id } });
+      expect(JSON.stringify(audit?.metadata)).toContain('"autoApproved":true');
+    }
+  });
+
+  it("role list: listed roles are approved, the others wait; manual keeps everyone pending", async () => {
+    process.env.SIGNUP_APPROVAL = "CREATOR,CUSTOMER";
+    expect((await createUser({ name: "C", email: `${uniq("c")}@test.local`, password: "Password1", role: "CREATOR" })).status).toBe("APPROVED");
+    expect((await createUser({ name: "B", email: `${uniq("b")}@test.local`, password: "Password1", role: "BRAND_OWNER" })).status).toBe("PENDING");
+    process.env.SIGNUP_APPROVAL = "manual";
+    expect((await createUser({ name: "U", email: `${uniq("u")}@test.local`, password: "Password1", role: "CUSTOMER" })).status).toBe("PENDING");
   });
 });

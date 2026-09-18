@@ -4,6 +4,8 @@
  * variable but NEVER include its value.
  */
 
+import { parseSignupPolicy } from "./signup-policy";
+
 export class ConfigurationError extends Error {
   constructor(message: string) {
     super(message);
@@ -135,6 +137,10 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
   const authUrl = set(env.NEXTAUTH_URL) ? env.NEXTAUTH_URL : env.AUTH_URL;
   if (!set(authUrl)) errors.push("NEXTAUTH_URL (or AUTH_URL) is not set.");
   else if (!isHttps(authUrl)) errors.push("NEXTAUTH_URL / AUTH_URL must be an https:// URL in production.");
+
+  // Signup approval policy
+  const signup = parseSignupPolicy(env.SIGNUP_APPROVAL);
+  if (signup.error) errors.push(signup.error);
 
   // Rate limiting
   const rl = (env.RATE_LIMIT_PROVIDER ?? "memory").trim().toLowerCase();

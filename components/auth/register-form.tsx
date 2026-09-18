@@ -22,7 +22,7 @@ const ROLE_OPTIONS: { value: Role; label: string; description: string; icon: Luc
   { value: "CUSTOMER", label: "Customer", description: "Share products, earn rewards", icon: GiftIcon },
 ];
 
-export function RegisterForm({ initialRole }: { initialRole?: string }) {
+export function RegisterForm({ initialRole, manualReviewRoles = [] }: { initialRole?: string; manualReviewRoles?: string[] }) {
   const [state, action] = useActionState(registerAction, null);
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
   const values = state && !state.ok ? state.values ?? {} : {};
@@ -153,10 +153,12 @@ export function RegisterForm({ initialRole }: { initialRole?: string }) {
       </div>
 
       <div className="rounded-lg border border-dashed bg-muted/40 p-3 text-xs text-muted-foreground">
-        New accounts are reviewed by our team before you can sign in. You&apos;ll see your status right after signing up.
+        {manualReviewRoles.includes(role)
+          ? "Accounts of this type are reviewed by our team before you can sign in. You'll see your status right after signing up."
+          : "Your account is ready as soon as you sign up — you'll be taken straight to your dashboard."}
       </div>
 
-      <SubmitButton className="w-full" pendingText="Submitting…">
+      <SubmitButton className="w-full" pendingText={manualReviewRoles.includes(role) ? "Submitting…" : "Creating your account…"}>
         Create account
       </SubmitButton>
       <p className="text-center text-xs text-muted-foreground">

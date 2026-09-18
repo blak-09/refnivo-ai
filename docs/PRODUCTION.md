@@ -165,6 +165,10 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
   record the external reference with **Mark paid** — the only path that sets commissions `PAID` / rewards `REDEEMED`.
   Refunds recorded by a brand reverse the related ledger entries (`REVERSED`), including ones already settled (visible
   as `alreadySettled` in the audit log so the balance can be recovered manually).
+- **Signup approval**: `SIGNUP_APPROVAL=auto` (default) lets brands, creators and customers sign in right after
+  registering. Set `manual` to hold every new account in `/dashboard/admin/registrations`, or a comma list such as
+  `CREATOR,CUSTOMER` to auto-approve only those roles. An invalid value is a boot error (listed on `/api/health`).
+  Admins are never self-registrable; suspension still works for any account.
 - **E-mail**: set `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` and a verified `EMAIL_FROM` to deliver registration
   decisions, notifications (per-user opt-out in Settings) and password-reset links. With the default `console`
   driver nothing is sent and the forgot-password page says so.
@@ -180,6 +184,7 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
 ## 10. Pre-launch checklist
 
 - [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; `PAYMENT_PROVIDER=NONE`, `PAYMENTS_ENABLED=false`
+- [ ] `SIGNUP_APPROVAL` chosen deliberately (`auto` = self-service launch, `manual` = gated)
 - [ ] `RATE_LIMIT_PROVIDER=upstash` + Upstash credentials set (or `RATE_LIMIT_ALLOW_MEMORY=1` accepted knowingly)
 - [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)
 - [ ] `/dashboard/admin/health` shows the database reachable, migrations applied and no configuration errors

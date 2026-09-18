@@ -6,7 +6,7 @@ The app uses Next.js Server Actions (no public JSON API yet). Every action valid
 
 | Action | Input | Result |
 | --- | --- | --- |
-| `registerAction(prev, formData)` | `name, email, password, confirmPassword, role (BRAND_OWNER/CREATOR/CUSTOMER), phone?` + role-specific fields (brand: `brandName, brandWebsite?, brandCategory, brandDescription?`; creator: `creatorName, creatorCategory, instagramHandle?, instagramFollowers?, youtubeChannel?, youtubeSubscribers?`) | Creates a **PENDING** user (no auto-login), queues the "received" e-mail (outbox), redirects to `/registration-pending?rid=…`. Rate-limited. |
+| `registerAction(prev, formData)` | `name, email, password, confirmPassword, role (BRAND_OWNER/CREATOR/CUSTOMER), phone?` + role-specific fields (brand: `brandName, brandWebsite?, brandCategory, brandDescription?`; creator: `creatorName, creatorCategory, instagramHandle?, instagramFollowers?, youtubeChannel?, youtubeSubscribers?`) | Creates the user per `SIGNUP_APPROVAL` (`lib/config/signup-policy.ts`): auto-approved roles are created **APPROVED**, signed in immediately and redirected to their dashboard (queues the "approved" e-mail); other roles are created **PENDING** (no auto-login), queue the "received" e-mail and redirect to `/registration-pending?rid=…`. Rate-limited. |
 | `loginAction(prev, formData)` | `email, password, callbackUrl?` | Verifies the password, then gates on status: no account, PENDING, REJECTED (with reason), SUSPENDED each return a distinct message; APPROVED signs in and redirects by role. Rate-limited. |
 | `logoutAction()` | — | Signs out → `/` |
 

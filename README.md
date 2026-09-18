@@ -180,10 +180,12 @@ Read **[docs/PRODUCTION.md](docs/PRODUCTION.md)** first — backups, migration b
 
 - Orders are recorded manually by the brand (referral code + order reference) and verified/refunded by the brand. Store integrations (Shopify/WooCommerce webhooks) are on the roadmap; the `?ref=CODE` parameter is already passed to the purchase URL.
 - Payouts and reward redemptions are a **manual settlement workflow**: partners request, an admin approves, settles off-platform (UPI / bank / voucher) and records the reference. No money moves through the platform and no payment provider is integrated.
-- E-mail verification at signup is not implemented (accounts are admin-approved instead). Password reset needs `EMAIL_PROVIDER=resend`.
+- E-mail verification at signup is not implemented. Password reset needs `EMAIL_PROVIDER=resend`.
 - AI features are not implemented; the `AI_*` variables are reserved.
 - One brand per owner account. Creator social metrics are self-reported until an admin marks the profile verified (no social API).
-- New accounts require **manual admin approval** before first sign-in (`/dashboard/admin/registrations`). Applicants
-  receive an in-app notification and, when `EMAIL_PROVIDER` is configured, an e-mail on approval/rejection.
+- Signup approval is a deployment setting, `SIGNUP_APPROVAL` (`auto` — default — every brand/creator/customer can sign
+  in right after registering; `manual` — every account waits in `/dashboard/admin/registrations`; or a comma list of
+  roles to auto-approve, e.g. `CREATOR,CUSTOMER`). Reviewed applicants receive an in-app notification and, when
+  `EMAIL_PROVIDER` is configured, an e-mail on approval/rejection. Admins can still suspend any account.
 - Auth endpoints have basic **in-memory** rate limiting (per instance). For multi-instance/serverless, back
   `lib/utils/rate-limit.ts` with a shared store (Redis/Upstash).

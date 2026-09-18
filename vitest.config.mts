@@ -16,6 +16,8 @@ export default defineConfig({
       AUTH_SECRET: "test-secret",
       NEXTAUTH_URL: "http://localhost:3000",
       NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+      // Integration tests exercise the admin-approval flow explicitly; the app default is "auto".
+      SIGNUP_APPROVAL: "manual",
       AI_PROVIDER: "mock",
     },
     // DB tests share one database — run files one at a time.

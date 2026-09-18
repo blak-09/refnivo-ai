@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { Prisma, type UserRole } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { isAutoApproved } from "@/lib/config/signup-policy";
 import { generateRegistrationId } from "@/lib/utils/registration-id";
 import { recordAudit } from "./audit";
 
@@ -29,9 +30,11 @@ export type CreateUserInput = {
   registrationDetails?: Record<string, string | number>;
 };
 
-export async function createUser(input: CreateUserInput) {
+export async function createUser(input: CreateUserInput, now = new Date()) {
   const passwordHash = await bcrypt.hash(input.password, 12);
   const details = input.registrationDetails ?? {};
+  // ADMIN can never be created here (see REGISTRABLE_ROLES); other roles follow SIGNUP_APPROVAL.
+  const autoApproved = input.role !== "ADMIN" && isAutoApproved(input.role);
 
   // Retry only on a registrationId collision; surface email conflicts immediately.
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -45,7 +48,8 @@ export async function createUser(input: CreateUserInput) {
             passwordHash,
             role: input.role,
             phone: input.phone || null,
-            status: "PENDING",
+            status: autoApproved ? "APPROVED" : "PENDING",
+            approvedAt: autoApproved ? now : null,
             registrationId,
             registrationDetails: details as Prisma.InputJsonValue,
           },
@@ -66,7 +70,7 @@ export async function createUser(input: CreateUserInput) {
             action: "USER_REGISTERED",
             entityType: "User",
             entityId: created.id,
-            metadata: { role: created.role, registrationId },
+            metadata: { role: created.role, registrationId, autoApproved },
           },
           tx,
         );
