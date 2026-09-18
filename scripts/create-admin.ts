@@ -42,6 +42,7 @@ async function main() {
   await import("dotenv/config");
   const [{ default: bcrypt }, { PrismaClient }] = await Promise.all([import("bcryptjs"), import("@prisma/client")]);
 
+  if (process.env.DATABASE_URL) process.env.DATABASE_URL = normalizeDatabaseUrl(process.env.DATABASE_URL);
   const env = process.env;
   const pre = preflight(env);
   console.log(`[admin:create] database: ${formatTarget(pre.target)}  (from ${urlFromShell ? "shell environment" : ".env file"})`);
@@ -50,7 +51,7 @@ async function main() {
     fail(pre.message);
   }
 
-  const prisma = new PrismaClient({ datasourceUrl: normalizeDatabaseUrl(process.env.DATABASE_URL) });
+  const prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
   try {
     const passwordHash = await bcrypt.hash(pre.password, 12);
     const result = await applyBootstrap(prisma, { email: pre.email, name: pre.name, passwordHash, env });

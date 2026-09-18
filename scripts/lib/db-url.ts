@@ -2,6 +2,8 @@
  * Safe description of a DATABASE_URL: host, port, database and flags only.
  * The username and password are never returned or printed.
  */
+import { normalizeDatabaseUrl } from "../../lib/config/database-url";
+
 export type DatabaseTarget = {
   ok: boolean;
   scheme: string;
@@ -16,7 +18,7 @@ export type DatabaseTarget = {
 export function describeDatabaseUrl(url: string | undefined): DatabaseTarget | null {
   if (!url) return null;
   try {
-    const u = new URL(url);
+    const u = new URL(normalizeDatabaseUrl(url) ?? url);
     // WHATWG URL keeps IPv6 brackets in `hostname` ("[::1]"); strip them for comparisons.
     const host = u.hostname.replace(/^\[|\]$/g, "");
     return {

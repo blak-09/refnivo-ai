@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getBootState, isMisconfigured, resetBootState } from "@/lib/config/boot-state";
-import { databaseUrlNeedsPgbouncerFlag, normalizeDatabaseUrl } from "@/lib/config/database-url";
+import { databaseUrlNeedsPgbouncerFlag, encodeDatabasePassword, normalizeDatabaseUrl } from "@/lib/config/database-url";
 import { AUTH_SECRET_MIN_LENGTH, authSecretAtBoot, ConfigurationError, isBuildPhase, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
 import { hashValue } from "@/lib/services/tracking";
 import { showDemoLogins } from "@/lib/utils/demo";
@@ -287,5 +287,26 @@ describe("DATABASE_URL normalisation (Supabase transaction pooler)", () => {
     expect(normalizeDatabaseUrl("not a url")).toBe("not a url");
     expect(normalizeDatabaseUrl(undefined)).toBeUndefined();
     expect(normalizeDatabaseUrl("")).toBe("");
+  });
+});
+
+describe("DATABASE_URL password encoding", () => {
+  it("percent-encodes an unencoded password containing URL-illegal characters and then parses", () => {
+    const raw = "postgresql://postgres.ref:p#ss/w?rd@x[1]@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
+    expect(() => new URL(raw)).toThrow();
+    const fixed = normalizeDatabaseUrl(raw)!;
+    const u = new URL(fixed);
+    expect(u.hostname).toBe("aws-0-ap-south-1.pooler.supabase.com");
+    expect(u.username).toBe("postgres.ref");
+    expect(decodeURIComponent(u.password)).toBe("p#ss/w?rd@x[1]");
+    expect(u.searchParams.get("pgbouncer")).toBe("true");
+  });
+
+  it("leaves already-valid or already-encoded passwords untouched", () => {
+    const ok = "postgresql://postgres.ref:Pass123@host.example:5432/db";
+    expect(encodeDatabasePassword(ok)).toBe(ok);
+    const enc = "postgresql://postgres.ref:p%23ss@host.example:5432/db";
+    expect(encodeDatabasePassword(enc)).toBe(enc);
+    expect(encodeDatabasePassword("not a url")).toBe("not a url");
   });
 });
