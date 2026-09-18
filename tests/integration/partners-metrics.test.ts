@@ -48,7 +48,8 @@ describe("joining campaigns", () => {
     const customer = await makeCustomer();
     const joined = await joinCampaign({ id: customer.id, name: customer.name, role: "CUSTOMER" }, campaignId);
     expect(joined.status).toBe("APPROVED");
-    expect(joined.code).toMatch(/^CUSTOMER-PARTNERT-[A-Z0-9]{4}$/);
+    // Customer codes never embed the customer's (real) name.
+    expect(joined.code).toMatch(/^C-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/);
   });
 
   it("creators join instantly when the campaign does not require approval", async () => {

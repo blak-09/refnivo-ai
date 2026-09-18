@@ -464,7 +464,7 @@ export function CampaignWizard(props: Props) {
               <Field label="Attribution window (days)" htmlFor="attributionWindowDays" error={errors.attributionWindowDays} required hint="How long after a link click an order still counts. Default 30.">
                 <Input id="attributionWindowDays" type="number" inputMode="numeric" min={1} max={90} value={state.attributionWindowDays} onChange={(e) => set("attributionWindowDays", e.target.value)} aria-invalid={!!errors.attributionWindowDays} />
               </Field>
-              <Field label="Maximum reward per customer (₹)" htmlFor="maxRewardPerCustomer" error={errors.maxRewardPerCustomer} hint="Caps percentage rewards. Leave empty for no cap.">
+              <Field label="Maximum reward per order (₹)" htmlFor="maxRewardPerCustomer" error={errors.maxRewardPerCustomer} hint="Caps the reward earned on a single order (useful with percentage rewards). Leave empty for no cap.">
                 <Input id="maxRewardPerCustomer" type="number" inputMode="decimal" min={0} value={state.maxRewardPerCustomer} onChange={(e) => set("maxRewardPerCustomer", e.target.value)} placeholder="500" aria-invalid={!!errors.maxRewardPerCustomer} />
               </Field>
               <Field label="Campaign budget (₹)" htmlFor="budget" error={errors.budget} hint="Total commissions + rewards you will pay. Verification stops when it is reached.">

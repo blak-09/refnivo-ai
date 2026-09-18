@@ -49,7 +49,12 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
       </form>
 
       {!creators.length ? (
-        <EmptyState className="mt-6" icon={UsersIcon} title="No creators match" description="Try a different search or category." />
+        <EmptyState
+          className="mt-6"
+          icon={UsersIcon}
+          title={sp.q || sp.category ? "No creators match" : "No creators yet"}
+          description={sp.q || sp.category ? "Try a different search or category." : "Creators appear here once they complete their public profile."}
+        />
       ) : (
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {creators.map((c) => (

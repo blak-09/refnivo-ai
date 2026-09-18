@@ -10,6 +10,7 @@ import "server-only";
  * Validation rules live in `image-validation.ts` (pure, unit-tested).
  */
 
+export { uploadsAvailable } from "./availability";
 export {
   ALLOWED_IMAGE_TYPES,
   IMAGE_EXT_BY_TYPE,

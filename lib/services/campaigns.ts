@@ -110,7 +110,9 @@ export async function updateCampaign(brandId: string, brandName: string, userId:
       await assertProductBelongsToBrand(tx, brandId, values.productId);
     }
 
-    const slug = existing.name === values.name ? existing.slug : await uniqueSlug(`${brandName} ${values.name}`, slugExists(tx, campaignId));
+    // The slug is part of every shared /campaigns/<slug> URL: it may only change while the campaign is still a draft.
+    const slug =
+      existing.name === values.name || existing.publishedAt ? existing.slug : await uniqueSlug(`${brandName} ${values.name}`, slugExists(tx, campaignId));
     const campaign = await tx.campaign.update({ where: { id: campaignId }, data: { slug, ...data } });
     await recordAudit(
       {

@@ -20,7 +20,11 @@ export function meetsMinimumPurchase(rules: Pick<RewardRules, "minimumPurchaseAm
   return billMinor >= rules.minimumPurchaseAmount;
 }
 
-/** Reward owed to the referring customer for one verified conversion. */
+/**
+ * Reward owed to the referring customer for one verified conversion.
+ * `maxRewardPerCustomer` caps this single order's reward — it is NOT a lifetime
+ * cap per customer (the column name is historical; the UI says "per order").
+ */
 export function computeCustomerReward(rules: RewardRules, billMinor: number): number {
   let amount: number;
   if (rules.rewardType === "PERCENTAGE") {

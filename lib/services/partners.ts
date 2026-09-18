@@ -1,7 +1,7 @@
 import type { ApplicationStatus, PartnerType, Prisma } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
 import { isCampaignLive } from "@/lib/domain/campaign-rules";
-import { generateReferralCode } from "@/lib/utils/codes";
+import { generateCustomerReferralCode, generateReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
 import { notify } from "./notify";
 
@@ -298,7 +298,7 @@ export async function ensureReferralLink(
 
   // Retry on the (unlikely) code collision.
   for (let attempt = 0; attempt < 5; attempt++) {
-    const code = generateReferralCode(input.handle, input.brandName);
+    const code = input.partnerType === "CUSTOMER" ? generateCustomerReferralCode() : generateReferralCode(input.handle, input.brandName);
     const taken = await tx.referralLink.findUnique({ where: { code }, select: { id: true } });
     if (taken) continue;
     return tx.referralLink.create({ data: { campaignId: input.campaignId, ownerId: input.ownerId, partnerType: input.partnerType, code } });

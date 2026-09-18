@@ -16,7 +16,7 @@ import { ImageUpload } from "@/components/uploads/image-upload";
 import { paiseToRupees } from "@/lib/money";
 import { PRODUCT_CATEGORIES, PRODUCT_STATUS_LABEL } from "@/lib/utils/labels";
 
-export function ProductForm({ product }: { product?: Product }) {
+export function ProductForm({ product, uploadsEnabled = true }: { product?: Product; uploadsEnabled?: boolean }) {
   const router = useRouter();
   const bound = saveProductAction.bind(null, product?.id ?? null);
   const [state, formAction] = useActionState(bound, null);
@@ -57,7 +57,7 @@ export function ProductForm({ product }: { product?: Product }) {
           <Input id="purchaseUrl" name="purchaseUrl" type="url" defaultValue={dv("purchaseUrl", product?.purchaseUrl)} placeholder="https://www.boat-lifestyle.com/products/rockerz-450" required aria-invalid={!!errors.purchaseUrl} />
         </Field>
         <Field label="Upload product image" htmlFor="imageUrl" error={errors.imageUrl} className="sm:col-span-2" hint="Shown on product cards, the marketplace and referral pages.">
-          <ImageUpload name="imageUrl" initialUrl={product?.imageUrl ?? undefined} label="Upload product image" />
+          <ImageUpload name="imageUrl" initialUrl={product?.imageUrl ?? undefined} label="Upload product image" disabled={!uploadsEnabled} />
         </Field>
         <Field label="Description" htmlFor="description" error={errors.description} className="sm:col-span-2">
           <Textarea id="description" name="description" rows={4} defaultValue={dv("description", product?.description)} placeholder="15-hour playback, 40mm drivers, soft padded ear cushions…" />

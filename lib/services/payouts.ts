@@ -1,5 +1,6 @@
-import type { PayoutKind, PayoutStatus, Prisma } from "@prisma/client";
+import { Prisma, type PayoutKind, type PayoutStatus } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
+import { formatMoney } from "@/lib/money";
 import { recordAudit } from "./audit";
 import { adminUserIds, notify, notifyMany } from "./notify";
 
@@ -70,6 +71,9 @@ export async function payoutSummary(userId: string, kind: PayoutKind) {
 /** Creates a REQUESTED payout for every eligible ledger row of the user. */
 export async function requestPayout(userId: string, kind: PayoutKind, method: PayoutMethod, now = new Date()) {
   return transaction(async (tx) => {
+    // Serialise per user: two simultaneous requests would otherwise both pass
+    // the "open request" check and race on the same ledger rows.
+    await tx.$queryRaw`SELECT "id" FROM "users" WHERE "id" = ${userId} FOR UPDATE`;
     const open = await tx.payoutRequest.findFirst({ where: { userId, kind, status: { in: OPEN_STATUSES } }, select: { id: true } });
     if (open) throw new PayoutError("You already have a payout request in progress.");
 
@@ -81,20 +85,29 @@ export async function requestPayout(userId: string, kind: PayoutKind, method: Pa
     const minimum = payoutMinimumMinor();
     if (amount < minimum) throw new PayoutError("Your eligible balance is below the payout minimum.");
 
-    const request = await tx.payoutRequest.create({
-      data: {
-        userId,
-        kind,
-        amount,
-        currency: items[0].currency,
-        payoutMethod: method,
-        requestedAt: now,
-        items: {
-          create: items.map((i) => (kind === "COMMISSION" ? { commissionId: i.id, amount: i.amount } : { rewardId: i.id, amount: i.amount })),
+    let request;
+    try {
+      request = await tx.payoutRequest.create({
+        data: {
+          userId,
+          kind,
+          amount,
+          currency: items[0].currency,
+          payoutMethod: method,
+          requestedAt: now,
+          items: {
+            create: items.map((i) => (kind === "COMMISSION" ? { commissionId: i.id, amount: i.amount } : { rewardId: i.id, amount: i.amount })),
+          },
         },
-      },
-      select: { id: true, amount: true, currency: true, status: true },
-    });
+        select: { id: true, amount: true, currency: true, status: true },
+      });
+    } catch (err) {
+      // Unique payout_items.commissionId / rewardId: a row was claimed by another request in the meantime.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        throw new PayoutError("Some entries were just included in another request. Refresh the page and try again.");
+      }
+      throw err;
+    }
 
     await recordAudit({ userId, action: "PAYOUT_REQUESTED", entityType: "PayoutRequest", entityId: request.id, metadata: { kind, amount, method, items: items.length } }, tx);
     await notifyMany(
@@ -126,9 +139,39 @@ export function canReviewPayout(status: PayoutStatus, action: PayoutReviewAction
 }
 
 /**
+ * Entries in a request whose ledger row can no longer be settled (reversed by
+ * a refund, or rejected) after the request was made. Their amounts must not be
+ * paid: the request is trimmed to what is still owed before APPROVE/MARK_PAID.
+ */
+type PayoutItemRow = {
+  id: string;
+  amount: number;
+  commissionId: string | null;
+  rewardId: string | null;
+  commission: { status: string } | null;
+  reward: { status: string } | null;
+};
+
+export function splitSettleable<T extends PayoutItemRow>(items: T[]): { settleable: T[]; dropped: T[] } {
+  const settleable: T[] = [];
+  const dropped: T[] = [];
+  for (const item of items) {
+    const status = item.commission?.status ?? item.reward?.status ?? null;
+    const ok = item.commission ? status === "APPROVED" || status === "PAID" : status === "AVAILABLE" || status === "REDEEMED";
+    (ok ? settleable : dropped).push(item);
+  }
+  return { settleable, dropped };
+}
+
+/**
  * Admin review. MARK_PAID requires an external settlement reference and is the
  * ONLY path that sets commissions PAID / rewards REDEEMED. REJECT releases the
  * ledger rows (items deleted) so they can be requested again later.
+ *
+ * APPROVE and MARK_PAID first reconcile the request against the ledger: rows
+ * reversed after the request (refunds) are removed from it and the amount is
+ * recomputed, so the admin is never told to settle money that is no longer
+ * owed. The adjustment is audited and shown to the requester.
  */
 export async function reviewPayout(
   adminId: string,
@@ -140,7 +183,11 @@ export async function reviewPayout(
   return transaction(async (tx) => {
     const request = await tx.payoutRequest.findUnique({
       where: { id: payoutId },
-      include: { items: { select: { id: true, commissionId: true, rewardId: true } } },
+      include: {
+        items: {
+          select: { id: true, amount: true, commissionId: true, rewardId: true, commission: { select: { status: true } }, reward: { select: { status: true } } },
+        },
+      },
     });
     if (!request) throw new PayoutError("Payout request not found.");
     if (!canReviewPayout(request.status, action)) throw new PayoutError(`This request cannot be ${action.toLowerCase().replace("_", " ")} from status ${request.status}.`);
@@ -150,12 +197,34 @@ export async function reviewPayout(
     if (action === "MARK_PAID" && !reference) throw new PayoutError("An external settlement reference (UPI/bank transaction id or voucher code) is required to mark a payout as paid.");
     if (action === "REJECT" && !note) throw new PayoutError("Please give the requester a reason for the rejection.");
 
+    // Reconcile with the ledger before any money-affecting transition.
+    let items = request.items;
+    let amount = request.amount;
+    let adjustment: { droppedItems: number; droppedAmount: number; previousAmount: number } | null = null;
+    if (action === "APPROVE" || action === "MARK_PAID") {
+      const { settleable, dropped } = splitSettleable(request.items);
+      if (dropped.length) {
+        const droppedAmount = dropped.reduce((s, i) => s + i.amount, 0);
+        const remaining = settleable.reduce((s, i) => s + i.amount, 0);
+        if (remaining <= 0) {
+          throw new PayoutError(
+            `Every entry in this request was reversed after it was made (${formatMoney(droppedAmount, request.currency)}); nothing is owed. Reject the request so the user sees why.`,
+          );
+        }
+        await tx.payoutItem.deleteMany({ where: { id: { in: dropped.map((i) => i.id) } } });
+        adjustment = { droppedItems: dropped.length, droppedAmount, previousAmount: request.amount };
+        items = settleable;
+        amount = remaining;
+      }
+    }
+
     const to = REVIEW_TRANSITIONS[action].to;
     const terminal = to === "PAID" || to === "REJECTED";
     const updated = await tx.payoutRequest.update({
       where: { id: payoutId },
       data: {
         status: to,
+        amount,
         adminNote: note ?? request.adminNote,
         payoutReference: action === "MARK_PAID" ? reference : request.payoutReference,
         processedById: adminId,
@@ -165,8 +234,8 @@ export async function reviewPayout(
     });
 
     if (action === "MARK_PAID") {
-      const commissionIds = request.items.map((i) => i.commissionId).filter((id): id is string => !!id);
-      const rewardIds = request.items.map((i) => i.rewardId).filter((id): id is string => !!id);
+      const commissionIds = items.map((i) => i.commissionId).filter((id): id is string => !!id);
+      const rewardIds = items.map((i) => i.rewardId).filter((id): id is string => !!id);
       if (commissionIds.length) await tx.commission.updateMany({ where: { id: { in: commissionIds }, status: "APPROVED" }, data: { status: "PAID" } });
       if (rewardIds.length) await tx.reward.updateMany({ where: { id: { in: rewardIds }, status: "AVAILABLE" }, data: { status: "REDEEMED" } });
     }
@@ -183,13 +252,16 @@ export async function reviewPayout(
       FAIL: `Your ${kindLabel} could not be completed`,
       REJECT: `Your ${kindLabel} request was declined`,
     };
+    const adjustmentNote = adjustment
+      ? ` ${adjustment.droppedItems} entr${adjustment.droppedItems === 1 ? "y was" : "ies were"} reversed by a refund after you requested, so the amount is now ${formatMoney(amount, request.currency)} (was ${formatMoney(adjustment.previousAmount, request.currency)}).`
+      : "";
     await notify(
       {
         userId: request.userId,
         type: "PAYOUT_UPDATED",
         idempotencyKey: `payout:${payoutId}:${request.status}:${action}`,
         title: titles[action],
-        body: action === "MARK_PAID" ? `Reference: ${reference}` : note ?? null,
+        body: `${action === "MARK_PAID" ? `Reference: ${reference}` : (note ?? "")}${adjustmentNote}`.trim() || null,
         href: request.kind === "COMMISSION" ? "/dashboard/creator/earnings" : "/dashboard/customer/rewards",
         email: true,
       },
@@ -202,7 +274,7 @@ export async function reviewPayout(
         action: `PAYOUT_${action}`,
         entityType: "PayoutRequest",
         entityId: payoutId,
-        metadata: { from: request.status, to, amount: request.amount, kind: request.kind, hasReference: !!reference, note },
+        metadata: { from: request.status, to, amount, kind: request.kind, hasReference: !!reference, note, ...(adjustment ? { adjustment } : {}) },
       },
       tx,
     );

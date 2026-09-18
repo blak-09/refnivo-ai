@@ -33,6 +33,8 @@ export async function GET() {
         // Whether the newest migration the code needs has been applied (name only).
         schema: schema?.ok ? "current" : "behind",
         ...(schema && !schema.ok ? { missingMigration: schema.missing, hint: schema.hint } : {}),
+        // Non-fatal configuration gaps (rate limiting, e-mail, storage, cron) — rule text only, never values.
+        ...(boot.warnings.length ? { warnings: boot.warnings } : {}),
         latencyMs: db.latencyMs,
         time: new Date().toISOString(),
       }

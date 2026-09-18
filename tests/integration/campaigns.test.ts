@@ -10,7 +10,7 @@ import {
   transitionCampaign,
   updateCampaign,
 } from "@/lib/services/campaigns";
-import { campaignValues, makeOwnerWithBrand } from "../helpers";
+import { campaignValues, makeOwnerWithBrand, uniq } from "../helpers";
 
 let a: Awaited<ReturnType<typeof makeOwnerWithBrand>>;
 let b: Awaited<ReturnType<typeof makeOwnerWithBrand>>;
@@ -58,6 +58,17 @@ describe("campaign CRUD", () => {
     await transitionCampaign(a.brand.id, a.user.id, c.id, "PUBLISH", { confirmed: true });
     const other = await prisma.product.create({ data: { brandId: a.brand.id, name: "Other", slug: `other-${c.id}`, price: 100, purchaseUrl: "https://example.com" } });
     await expect(updateCampaign(a.brand.id, a.brand.name, a.user.id, c.id, campaignValues(other.id))).rejects.toThrow(/product cannot be changed/i);
+  });
+
+  it("renaming keeps the public slug once published (shared URLs must not break)", async () => {
+    const a = await makeOwnerWithBrand("Slug Freeze");
+    const c = await create(a, { name: `Before ${uniq("n")}` });
+    const renamedDraft = await updateCampaign(a.brand.id, a.brand.name, a.user.id, c.id, campaignValues(a.product.id, { name: `Draft rename ${uniq("n")}` }));
+    expect(renamedDraft.slug).not.toBe(c.slug); // drafts may still change their slug
+    await transitionCampaign(a.brand.id, a.user.id, c.id, "PUBLISH", { confirmed: true });
+    const renamedLive = await updateCampaign(a.brand.id, a.brand.name, a.user.id, c.id, campaignValues(a.product.id, { name: `Live rename ${uniq("n")}` }));
+    expect(renamedLive.name).toMatch(/^Live rename/);
+    expect(renamedLive.slug).toBe(renamedDraft.slug);
   });
 
   it("brand B cannot read, edit, transition or delete brand A's campaign", async () => {

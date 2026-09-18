@@ -181,6 +181,8 @@ Read **[docs/PRODUCTION.md](docs/PRODUCTION.md)** first — backups, migration b
 - Orders are recorded manually by the brand (referral code + order reference) and verified/refunded by the brand. Store integrations (Shopify/WooCommerce webhooks) are on the roadmap; the `?ref=CODE` parameter is already passed to the purchase URL.
 - Payouts and reward redemptions are a **manual settlement workflow**: partners request, an admin approves, settles off-platform (UPI / bank / voucher) and records the reference. No money moves through the platform and no payment provider is integrated.
 - E-mail verification at signup is not implemented. Password reset needs `EMAIL_PROVIDER=resend`.
+- Image uploads use a local-disk driver; in production it is disabled (serverless filesystems are read-only) until a
+  cloud storage driver is configured — the product form says so and products can be saved without an image.
 - AI features are not implemented; the `AI_*` variables are reserved.
 - One brand per owner account. Creator social metrics are self-reported until an admin marks the profile verified (no social API).
 - **Continue with Google** is available on the login and register pages when `GOOGLE_CLIENT_ID` and

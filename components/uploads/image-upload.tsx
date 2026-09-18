@@ -25,6 +25,8 @@ export function ImageUpload({
   label = "Upload image",
   helpText = "Upload JPG, PNG, or WebP. Maximum size: 5 MB.",
   aspect = "aspect-video",
+  disabled = false,
+  disabledText = "Image uploads are not enabled on this deployment yet. Save without an image and add one later.",
 }: {
   name: string;
   initialUrl?: string | null;
@@ -32,6 +34,9 @@ export function ImageUpload({
   label?: string;
   helpText?: string;
   aspect?: string;
+  /** Server-decided: uploads cannot be stored here (see lib/storage uploadsAvailable). */
+  disabled?: boolean;
+  disabledText?: string;
 }) {
   const [url, setUrl] = React.useState<string>(initialUrl ?? "");
   const [status, setStatus] = React.useState<Status>("idle");
@@ -118,6 +123,18 @@ export function ImageUpload({
               <Trash2Icon /> Remove
             </Button>
           </div>
+        </div>
+      ) : disabled ? (
+        <div
+          role="note"
+          className="flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-input bg-muted/30 px-6 py-8 text-center"
+          aria-describedby={`${fieldId}-help`}
+        >
+          <span className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <ImageIcon className="size-5" aria-hidden />
+          </span>
+          <span className="text-sm font-medium">Uploads unavailable</span>
+          <span className="max-w-sm text-xs text-muted-foreground">{disabledText}</span>
         </div>
       ) : (
         <button

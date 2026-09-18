@@ -173,7 +173,12 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
 
   // Storage
   if ((env.STORAGE_PROVIDER ?? "local").trim().toLowerCase() === "local" && env.STORAGE_ALLOW_LOCAL !== "1") {
-    warnings.push("STORAGE_PROVIDER is local; uploaded files do not survive redeploys on serverless hosts.");
+    warnings.push("STORAGE_PROVIDER is local: image uploads are disabled on this deployment (serverless filesystems are read-only). Configure a storage provider, or set STORAGE_ALLOW_LOCAL=1 on a self-hosted server with a persistent disk.");
+  }
+
+  // Outbox retry cron
+  if (!set(env.CRON_SECRET)) {
+    warnings.push("CRON_SECRET is not set: /api/cron/email-outbox is disabled, so failed e-mails are never retried.");
   }
 
   // Payments are disabled in this release — refuse to start if anything tries to enable them.

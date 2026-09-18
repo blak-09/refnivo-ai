@@ -4,7 +4,7 @@ import { isCampaignLive } from "@/lib/domain/campaign-rules";
 import { computeCreatorCommission, computeCustomerReward, meetsMinimumPurchase } from "@/lib/domain/rewards";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
-import { notify } from "./notify";
+import { adminUserIds, notify, notifyMany } from "./notify";
 import { hashValue } from "./tracking";
 
 export class ConversionError extends Error {
@@ -246,8 +246,8 @@ export async function reverseConversion(brandId: string, actorId: string, referr
         conversion: true,
         campaign: { select: { name: true } },
         referralLink: { select: { partnerType: true } },
-        commissions: { select: { id: true, status: true, amount: true } },
-        rewards: { select: { id: true, status: true, amount: true } },
+        commissions: { select: { id: true, status: true, amount: true, payoutItem: { select: { payoutRequest: { select: { id: true, status: true } } } } } },
+        rewards: { select: { id: true, status: true, amount: true, payoutItem: { select: { payoutRequest: { select: { id: true, status: true } } } } } },
       },
     });
     if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
@@ -264,6 +264,32 @@ export async function reverseConversion(brandId: string, actorId: string, referr
     await tx.reward.updateMany({ where: { id: { in: reversedRewards.map((r) => r.id) } }, data: { status: "REVERSED" } });
 
     const reversedAmount = [...reversedCommissions, ...reversedRewards].reduce((s, e) => s + e.amount, 0);
+
+    // A reversed entry sitting in a payout request that is still open: admins
+    // must know before they settle it (reviewPayout also re-checks and trims).
+    const openPayoutIds = [
+      ...new Set(
+        [...reversedCommissions, ...reversedRewards]
+          .map((e) => e.payoutItem?.payoutRequest)
+          .filter((r): r is { id: string; status: "REQUESTED" | "UNDER_REVIEW" | "APPROVED" | "PROCESSING" } =>
+            !!r && ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING"].includes(r.status),
+          )
+          .map((r) => r.id),
+      ),
+    ];
+    if (openPayoutIds.length) {
+      await notifyMany(
+        await adminUserIds(tx),
+        {
+          type: "PAYOUT_UPDATED",
+          idempotencyKey: `payout-reversal:${referralId}`,
+          title: "A refund touched an open payout request",
+          body: `An order was refunded after its ${referral.referralLink.partnerType === "CREATOR" ? "commission" : "reward"} was included in a pending payout. The request amount will be trimmed when you approve or mark it paid.`,
+          href: "/dashboard/admin/payouts",
+        },
+        tx,
+      );
+    }
     await notify(
       {
         userId: referral.referrerId,
@@ -282,7 +308,7 @@ export async function reverseConversion(brandId: string, actorId: string, referr
         action: "CONVERSION_REVERSED",
         entityType: "Referral",
         entityId: referralId,
-        metadata: { brandId, orderReference: referral.conversion.orderReference, reason: reason.trim(), reversedAmount, alreadySettled },
+        metadata: { brandId, orderReference: referral.conversion.orderReference, reason: reason.trim(), reversedAmount, alreadySettled, openPayoutIds },
       },
       tx,
     );

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { uploadsAvailable } from "@/lib/storage";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ExternalLinkIcon, PlusIcon } from "lucide-react";
@@ -63,7 +64,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <CardDescription>Shown on the marketplace and on referral landing pages.</CardDescription>
           </CardHeader>
           <CardContent>
-            <ProductForm product={product} />
+            <ProductForm product={product} uploadsEnabled={uploadsAvailable()} />
           </CardContent>
         </Card>
         <div className="space-y-4">

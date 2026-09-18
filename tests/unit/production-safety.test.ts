@@ -119,6 +119,7 @@ describe("validateProductionEnv", () => {
     RATE_LIMIT_ALLOW_MEMORY: "1",
     STORAGE_PROVIDER: "local",
     STORAGE_ALLOW_LOCAL: "1",
+    CRON_SECRET: "c".repeat(48),
     PAYMENT_PROVIDER: "NONE",
     PAYMENTS_ENABLED: "false",
     EMAIL_PROVIDER: "resend",

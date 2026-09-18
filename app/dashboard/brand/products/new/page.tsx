@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { uploadsAvailable } from "@/lib/storage";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/primitives";
 import { ProductForm } from "@/components/products/product-form";
@@ -13,7 +14,7 @@ export default async function NewProductPage() {
       <PageHeader title="Add a product" description="The product creators and customers will promote. You can run several campaigns per product." />
       <Card>
         <CardContent>
-          <ProductForm />
+          <ProductForm uploadsEnabled={uploadsAvailable()} />
         </CardContent>
       </Card>
     </div>

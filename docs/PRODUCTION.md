@@ -212,6 +212,10 @@ ON CONFLICT DO NOTHING;
   record the external reference with **Mark paid** — the only path that sets commissions `PAID` / rewards `REDEEMED`.
   Refunds recorded by a brand reverse the related ledger entries (`REVERSED`), including ones already settled (visible
   as `alreadySettled` in the audit log so the balance can be recovered manually).
+- **Stale sessions**: a session cookie whose account is suspended, pending, rejected, deleted, or whose
+  `sessionVersion` changed (password change, admin revocation) is sent to `/auth/signed-out`, which clears the cookie
+  and shows the reason on the login page (`?error=account-suspended`, `session-expired`, …). `proxy.ts` only sees the
+  JWT, so it must never be asked to bounce such a cookie back to a dashboard.
 - **Signup approval**: `SIGNUP_APPROVAL=auto` (default) lets brands, creators and customers sign in right after
   registering. Set `manual` to hold every new account in `/dashboard/admin/registrations`, or a comma list such as
   `CREATOR,CUSTOMER` to auto-approve only those roles. An invalid value is a boot error (listed on `/api/health`).
@@ -225,8 +229,15 @@ ON CONFLICT DO NOTHING;
   `email_outbox` row in the same transaction as the notification (unique `idempotencyKey` per event, so nothing is
   ever queued twice); if the transaction rolls back the row disappears with it. Delivery runs after commit
   (`lib/db/prisma.ts` → `transaction()`), claims each row atomically (`PENDING → SENDING`) and retries failures with
-  backoff up to 5 attempts. Schedule `npm run email:outbox` (cron / Vercel cron / GitHub Actions schedule, e.g. every
-  5 minutes) as the retry safety net; `/dashboard/admin/health` shows waiting/failed counts.
+  backoff up to 5 attempts. The retry safety net is `GET /api/cron/email-outbox` (bearer `CRON_SECRET`):
+  `vercel.json` schedules it daily through Vercel Cron (the Hobby-plan limit) and
+  `.github/workflows/email-outbox.yml` calls it every 15 minutes when the repository secrets `CRON_URL` and
+  `CRON_SECRET` are set. Without `CRON_SECRET` the endpoint answers 503 and `/api/health` lists a warning.
+  `npm run email:outbox` does the same from a shell. `/dashboard/admin/health` shows waiting/failed counts.
+- **Payout reconciliation**: a refund recorded after a payout was requested reverses the ledger row and notifies
+  admins; when the admin approves or marks the request paid, reversed entries are dropped from it, the amount is
+  recomputed, the requester is told, and the audit row carries the adjustment. A request whose entries were all
+  reversed cannot be approved — reject it so the user sees why.
 
 ## 11. Pre-launch checklist
 
@@ -235,6 +246,10 @@ ON CONFLICT DO NOTHING;
 - [ ] Google sign-in (optional): migration `20260918120000_google_oauth` applied, then `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set with the production redirect URI registered (section 9)
 - [ ] `RATE_LIMIT_PROVIDER=upstash` + Upstash credentials set (or `RATE_LIMIT_ALLOW_MEMORY=1` accepted knowingly)
 - [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)
+- [ ] `CRON_SECRET` set in Vercel and, with `CRON_URL`, as GitHub repository secrets (outbox retries)
+- [ ] `/api/health` shows no `warnings` you have not consciously accepted (storage, rate limit, e-mail, cron)
+- [ ] Image uploads: until a cloud storage driver exists, brands see "Uploads unavailable" on the product form in
+      production (`STORAGE_PROVIDER=local` is refused there unless `STORAGE_ALLOW_LOCAL=1` on a persistent disk)
 - [ ] `/dashboard/admin/health` shows the database reachable, migrations applied and no configuration errors
 - [ ] Separate values set for Preview
 - [ ] Backup taken; `_prisma_migrations` baselined (section 3); `npx prisma migrate status` clean

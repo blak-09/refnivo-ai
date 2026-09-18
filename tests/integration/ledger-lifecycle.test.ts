@@ -218,3 +218,70 @@ describe("partner lifecycle: withdraw and remove", () => {
     await expect(recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: uniq("ORD"), amountMinor: 1000 })).rejects.toThrow(/disabled/i);
   });
 });
+
+describe("payout reconciliation (PAY-01) and request race (PAY-02)", () => {
+  it("a refund AFTER the payout request trims the request to what is still owed; MARK_PAID pays only that", async () => {
+    const { owner, campaign } = await liveCampaign();
+    const creator = await makeCreator();
+    const admin = await makeAdmin();
+    const { code } = await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaign.id);
+    const a = await recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: uniq("ORD"), amountMinor: 100_000 });
+    const b = await recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: uniq("ORD"), amountMinor: 100_000 });
+    await verifyConversion(owner.brand.id, owner.user.id, a.referral.id);
+    await verifyConversion(owner.brand.id, owner.user.id, b.referral.id);
+
+    const request = await requestPayout(creator.id, "COMMISSION", "UPI");
+    expect(request.amount).toBe(120_000); // 2 × ₹600
+
+    // Order A is refunded while the request is open → admins are told.
+    await reverseConversion(owner.brand.id, owner.user.id, a.referral.id, "returned");
+    const heads = await prisma.notification.findMany({ where: { userId: admin.id, title: { contains: "refund touched" } } });
+    expect(heads).toHaveLength(1);
+
+    const approved = await reviewPayout(admin.id, request.id, "APPROVE", { note: "ok" });
+    expect(approved.amount).toBe(60_000);
+    expect(await prisma.payoutItem.count({ where: { payoutRequestId: request.id } })).toBe(1);
+
+    const paid = await reviewPayout(admin.id, request.id, "MARK_PAID", { reference: "UPI-1" });
+    expect(paid.amount).toBe(60_000);
+    const rows = await prisma.commission.findMany({ where: { creatorId: creator.id }, select: { referralId: true, status: true } });
+    expect(rows.find((r) => r.referralId === a.referral.id)?.status).toBe("REVERSED");
+    expect(rows.find((r) => r.referralId === b.referral.id)?.status).toBe("PAID");
+
+    const audit = await prisma.auditLog.findFirst({ where: { action: "PAYOUT_APPROVE", entityId: request.id } });
+    expect(JSON.stringify(audit?.metadata)).toContain('"droppedAmount":60000');
+    const note = await prisma.notification.findFirst({ where: { userId: creator.id, title: { contains: "approved" } } });
+    expect(note?.body).toMatch(/reversed by a refund/);
+  });
+
+  it("refuses to approve a request in which every entry was reversed", async () => {
+    const { owner, campaign } = await liveCampaign();
+    const creator = await makeCreator();
+    const admin = await makeAdmin();
+    const { code } = await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaign.id);
+    const a = await recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: uniq("ORD"), amountMinor: 100_000 });
+    await verifyConversion(owner.brand.id, owner.user.id, a.referral.id);
+    const request = await requestPayout(creator.id, "COMMISSION", "UPI");
+    await reverseConversion(owner.brand.id, owner.user.id, a.referral.id, "returned");
+    await expect(reviewPayout(admin.id, request.id, "APPROVE", { note: "ok" })).rejects.toThrow(/nothing is owed/i);
+    // Rejecting still works and releases the (now reversed) row.
+    await reviewPayout(admin.id, request.id, "REJECT", { note: "refunded" });
+    expect((await prisma.payoutRequest.findUniqueOrThrow({ where: { id: request.id } })).status).toBe("REJECTED");
+  });
+
+  it("two simultaneous payout requests: exactly one is created, the other gets a clear error", async () => {
+    const { owner, campaign } = await liveCampaign();
+    const creator = await makeCreator();
+    const { code } = await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaign.id);
+    const a = await recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: uniq("ORD"), amountMinor: 100_000 });
+    await verifyConversion(owner.brand.id, owner.user.id, a.referral.id);
+
+    const results = await Promise.allSettled([requestPayout(creator.id, "COMMISSION", "UPI"), requestPayout(creator.id, "COMMISSION", "UPI")]);
+    const ok = results.filter((r) => r.status === "fulfilled");
+    const failed = results.filter((r): r is PromiseRejectedResult => r.status === "rejected");
+    expect(ok).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0].reason).toBeInstanceOf(PayoutError);
+    expect(await prisma.payoutRequest.count({ where: { userId: creator.id } })).toBe(1);
+  });
+});

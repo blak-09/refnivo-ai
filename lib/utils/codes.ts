@@ -3,6 +3,7 @@ import { customAlphabet } from "nanoid";
 // Unambiguous alphabet (no 0/O, 1/I/l) so codes can be read aloud or typed from a QR flyer.
 const ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
 const random = customAlphabet(ALPHABET, 4);
+const randomLong = customAlphabet(ALPHABET, 8);
 
 function token(input: string, max: number): string {
   const cleaned = input
@@ -21,6 +22,14 @@ function token(input: string, max: number): string {
  */
 export function generateReferralCode(partnerHandle: string, brandName: string): string {
   return `${token(partnerHandle, 12)}-${token(brandName, 8)}-${random()}`;
+}
+
+/**
+ * Customer codes carry no personal data: `C-7QK2M9XW`. A customer's display
+ * name is their real name, and the code travels in every share message.
+ */
+export function generateCustomerReferralCode(): string {
+  return `C-${randomLong()}`;
 }
 
 export function isReferralCodeFormat(code: string): boolean {

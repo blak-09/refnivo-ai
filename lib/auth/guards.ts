@@ -1,11 +1,12 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import type { Brand, CreatorProfile, User, UserRole } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { securityEvent } from "@/lib/utils/security-log";
 import { roleHome } from "./roles";
-import { isSessionCurrent } from "./session-version";
+import { classifySession, signedOutPath, type SessionProblem } from "./session-state";
 
 export class AuthorizationError extends Error {
   constructor(message = "You are not allowed to perform this action.") {
@@ -16,36 +17,58 @@ export class AuthorizationError extends Error {
 
 export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status" | "mustChangePassword">;
 
+export type SessionState = { user: SessionUser; problem: null } | { user: null; problem: SessionProblem };
+
 /**
- * Returns the current user from the DB, or null. Never throws.
+ * Resolves the request's session against the database. Never throws.
  * Re-checks status AND session version on every request, so a suspension or a
  * password change (which bumps `sessionVersion`) takes effect immediately even
  * though the JWT itself is still within its lifetime.
+ *
+ * Memoised per request with React `cache()`: a layout and its page (and any
+ * server action in the same request) share one `auth()` + one user query
+ * instead of repeating them at every level of the tree.
  */
-export async function getCurrentUser(): Promise<SessionUser | null> {
+export const getSessionState = cache(async (): Promise<SessionState> => {
   const session = await auth();
   const id = session?.user?.id;
-  if (!id) return null;
+  if (!id) return { user: null, problem: "no-session" };
   const user = await prisma.user.findUnique({
     where: { id },
     select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true },
   });
-  if (!user || user.status !== "APPROVED") return null;
-  if (!isSessionCurrent(session?.user?.sessionVersion, user.sessionVersion)) {
+  const problem = classifySession({ id, sessionVersion: session?.user?.sessionVersion }, user);
+  if (problem === "stale" && user) {
     securityEvent("SESSION_STALE", { userId: user.id, tokenVersion: session?.user?.sessionVersion ?? null, currentVersion: user.sessionVersion });
-    return null;
   }
-  return { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword };
+  if (problem || !user) return { user: null, problem: problem ?? "not-found" };
+  return {
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword },
+    problem: null,
+  };
+});
+
+/** Returns the current user from the DB, or null. Never throws. */
+export async function getCurrentUser(): Promise<SessionUser | null> {
+  return (await getSessionState()).user;
 }
+
+// Per-request memoised lookups shared by layout + page + actions.
+const brandForOwner = cache((ownerId: string) => prisma.brand.findFirst({ where: { ownerId }, orderBy: { createdAt: "asc" } }));
+const creatorProfileFor = cache((userId: string) => prisma.creatorProfile.findUnique({ where: { userId } }));
 
 // ---------------------------------------------------------------------------
 // Page guards — redirect. Use in Server Components / layouts.
 // ---------------------------------------------------------------------------
 
 export async function requireUser(): Promise<SessionUser> {
-  const user = await getCurrentUser();
-  if (!user) redirect("/auth/login");
-  return user;
+  const state = await getSessionState();
+  if (state.user) return state.user;
+  // A cookie that no longer maps to a usable account must be CLEARED first —
+  // sending it straight to /auth/login would let proxy.ts (which only sees the
+  // JWT) bounce it back to the dashboard, and the two redirects would loop.
+  if (state.problem !== "no-session") redirect(signedOutPath(state.problem));
+  redirect("/auth/login");
 }
 
 export async function requireRole(role: UserRole): Promise<SessionUser> {
@@ -60,7 +83,7 @@ export async function requireRole(role: UserRole): Promise<SessionUser> {
  */
 export async function requireBrand(): Promise<{ user: SessionUser; brand: Brand }> {
   const user = await requireRole("BRAND_OWNER");
-  const brand = await prisma.brand.findFirst({ where: { ownerId: user.id }, orderBy: { createdAt: "asc" } });
+  const brand = await brandForOwner(user.id);
   if (!brand) redirect("/auth/onboarding");
   return { user, brand };
 }
@@ -68,7 +91,7 @@ export async function requireBrand(): Promise<{ user: SessionUser; brand: Brand 
 /** Creators must complete their profile before using the dashboard. */
 export async function requireCreator(): Promise<{ user: SessionUser; profile: CreatorProfile }> {
   const user = await requireRole("CREATOR");
-  const profile = await prisma.creatorProfile.findUnique({ where: { userId: user.id } });
+  const profile = await creatorProfileFor(user.id);
   if (!profile) redirect("/auth/onboarding");
   return { user, profile };
 }
@@ -91,7 +114,7 @@ export async function assertRole(role: UserRole): Promise<SessionUser> {
 
 export async function assertBrandOwner(): Promise<{ user: SessionUser; brand: Brand }> {
   const user = await assertRole("BRAND_OWNER");
-  const brand = await prisma.brand.findFirst({ where: { ownerId: user.id }, orderBy: { createdAt: "asc" } });
+  const brand = await brandForOwner(user.id);
   if (!brand) throw new AuthorizationError("Create your brand profile first.");
   return { user, brand };
 }

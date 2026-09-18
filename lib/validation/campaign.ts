@@ -73,7 +73,8 @@ export const campaignRulesSchema = z
       .int("Must be a whole number of days")
       .min(1, "At least 1 day")
       .max(90, "At most 90 days"),
-    maxRewardPerCustomer: optionalRupees("Maximum reward per customer"),
+    /** Cap on the reward for ONE order (column name predates the clarification). */
+    maxRewardPerCustomer: optionalRupees("Maximum reward per order"),
     budget: optionalRupees("Budget"),
     terms: z.string().trim().max(3000).optional().or(z.literal("")),
   })

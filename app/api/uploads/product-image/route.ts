@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { assertBrandOwner } from "@/lib/auth/guards";
 import { recordAudit } from "@/lib/services/audit";
-import { getStorage, imageValidationMessage, MAX_IMAGE_BYTES, validateImage, validateImageBytes } from "@/lib/storage";
+import { getStorage, imageValidationMessage, MAX_IMAGE_BYTES, uploadsAvailable, validateImage, validateImageBytes } from "@/lib/storage";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { securityEvent } from "@/lib/utils/security-log";
 
@@ -25,6 +25,14 @@ export async function POST(request: Request) {
     ctx = await assertBrandOwner();
   } catch {
     return NextResponse.json({ ok: false, error: "You must be signed in as a brand owner." }, { status: 401 });
+  }
+
+  // Fail clearly instead of attempting a write that the host will refuse (STOR-01).
+  if (!uploadsAvailable()) {
+    return NextResponse.json(
+      { ok: false, error: "Image uploads are not enabled on this deployment yet. You can save the product without an image and add one later." },
+      { status: 503, headers: { "Cache-Control": "no-store" } },
+    );
   }
 
   const limit = await rateLimit(`upload:${ctx.user.id}`, UPLOADS_PER_WINDOW, UPLOAD_WINDOW_MS);

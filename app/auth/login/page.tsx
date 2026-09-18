@@ -36,6 +36,12 @@ const ERROR_MESSAGES: Record<string, string> = {
   "google-email-unverified": "Google could not verify that e-mail address, so we did not sign you in. Verify it in your Google account or use your password.",
   "google-unavailable": "Google sign-in is temporarily unavailable. Please try again in a moment or use your password.",
   "rate-limited": "Too many attempts. Please try again in a few minutes.",
+  // Set by /auth/signed-out after a session cookie stopped matching a usable account.
+  "account-suspended": "Your account has been suspended, so you were signed out. Please contact support.",
+  "account-pending": "Your account is waiting for approval. You can log in once it has been reviewed.",
+  "account-rejected": "Your registration was not approved. Check your registration status for details.",
+  "account-missing": "That account no longer exists. Please sign up again.",
+  "session-expired": "You were signed out because your password was changed or your sessions were reset. Please log in again.",
   AccessDenied: "Sign-in was refused. Please try again or use your password.",
   OAuthCallbackError: "Google sign-in was cancelled or did not complete. Please try again.",
   OAuthSignInError: "Could not start Google sign-in. Please try again.",
@@ -67,7 +73,7 @@ export default async function LoginPage({
         <AuthCard title="Welcome back" description="Log in to your Refnivo AI account.">
           <LoginForm callbackUrl={safeCallback} notice={notice} error={errorMessage} quickAccounts={quickAccounts} googleEnabled={googleOAuthEnabled()} />
         </AuthCard>
-        {!quickAccounts.length ? (
+        {showDemoLogins() && !quickAccounts.length ? (
           <p className="mt-4 text-center text-xs text-muted-foreground">
             Demo accounts are listed in the README after running <code className="font-mono">npm run db:seed</code>.
           </p>

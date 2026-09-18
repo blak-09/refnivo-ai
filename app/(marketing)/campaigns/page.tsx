@@ -31,6 +31,7 @@ type Search = { q?: string; category?: string; industry?: string; type?: string;
 export default async function DiscoverCampaignsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
   const sort = SORTS.some((s) => s.value === sp.sort) ? (sp.sort as MarketplaceSort) : "newest";
+  const hasFilters = !!(sp.q || sp.category || sp.industry || sp.type);
   const type = ["CREATOR_AFFILIATE", "CUSTOMER_REFERRAL", "HYBRID"].includes(sp.type ?? "") ? (sp.type as "CREATOR_AFFILIATE" | "CUSTOMER_REFERRAL" | "HYBRID") : undefined;
 
   const [campaigns, categoriesInUse] = await Promise.all([
@@ -104,12 +105,22 @@ export default async function DiscoverCampaignsPage({ searchParams }: { searchPa
         <EmptyState
           className="mt-6"
           icon={CompassIcon}
-          title={sort === "ending" ? "No campaigns are ending soon" : "No live campaigns match these filters"}
-          description="Try clearing a filter. New campaigns appear here as soon as brands publish them."
+          title={sort === "ending" ? "No campaigns are ending soon" : hasFilters ? "No live campaigns match these filters" : "No live campaigns yet"}
+          description={
+            hasFilters || sort === "ending"
+              ? "Try clearing a filter. New campaigns appear here as soon as brands publish them."
+              : "Campaigns appear here as soon as brands publish them. Are you a brand? Create your first campaign in minutes."
+          }
           action={
-            <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/campaigns" />}>
-              Clear filters
-            </Button>
+            hasFilters || sort === "ending" ? (
+              <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/campaigns" />}>
+                Clear filters
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/auth/register?role=BRAND_OWNER" />}>
+                Start as a brand
+              </Button>
+            )
           }
         />
       ) : (
