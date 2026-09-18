@@ -12,6 +12,7 @@
  * Take a backup before running against production (see docs/PRODUCTION.md).
  */
 import { execSync } from "node:child_process";
+import { normalizeDatabaseUrl } from "../lib/config/database-url";
 import { formatTarget } from "./lib/db-url";
 import { decideDeploy, needsBaseline } from "./lib/deploy-guard";
 
@@ -20,6 +21,8 @@ function fail(msg: string): never {
   process.exit(1);
 }
 
+// A Supabase transaction-pooler URL (6543) needs pgbouncer=true for Prisma; add it if the operator pasted a bare URI.
+if (process.env.DATABASE_URL) process.env.DATABASE_URL = normalizeDatabaseUrl(process.env.DATABASE_URL);
 const verdict = decideDeploy({ url: process.env.DATABASE_URL, confirmHost: process.env.DB_DEPLOY_CONFIRM_HOST });
 console.log(`[db-deploy] target: ${formatTarget(verdict.target)}`);
 if (!verdict.ok) fail(`refused — ${verdict.reason}`);

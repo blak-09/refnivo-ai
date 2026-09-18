@@ -122,8 +122,9 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
     }
     if (parsed) {
       if (isLocalDatabaseUrl(dbUrl)) errors.push("DATABASE_URL points at a local database; production requires a hosted, pooled database.");
-      if (parsed.port === "6543" && parsed.searchParams.get("pgbouncer") !== "true") {
-        errors.push("DATABASE_URL uses the transaction pooler port (6543) without pgbouncer=true.");
+      if (parsed.port === "6543" && !parsed.searchParams.has("pgbouncer")) {
+        // Not an error: lib/db/client.ts appends the flag automatically. Surface it so operators know.
+        warnings.push("DATABASE_URL uses the transaction pooler port (6543); pgbouncer=true was added automatically.");
       }
     }
   }

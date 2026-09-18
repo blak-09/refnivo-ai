@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { getBootState, isMisconfigured, resetBootState } from "@/lib/config/boot-state";
+import { databaseUrlNeedsPgbouncerFlag, normalizeDatabaseUrl } from "@/lib/config/database-url";
 import { AUTH_SECRET_MIN_LENGTH, authSecretAtBoot, ConfigurationError, isBuildPhase, isLocalDatabaseUrl, requireAuthSecret, requireEnv, validateProductionEnv } from "@/lib/config/env";
 import { hashValue } from "@/lib/services/tracking";
 import { showDemoLogins } from "@/lib/utils/demo";
@@ -152,9 +153,9 @@ describe("validateProductionEnv", () => {
   it("refuses a local database, an unparseable URL, and a pooler port without pgbouncer=true", () => {
     expect(validateProductionEnv({ ...valid, DATABASE_URL: "postgresql://postgres:postgres@localhost:5433/localgrowth" }).errors.join(" ")).toMatch(/local database/);
     expect(validateProductionEnv({ ...valid, DATABASE_URL: "nope" }).errors.join(" ")).toMatch(/could not be parsed/);
-    expect(
-      validateProductionEnv({ ...valid, DATABASE_URL: "postgresql://u:p@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres" }).errors.join(" "),
-    ).toMatch(/pgbouncer=true/);
+    const pooler = validateProductionEnv({ ...valid, DATABASE_URL: "postgresql://u:p@aws-0-ap-south-1.pooler.supabase.com:6543/postgres" });
+    expect(pooler.errors).toEqual([]); // the client adds pgbouncer=true itself
+    expect(pooler.warnings.join(" ")).toMatch(/pgbouncer=true was added automatically/);
   });
 
   it("requires https public and canonical URLs", () => {
@@ -261,5 +262,30 @@ describe("boot state (self-diagnosing misconfiguration)", () => {
     resetBootState();
     // The test process itself is not production, so the app is never marked misconfigured here.
     expect(isMisconfigured()).toBe(false);
+  });
+});
+
+describe("DATABASE_URL normalisation (Supabase transaction pooler)", () => {
+  const POOLER = "postgresql://postgres.ref:Pass123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
+
+  it("appends pgbouncer=true to a bare 6543 pooler URL and leaves everything else intact", () => {
+    expect(databaseUrlNeedsPgbouncerFlag(POOLER)).toBe(true);
+    expect(normalizeDatabaseUrl(POOLER)).toBe(`${POOLER}?pgbouncer=true`);
+    expect(normalizeDatabaseUrl(`${POOLER}?sslmode=require`)).toBe(`${POOLER}?sslmode=require&pgbouncer=true`);
+  });
+
+  it("does not touch URLs that already carry the flag, use other ports, or are local", () => {
+    expect(normalizeDatabaseUrl(`${POOLER}?pgbouncer=true`)).toBe(`${POOLER}?pgbouncer=true`);
+    const session = "postgresql://postgres.ref:Pass123@aws-0-ap-south-1.pooler.supabase.com:5432/postgres";
+    expect(normalizeDatabaseUrl(session)).toBe(session);
+    const local = "postgresql://postgres:postgres@localhost:5433/localgrowth?schema=public";
+    expect(normalizeDatabaseUrl(local)).toBe(local);
+  });
+
+  it("strips stray copy-paste quotes and passes through unparseable or empty values", () => {
+    expect(normalizeDatabaseUrl(`"${POOLER}"`)).toBe(`${POOLER}?pgbouncer=true`);
+    expect(normalizeDatabaseUrl("not a url")).toBe("not a url");
+    expect(normalizeDatabaseUrl(undefined)).toBeUndefined();
+    expect(normalizeDatabaseUrl("")).toBe("");
   });
 });

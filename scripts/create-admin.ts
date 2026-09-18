@@ -23,6 +23,7 @@
  * Never prints the password, hash, or connection string. Run `npm run db:target`
  * first to confirm which database will be used.
  */
+import { normalizeDatabaseUrl } from "../lib/config/database-url";
 import { formatTarget } from "./lib/db-url";
 import { preflight } from "./lib/admin-bootstrap";
 import { applyBootstrap } from "./lib/admin-bootstrap-apply";
@@ -49,7 +50,7 @@ async function main() {
     fail(pre.message);
   }
 
-  const prisma = new PrismaClient();
+  const prisma = new PrismaClient({ datasourceUrl: normalizeDatabaseUrl(process.env.DATABASE_URL) });
   try {
     const passwordHash = await bcrypt.hash(pre.password, 12);
     const result = await applyBootstrap(prisma, { email: pre.email, name: pre.name, passwordHash, env });

@@ -21,7 +21,7 @@ async function main() {
   if (t?.local) {
     console.log("[db-target] note   : this is the LOCAL development database. For production, set $env:DATABASE_URL in the SAME shell session before running the script.");
   } else if (t && t.port === "6543" && !t.pgbouncer) {
-    console.log("[db-target] warn   : port 6543 is a transaction pooler — append ?pgbouncer=true or Prisma will fail with a prepared-statement error.");
+    console.log("[db-target] note   : port 6543 is a transaction pooler — the app and db:deploy add ?pgbouncer=true automatically.");
   }
 }
 
