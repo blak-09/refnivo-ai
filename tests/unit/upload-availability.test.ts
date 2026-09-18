@@ -38,3 +38,20 @@ describe("production warnings surfaced on /api/health", () => {
     expect(validateProductionEnv({ ...base, CRON_SECRET: "topsecret" }).warnings.join("\n")).not.toContain("topsecret");
   });
 });
+
+describe("unknown STORAGE_PROVIDER never blocks boot", () => {
+  it("is a warning, and uploads are unavailable", () => {
+    const base = {
+      NODE_ENV: "production",
+      AUTH_SECRET: "x".repeat(40),
+      DATABASE_URL: "postgresql://u:p@db.example.net:6543/app?pgbouncer=true",
+      NEXT_PUBLIC_APP_URL: "https://app.example.com",
+      NEXTAUTH_URL: "https://app.example.com",
+      STORAGE_PROVIDER: "vercel-blob",
+    } as NodeJS.ProcessEnv;
+    const report = validateProductionEnv(base);
+    expect(report.errors).toEqual([]);
+    expect(report.warnings.join(" ")).toContain("STORAGE_PROVIDER");
+    expect(uploadsAvailable(base)).toBe(false);
+  });
+});

@@ -182,7 +182,8 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
       warnings.push("STORAGE_PROVIDER is local: image uploads are disabled on this deployment (serverless filesystems are read-only). Set STORAGE_PROVIDER=supabase (see .env.example), or STORAGE_ALLOW_LOCAL=1 on a self-hosted server with a persistent disk.");
     }
   } else {
-    errors.push("STORAGE_PROVIDER must be one of: local, supabase.");
+    // Unknown provider: uploads are simply unavailable (uploadsAvailable() is false); never a boot error.
+    warnings.push(`STORAGE_PROVIDER "${storage}" is not supported (use local or supabase): image uploads are disabled on this deployment.`);
   }
 
   // Outbox retry cron
