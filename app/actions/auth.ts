@@ -6,6 +6,9 @@ import bcrypt from "bcryptjs";
 import { signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { roleHome } from "@/lib/auth/roles";
+import { setOAuthRoleCookie } from "@/lib/auth/oauth-role-cookie";
+import { googleOAuthEnabled } from "@/lib/config/oauth";
+import { isRegistrableRole } from "@/lib/services/oauth";
 import { createUser, EmailTakenError } from "@/lib/services/users";
 import { notifyRegistration } from "@/lib/services/notifications";
 import { extractRegistrationDetails, loginSchema, registerSchema } from "@/lib/validation/auth";
@@ -111,6 +114,18 @@ export async function loginAction(
     return fail("No account found. Please sign up first.", { _status: "NO_ACCOUNT" }, formValues(formData));
   }
 
+  // Google-only account: there is no password to check. Saying so reveals only
+  // what the visitor already knows (they typed this e-mail) and points them to
+  // the working sign-in method.
+  if (!user.passwordHash) {
+    securityEvent("LOGIN_FAILED", { reason: "NO_PASSWORD", email: parsed.data.email });
+    return fail(
+      "This account signs in with Google. Use \"Continue with Google\", or set a password via \"Forgot password\".",
+      { _status: "NO_PASSWORD" },
+      formValues(formData),
+    );
+  }
+
   // Case 5 — verify the password BEFORE revealing any status, so account status
   // cannot be probed without the correct credentials.
   const passwordOk = await bcrypt.compare(parsed.data.password, user.passwordHash);
@@ -152,6 +167,27 @@ export async function loginAction(
     return fail("Could not sign you in. Please try again.");
   }
   return { ok: true, data: undefined };
+}
+
+/**
+ * "Continue with Google" — from the login page (no role) or the register page
+ * (with the chosen account type). The role travels in a short-lived httpOnly
+ * cookie and is consumed by the Auth.js `signIn` callback (lib/auth/index.ts).
+ * Auth.js itself performs the redirect to Google.
+ */
+export async function googleSignInAction(formData: FormData): Promise<void> {
+  if (!googleOAuthEnabled()) redirect("/auth/login?error=google-unavailable");
+  const limit = await rateLimit(`oauth:${await clientIp()}`, 20, 10 * 60 * 1000);
+  if (!limit.ok) redirect("/auth/login?error=rate-limited");
+
+  const roleValue = formData.get("role");
+  const role = isRegistrableRole(roleValue) ? roleValue : null;
+  const callbackUrl = safeCallback(formData.get("callbackUrl"));
+
+  await setOAuthRoleCookie(role);
+  // `/dashboard` is routed to the role's home by proxy.ts; brand owners and
+  // creators without a profile are then taken through /auth/onboarding.
+  await signIn("google", { redirectTo: callbackUrl ?? "/dashboard" });
 }
 
 export async function logoutAction() {

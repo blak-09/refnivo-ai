@@ -17,7 +17,7 @@ describe("users service", () => {
     const user = await createUser({ name: "Asha", email: email.toUpperCase(), password: "Password1", role: "CUSTOMER" });
     expect(user.email).toBe(email);
     const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await bcrypt.compare("Password1", row.passwordHash)).toBe(true);
+    expect(await bcrypt.compare("Password1", row.passwordHash ?? "")).toBe(true);
     expect(await prisma.auditLog.findFirst({ where: { userId: user.id, action: "USER_REGISTERED" } })).not.toBeNull();
   });
 
@@ -32,7 +32,7 @@ describe("users service", () => {
     await expect(changePassword(user.id, "wrong", "NewPassword2")).rejects.toBeInstanceOf(WrongPasswordError);
     await changePassword(user.id, "Password1", "NewPassword2");
     const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
-    expect(await bcrypt.compare("NewPassword2", row.passwordHash)).toBe(true);
+    expect(await bcrypt.compare("NewPassword2", row.passwordHash ?? "")).toBe(true);
   });
 });
 

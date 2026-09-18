@@ -8,6 +8,7 @@ import { loginAction } from "@/app/actions/auth";
 import { Input } from "@/components/ui/input";
 import { Field, FormError } from "@/components/forms/field";
 import { SubmitButton } from "@/components/forms/submit-button";
+import { GoogleAuthForm, OrDivider } from "@/components/auth/google-button";
 import { cn } from "@/lib/utils";
 
 export type QuickAccount = { role: string; label: string; email: string; password: string };
@@ -22,11 +23,16 @@ const ROLE_ICON: Record<string, LucideIcon> = {
 export function LoginForm({
   callbackUrl,
   notice,
+  error,
   quickAccounts = [],
+  googleEnabled = false,
 }: {
   callbackUrl?: string;
   notice?: string;
+  /** Message for a failed Google sign-in (already user-friendly; see app/auth/login/page.tsx). */
+  error?: string;
   quickAccounts?: QuickAccount[];
+  googleEnabled?: boolean;
 }) {
   const [state, action] = useActionState(loginAction, null);
   const [email, setEmail] = React.useState("");
@@ -69,8 +75,17 @@ export function LoginForm({
         </div>
       ) : null}
 
+      {notice ? <p className="rounded-lg bg-accent px-3 py-2 text-sm text-accent-foreground">{notice}</p> : null}
+      {error && !state ? <FormError message={error} /> : null}
+
+      {googleEnabled ? (
+        <>
+          <GoogleAuthForm callbackUrl={callbackUrl} />
+          <OrDivider>or log in with email</OrDivider>
+        </>
+      ) : null}
+
       <form action={action} className="space-y-4" noValidate>
-        {notice ? <p className="rounded-lg bg-accent px-3 py-2 text-sm text-accent-foreground">{notice}</p> : null}
         <FormError message={state && !state.ok ? state.error : null} />
 
         {statusCode ? (
@@ -82,6 +97,10 @@ export function LoginForm({
             ) : statusCode === "NO_ACCOUNT" ? (
               <Link href="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
                 Create an account →
+              </Link>
+            ) : statusCode === "NO_PASSWORD" ? (
+              <Link href="/auth/forgot-password" className="font-medium text-primary underline-offset-4 hover:underline">
+                Set a password →
               </Link>
             ) : statusCode === "SUSPENDED" ? (
               <Link href="/contact" className="font-medium text-primary underline-offset-4 hover:underline">

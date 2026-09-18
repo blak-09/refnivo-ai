@@ -5,6 +5,7 @@
  */
 
 import { parseSignupPolicy } from "./signup-policy";
+import { validateGoogleOAuthEnv } from "./oauth";
 
 export class ConfigurationError extends Error {
   constructor(message: string) {
@@ -141,6 +142,10 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
   // Signup approval policy
   const signup = parseSignupPolicy(env.SIGNUP_APPROVAL);
   if (signup.error) errors.push(signup.error);
+
+  // Google sign-in (optional, but never half-configured)
+  const googleError = validateGoogleOAuthEnv(env);
+  if (googleError) errors.push(googleError);
 
   // Rate limiting
   const rl = (env.RATE_LIMIT_PROVIDER ?? "memory").trim().toLowerCase();

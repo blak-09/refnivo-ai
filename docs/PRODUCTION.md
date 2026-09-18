@@ -147,7 +147,8 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
 
 - On boot in production, `instrumentation.ts` runs `validateProductionEnv()` and **refuses to start** if `AUTH_SECRET` (≥ 32 chars),
   a non-local pooled `DATABASE_URL`, an https `NEXT_PUBLIC_APP_URL` or an https `NEXTAUTH_URL`/`AUTH_URL` is missing, or if any payment
-  flag (`PAYMENTS_ENABLED`, `PAYMENT_PROVIDER` ≠ `NONE`) is enabled. Messages name variables only — values are never printed.
+  flag (`PAYMENTS_ENABLED`, `PAYMENT_PROVIDER` ≠ `NONE`) is enabled, or if only one of `GOOGLE_CLIENT_ID` /
+  `GOOGLE_CLIENT_SECRET` is set. Messages name variables only — values are never printed.
 - Rate limiting: `RATE_LIMIT_PROVIDER=memory` (default) counts per instance; set `upstash` with `UPSTASH_REDIS_REST_URL` /
   `UPSTASH_REDIS_REST_TOKEN` for a shared counter across serverless instances. The limiter is **fail-open**: if the shared store is
   unreachable, requests are allowed and a `RATE_LIMIT_STORE_ERROR` security event is logged once per minute — during such an outage,
@@ -158,7 +159,51 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
 - Audit rows now carry `actorRole`, a salted `ipHash`, a truncated `userAgent` and `requestId` (from `x-vercel-id` / `x-request-id`).
 - Sessions: a password change bumps `users.sessionVersion`, which invalidates every existing JWT for that user immediately.
 
-## 9. Manual payouts, e-mail and notifications
+## 9. Google sign-in ("Continue with Google")
+
+Optional. The button appears on `/auth/login` and `/auth/register` only when **both** `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET` are set (setting one without the other is a boot error listed on `/api/health`). Auth.js's
+`AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` names are accepted as aliases. No provider tokens are stored — Google is used
+only to prove identity; the session is the same JWT as a password login.
+
+**Behaviour**
+
+- Existing account with the same e-mail → linked (`oauth_accounts` row, audit `OAUTH_ACCOUNT_LINKED`) and signed in. Linking
+  requires Google to report the address as *verified*; otherwise the attempt is refused (`google-email-unverified`).
+- Linked Google account → signed in by the stable Google id (works even if the Google e-mail later changes).
+- No account yet → the register page's role choice is carried in a 10-minute httpOnly cookie (`refnivo.oauth-role`); a new
+  user is created with that role, `passwordHash = NULL`, Google name/avatar, and follows `SIGNUP_APPROVAL` exactly like a
+  password signup (auto → dashboard/onboarding; manual → `/registration-pending`). Clicking Google on the *login* page
+  without an account sends the visitor to `/auth/register?error=google-no-account` to choose a role — never a silent default.
+- PENDING / REJECTED / SUSPENDED accounts are refused with the same messages as the password flow.
+- Password-less accounts see "This account signs in with Google" on the password form and can add a password via *Forgot
+  password* (needs `EMAIL_PROVIDER=resend`). Suspension, session revocation and `mustChangePassword` apply unchanged.
+
+**Google Cloud Console** (once per environment; use separate OAuth clients for production and preview/local)
+
+1. Create/select a project → *APIs & Services* → *OAuth consent screen*: External, app name "Refnivo AI", support e-mail,
+   authorised domain (your production domain), privacy/terms links (`/privacy`, `/terms`). Scopes: `openid`, `email`,
+   `profile` (non-sensitive; no verification review needed). Publish the app (in *Testing* only listed testers can sign in).
+2. *Credentials* → *Create credentials* → *OAuth client ID* → type **Web application**.
+3. Authorised JavaScript origins: `https://<your-domain>` (production) — and `http://localhost:3000` on the local client.
+4. Authorised redirect URIs — the callback is served by `app/api/auth/[...nextauth]` (Auth.js default `basePath` `/api/auth`):
+   `https://<your-domain>/api/auth/callback/google` — and `http://localhost:3000/api/auth/callback/google` locally.
+   `NEXTAUTH_URL` must be exactly that origin; a mismatch shows Google's `redirect_uri_mismatch`.
+5. Copy the client ID and secret into Vercel → Settings → Environment Variables (**Production**; a second client for
+   Preview if you want Google there) as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — plain (not `NEXT_PUBLIC_`) — then redeploy.
+
+**Database** — migration `20260918120000_google_oauth` (additive: `users.passwordHash` becomes nullable, new table
+`oauth_accounts`). Apply with `npm run db:deploy` (section 4) **before** setting the Google variables. If you apply SQL
+through the Supabase SQL editor instead, run the migration file's contents followed by the history row so
+`prisma migrate status` stays clean:
+
+```sql
+INSERT INTO "_prisma_migrations" ("id","checksum","finished_at","migration_name","started_at","applied_steps_count") VALUES
+  (gen_random_uuid()::text, '3cecb452fab3d2e10cd626c0fac8804630a300e518af8697fd7a62242e5817b8', now(), '20260918120000_google_oauth', now(), 1)
+ON CONFLICT DO NOTHING;
+```
+
+## 10. Manual payouts, e-mail and notifications
 
 - **Payouts / redemptions** are manual: creators and customers request settlement from Earnings / Rewards once their
   approved balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins review at `/dashboard/admin/payouts`, settle off-platform and
@@ -181,10 +226,11 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
   backoff up to 5 attempts. Schedule `npm run email:outbox` (cron / Vercel cron / GitHub Actions schedule, e.g. every
   5 minutes) as the retry safety net; `/dashboard/admin/health` shows waiting/failed counts.
 
-## 10. Pre-launch checklist
+## 11. Pre-launch checklist
 
 - [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; `PAYMENT_PROVIDER=NONE`, `PAYMENTS_ENABLED=false`
 - [ ] `SIGNUP_APPROVAL` chosen deliberately (`auto` = self-service launch, `manual` = gated)
+- [ ] Google sign-in (optional): migration `20260918120000_google_oauth` applied, then `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set with the production redirect URI registered (section 9)
 - [ ] `RATE_LIMIT_PROVIDER=upstash` + Upstash credentials set (or `RATE_LIMIT_ALLOW_MEMORY=1` accepted knowingly)
 - [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)
 - [ ] `/dashboard/admin/health` shows the database reachable, migrations applied and no configuration errors

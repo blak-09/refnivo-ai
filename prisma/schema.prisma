@@ -198,7 +198,9 @@ model User {
   id           String     @id @default(cuid())
   name         String
   email        String     @unique
-  passwordHash String
+  /// Null for accounts created through Google sign-in that never set a password
+  /// (they can add one via "Forgot password").
+  passwordHash String?
   role         UserRole
   phone        String?
   avatarUrl    String?
@@ -244,10 +246,31 @@ model User {
   notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
   emailOutbox         EmailOutbox[]
+  oauthAccounts       OAuthAccount[]
 
   @@index([role])
   @@index([status])
   @@map("users")
+}
+
+/// External identity linked to a user (Google sign-in). One row per
+/// provider account; a user may hold several providers. Tokens are NOT stored:
+/// the provider is only used to prove identity at sign-in.
+model OAuthAccount {
+  id                String   @id @default(cuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  /// E-mail reported by the provider when the account was linked (informational).
+  email             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("oauth_accounts")
 }
 
 /// A brand (e.g. a headphone company) that lists products and runs campaigns.

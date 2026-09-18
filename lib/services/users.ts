@@ -148,6 +148,15 @@ export class WrongPasswordError extends Error {
   }
 }
 
+/** Google-only account: nothing to compare against. A password can be set via "Forgot password". */
+export class NoPasswordError extends WrongPasswordError {
+  constructor() {
+    super();
+    this.message = "This account signs in with Google and has no password yet. Use \"Forgot password\" to set one.";
+    this.name = "NoPasswordError";
+  }
+}
+
 /**
  * Changes the password and bumps `sessionVersion`, which invalidates every
  * existing session (including the current one — the caller signs the user out
@@ -156,6 +165,7 @@ export class WrongPasswordError extends Error {
 export async function changePassword(userId: string, currentPassword: string, newPassword: string, now = new Date()) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
   if (!user) throw new WrongPasswordError();
+  if (!user.passwordHash) throw new NoPasswordError();
   const ok = await bcrypt.compare(currentPassword, user.passwordHash);
   if (!ok) throw new WrongPasswordError();
   const passwordHash = await bcrypt.hash(newPassword, 12);

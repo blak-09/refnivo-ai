@@ -24,7 +24,7 @@ describe("admin bootstrap (local test database)", () => {
     expect(user.mustChangePassword).toBe(true);
     expect(user.sessionVersion).toBe(1);
     expect(user.approvedAt).not.toBeNull();
-    expect(await bcrypt.compare(PASSWORD, user.passwordHash)).toBe(true);
+    expect(await bcrypt.compare(PASSWORD, user.passwordHash ?? "")).toBe(true);
 
     const audit = await prisma.auditLog.findFirst({ where: { action: "ADMIN_BOOTSTRAPPED", entityId: user.id } });
     expect(audit).not.toBeNull();

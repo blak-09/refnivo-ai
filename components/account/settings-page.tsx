@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/primitives";
 import { AccountDetailsForm, ChangePasswordForm } from "@/components/account/account-forms";
@@ -11,8 +12,22 @@ import type { SessionUser } from "@/lib/auth/guards";
 export async function SettingsPage({ user, extra }: { user: SessionUser; extra?: React.ReactNode }) {
   const full = await prisma.user.findUniqueOrThrow({
     where: { id: user.id },
-    select: { name: true, email: true, phone: true, createdAt: true, emailNotifications: true },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      createdAt: true,
+      emailNotifications: true,
+      passwordHash: true,
+    },
   });
+  const hasPassword = full.passwordHash !== null;
+  // Separate query, tolerant of a deploy that lands before the google_oauth
+  // migration: the page must never 500 over an informational line.
+  const linkedProviders = await prisma.oAuthAccount
+    .findMany({ where: { userId: user.id }, select: { provider: true }, orderBy: { createdAt: "asc" } })
+    .then((rows) => rows.map((a) => a.provider))
+    .catch(() => [] as string[]);
 
   return (
     <div className="space-y-6">
@@ -38,10 +53,23 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
         <Card>
           <CardHeader>
             <CardTitle>Password</CardTitle>
-            <CardDescription>Choose a strong password you do not use elsewhere.</CardDescription>
+            <CardDescription>
+              {hasPassword ? "Choose a strong password you do not use elsewhere." : "You sign in with Google. Add a password to also log in with e-mail."}
+              {linkedProviders.includes("google") ? " Google sign-in is linked to this account." : null}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <ChangePasswordForm />
+            {hasPassword ? (
+              <ChangePasswordForm />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                This account has no password yet. Use{" "}
+                <Link href="/auth/forgot-password" className="font-medium text-primary underline-offset-4 hover:underline">
+                  Forgot password
+                </Link>{" "}
+                to receive a link and set one (requires e-mail delivery to be configured).
+              </p>
+            )}
           </CardContent>
         </Card>
         <Card>

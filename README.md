@@ -183,6 +183,10 @@ Read **[docs/PRODUCTION.md](docs/PRODUCTION.md)** first — backups, migration b
 - E-mail verification at signup is not implemented. Password reset needs `EMAIL_PROVIDER=resend`.
 - AI features are not implemented; the `AI_*` variables are reserved.
 - One brand per owner account. Creator social metrics are self-reported until an admin marks the profile verified (no social API).
+- **Continue with Google** is available on the login and register pages when `GOOGLE_CLIENT_ID` and
+  `GOOGLE_CLIENT_SECRET` are set (see `docs/PRODUCTION.md` §9 for the Google Cloud setup; callback URL
+  `/api/auth/callback/google`). Existing accounts with the same verified e-mail are linked, never duplicated; new
+  Google accounts pick their role on the register page and follow `SIGNUP_APPROVAL`.
 - Signup approval is a deployment setting, `SIGNUP_APPROVAL` (`auto` — default — every brand/creator/customer can sign
   in right after registering; `manual` — every account waits in `/dashboard/admin/registrations`; or a comma list of
   roles to auto-approve, e.g. `CREATOR,CUSTOMER`). Reviewed applicants receive an in-app notification and, when

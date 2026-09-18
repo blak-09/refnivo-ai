@@ -39,6 +39,10 @@ Brand lists products → creates a product campaign (commission + customer rewar
 ## Auth & authorization
 
 - Auth.js v5 Credentials provider (`lib/auth/index.ts`), bcrypt (cost 12), JWT session (7 days) carrying `id`, `role`, `status`.
+- Optional Google provider (same file, registered only when `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` are set). No adapter and
+  no stored tokens: `lib/services/oauth.ts` maps the Google `sub` to a local user through `oauth_accounts` (link by verified e-mail,
+  or create with the role chosen on the register page), and the `jwt` callback mints the same claims as a password login.
+  `users.passwordHash` is nullable for Google-only accounts.
 - `proxy.ts` redirects unauthenticated users away from `/dashboard/**` and `/auth/onboarding`, sends logged-in users
   away from login/register, and enforces that `/dashboard/<segment>` matches the user's role.
 - Every page/layout re-checks server-side via `lib/auth/guards.ts`:

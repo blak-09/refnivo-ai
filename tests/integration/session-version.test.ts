@@ -25,8 +25,8 @@ describe("session versioning (local test database)", () => {
     const user = await prisma.user.findUniqueOrThrow({ where: { id: created.id } });
     expect(user.mustChangePassword).toBe(false);
     expect(user.passwordChangedAt).not.toBeNull();
-    expect(await bcrypt.compare("Brand-New-Pass-77", user.passwordHash)).toBe(true);
-    expect(await bcrypt.compare("Password1", user.passwordHash)).toBe(false);
+    expect(await bcrypt.compare("Brand-New-Pass-77", user.passwordHash ?? "")).toBe(true);
+    expect(await bcrypt.compare("Password1", user.passwordHash ?? "")).toBe(false);
 
     // A token minted before the change (sv=1, or legacy without sv) is now stale; a fresh one (sv=2) is current.
     expect(isSessionCurrent(1, user.sessionVersion)).toBe(false);
