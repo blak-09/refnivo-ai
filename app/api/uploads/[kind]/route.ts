@@ -110,7 +110,9 @@ export async function POST(request: Request, ctx: { params: Promise<{ kind: stri
     });
     return json({ ok: true, url: stored.url }, 200);
   } catch (err) {
-    logServerError("upload", err, { kind });
-    return json({ ok: false, error: `Could not upload the ${spec.label}. Please try again.` }, 500);
+    const summary = logServerError("upload", err, { kind });
+    // Storage provider failures carry a short, secret-free reason (e.g. "(404): Bucket not found") that operators need.
+    const reason = err instanceof Error && /^Supabase Storage/.test(err.message) ? err.message.replace(/^Supabase Storage upload failed /, "").slice(0, 160) : null;
+    return json({ ok: false, error: `Could not upload the ${spec.label}. Please try again.`, ...(reason ? { reason } : {}), ref: summary.code ?? summary.name ?? null }, 500);
   }
 }
