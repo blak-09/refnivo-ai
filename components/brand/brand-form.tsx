@@ -11,12 +11,14 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Field, FormError } from "@/components/forms/field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { useFormAttempt } from "@/components/forms/use-form-attempt";
+import { ImageUpload } from "@/components/uploads/image-upload";
 import { BRAND_INDUSTRIES } from "@/lib/utils/labels";
 import type { BrandSocialLinks } from "@/lib/validation/brand";
 
-type Props = { mode: "create" } | { mode: "edit"; brand: Brand };
+type Props = ({ mode: "create" } | { mode: "edit"; brand: Brand }) & { uploadsEnabled?: boolean };
 
 export function BrandForm(props: Props) {
+  const uploadsEnabled = props.uploadsEnabled ?? true;
   const action = props.mode === "create" ? createBrandAction : updateBrandAction;
   const [state, formAction] = useActionState(action, null);
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
@@ -64,11 +66,11 @@ export function BrandForm(props: Props) {
           <Input id="supportEmail" name="supportEmail" type="email" defaultValue={dv("supportEmail", b?.supportEmail)} placeholder="partners@brand.com" aria-invalid={!!errors.supportEmail} />
         </Field>
 
-        <Field label="Logo URL" htmlFor="logoUrl" error={errors.logoUrl} hint="Paste an image URL. File uploads arrive in a later release.">
-          <Input id="logoUrl" name="logoUrl" type="url" defaultValue={dv("logoUrl", b?.logoUrl)} placeholder="https://…/logo.png" aria-invalid={!!errors.logoUrl} />
+        <Field label="Brand logo" htmlFor="logoUrl" error={errors.logoUrl} hint="Square works best. Shown next to your name on campaigns and referral pages.">
+          <ImageUpload name="logoUrl" endpoint="/api/uploads/brand-logo" initialUrl={dv("logoUrl", b?.logoUrl) || undefined} label="Upload logo" aspect="aspect-square max-w-48" disabled={!uploadsEnabled} />
         </Field>
-        <Field label="Cover image URL" htmlFor="coverImageUrl" error={errors.coverImageUrl}>
-          <Input id="coverImageUrl" name="coverImageUrl" type="url" defaultValue={dv("coverImageUrl", b?.coverImageUrl)} placeholder="https://…/cover.jpg" aria-invalid={!!errors.coverImageUrl} />
+        <Field label="Cover image" htmlFor="coverImageUrl" error={errors.coverImageUrl} hint="Wide banner for your public brand page.">
+          <ImageUpload name="coverImageUrl" endpoint="/api/uploads/brand-cover" initialUrl={dv("coverImageUrl", b?.coverImageUrl) || undefined} label="Upload cover image" disabled={!uploadsEnabled} />
         </Field>
 
         <Field label="Country" htmlFor="country" error={errors.country}>

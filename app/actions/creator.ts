@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { LANDING_CACHE_TAG } from "@/lib/services/landing";
 import { redirect } from "next/navigation";
 import { assertPartner, assertRole } from "@/lib/auth/guards";
 import { CreatorError, getCreatorProfile, upsertCreatorProfile } from "@/lib/services/creators";
@@ -33,6 +34,7 @@ export async function saveCreatorProfileAction(_prev: ActionResult | null, formD
   }
   revalidatePath("/dashboard/creator", "layout");
   revalidatePath(`/creators/${parsed.data.username}`);
+  revalidateTag(LANDING_CACHE_TAG, "max");
   if (isNew) redirect("/dashboard/creator?welcome=1");
   return ok(undefined);
 }

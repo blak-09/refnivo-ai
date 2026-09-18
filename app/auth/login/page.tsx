@@ -62,7 +62,9 @@ export default async function LoginPage({
     ? "Your account was created. Log in to continue."
     : reason === "password-changed"
       ? "Your password was changed and all sessions were signed out. Log in with your new password."
-      : undefined;
+      : reason === "account-deleted"
+        ? "Your account has been deleted. You are welcome back any time — just sign up again."
+        : undefined;
   const reference = ref && /^[A-Za-z0-9_]{1,40}$/.test(ref) ? ref : undefined;
   const errorMessage = error ? `${ERROR_MESSAGES[error] ?? "Please log in to continue."}${reference ? ` (reference: ${reference})` : ""}` : undefined;
   const quickAccounts = await getQuickAccounts();

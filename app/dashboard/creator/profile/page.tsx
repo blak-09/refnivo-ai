@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import type { Metadata } from "next";
 import { ExternalLinkIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +49,7 @@ export default async function CreatorProfilePage() {
           <CardDescription>Audience numbers are labelled self-reported until a social media API is connected.</CardDescription>
         </CardHeader>
         <CardContent>
-          <CreatorProfileForm profile={profile} />
+          <CreatorProfileForm profile={profile} uploadsEnabled={uploadsAvailable()} />
         </CardContent>
       </Card>
     </div>

@@ -57,6 +57,11 @@ $password = Read-Secret "Admin password (12+ chars, letter + number; typed hidde
 $password2 = Read-Secret "Repeat the admin password"
 if ($password -ne $password2) { Write-Host "Passwords do not match - aborting." -ForegroundColor Red; exit 1 }
 
+# Lost the bootstrap password? Rotating resets the password of an EXISTING admin
+# (same e-mail), bumps its session version and re-enables the forced change.
+$rotate = Read-Host "Rotate the password of an existing admin with this e-mail? (y/N)"
+if ($rotate -match '^(y|yes)$') { $env:ADMIN_ROTATE_EXISTING = "1" }
+
 $env:DATABASE_URL = $url
 $env:ADMIN_BOOTSTRAP_CONFIRM = $host_
 $env:ADMIN_EMAIL = $email
@@ -68,6 +73,6 @@ try {
   & npm.cmd run admin:create
   $code = $LASTEXITCODE
 } finally {
-  Remove-Item Env:ADMIN_PASSWORD, Env:ADMIN_EMAIL, Env:ADMIN_NAME, Env:ADMIN_BOOTSTRAP_CONFIRM, Env:DATABASE_URL -ErrorAction SilentlyContinue
+  Remove-Item Env:ADMIN_PASSWORD, Env:ADMIN_EMAIL, Env:ADMIN_NAME, Env:ADMIN_BOOTSTRAP_CONFIRM, Env:ADMIN_ROTATE_EXISTING, Env:DATABASE_URL -ErrorAction SilentlyContinue
 }
 exit $code

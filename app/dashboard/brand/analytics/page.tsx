@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
-import { CostByCampaignChart, FunnelChart, PartnerSplitChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/charts";
+import { CostByCampaignChart, FunnelChart, PartnerSplitChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/lazy-charts";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";

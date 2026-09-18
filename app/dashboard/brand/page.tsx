@@ -16,7 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
-import { FunnelChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/charts";
+import { FunnelChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/lazy-charts";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";

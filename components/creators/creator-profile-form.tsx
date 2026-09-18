@@ -11,10 +11,11 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Field, FormError } from "@/components/forms/field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { useFormAttempt } from "@/components/forms/use-form-attempt";
+import { ImageUpload } from "@/components/uploads/image-upload";
 import { SelfReported } from "@/components/creators/creator-stats";
 import { AUDIENCE_CATEGORIES, CREATOR_CATEGORIES } from "@/lib/utils/labels";
 
-export function CreatorProfileForm({ profile, defaultName }: { profile?: CreatorProfile | null; defaultName?: string }) {
+export function CreatorProfileForm({ profile, defaultName, uploadsEnabled = true }: { profile?: CreatorProfile | null; defaultName?: string; uploadsEnabled?: boolean }) {
   const [state, action] = useActionState(saveCreatorProfileAction, null);
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
   const values = state && !state.ok ? state.values ?? {} : {};
@@ -39,8 +40,8 @@ export function CreatorProfileForm({ profile, defaultName }: { profile?: Creator
           <Field label="Username" htmlFor="username" error={errors.username} required hint="Public URL: /creators/username. Also used in your referral codes.">
             <Input id="username" name="username" defaultValue={dv("username", profile?.username)} placeholder="arjuntech" required aria-invalid={!!errors.username} />
           </Field>
-          <Field label="Profile image URL" htmlFor="profileImageUrl" error={errors.profileImageUrl} className="sm:col-span-2">
-            <Input id="profileImageUrl" name="profileImageUrl" type="url" defaultValue={dv("profileImageUrl", profile?.profileImageUrl)} placeholder="https://…/me.jpg" aria-invalid={!!errors.profileImageUrl} />
+          <Field label="Profile photo" htmlFor="profileImageUrl" error={errors.profileImageUrl} className="sm:col-span-2" hint="Shown to brands reviewing your applications and on your public profile.">
+            <ImageUpload name="profileImageUrl" endpoint="/api/uploads/creator-image" initialUrl={String(dv("profileImageUrl", profile?.profileImageUrl)) || undefined} label="Upload profile photo" aspect="aspect-square max-w-48" disabled={!uploadsEnabled} />
           </Field>
           <Field label="Bio" htmlFor="bio" error={errors.bio} className="sm:col-span-2">
             <Textarea id="bio" name="bio" rows={3} defaultValue={dv("bio", profile?.bio)} placeholder="Honest gadget reviews for students and first-jobbers. 2 videos a week." />

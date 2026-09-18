@@ -8,14 +8,23 @@ export const optionalUrl = z
   .optional()
   .or(z.literal(""));
 
+/** An image reference: an upload from our storage (`/uploads/…` or a full URL) or a legacy external URL. */
+export const optionalImageRef = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((val) => val === "" || val.startsWith("/uploads/") || val.startsWith("https://") || val.startsWith("http://"), "Enter a valid image")
+  .optional()
+  .or(z.literal(""));
+
 export const brandSchema = z.object({
   name: z.string().trim().min(2, "Brand name is required").max(80),
   tagline: z.string().trim().max(120).optional().or(z.literal("")),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   industry: z.string().trim().max(60).optional().or(z.literal("")),
   website: optionalUrl,
-  logoUrl: optionalUrl,
-  coverImageUrl: optionalUrl,
+  logoUrl: optionalImageRef,
+  coverImageUrl: optionalImageRef,
   supportEmail: z.string().trim().email("Enter a valid email").max(120).optional().or(z.literal("")),
   country: z.string().trim().max(60).default("India"),
   instagramUrl: optionalUrl,

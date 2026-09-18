@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { LANDING_CACHE_TAG } from "@/lib/services/landing";
 import { assertBrandOwner } from "@/lib/auth/guards";
 import {
   CampaignError,
@@ -15,6 +16,7 @@ import { fail, firstError, ok, safeErrorMessage, zodFieldErrors, type ActionResu
 function revalidateCampaigns(campaignId?: string) {
   revalidatePath("/dashboard/brand");
   revalidatePath("/campaigns");
+  revalidateTag(LANDING_CACHE_TAG, "max");
   revalidatePath("/dashboard/brand/campaigns");
   if (campaignId) revalidatePath(`/dashboard/brand/campaigns/${campaignId}`);
 }

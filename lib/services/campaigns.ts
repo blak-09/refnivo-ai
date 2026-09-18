@@ -254,21 +254,28 @@ export type MarketplaceFilters = {
  * date window; the date check is applied in memory so the definition stays in
  * one place (`isCampaignLive`).
  */
-export async function listMarketplaceCampaigns(filters: MarketplaceFilters = {}): Promise<MarketplaceCampaign[]> {
+export async function listMarketplaceCampaigns(filters: MarketplaceFilters & { limit?: number } = {}): Promise<MarketplaceCampaign[]> {
   const now = new Date();
   const rows = await prisma.campaign.findMany({
     where: {
       status: "ACTIVE",
+      // Same rule as isCampaignLive, applied in SQL so ended/not-yet-started rows are never fetched.
+      startDate: { lte: now },
+      OR: [{ endDate: null }, { endDate: { gte: now } }],
       brand: { status: "ACTIVE" },
       product: { status: "ACTIVE", ...(filters.category ? { category: filters.category } : {}) },
       ...(filters.industry ? { brand: { status: "ACTIVE", industry: filters.industry } } : {}),
       ...(filters.type ? { campaignType: filters.type } : {}),
       ...(filters.q
         ? {
-            OR: [
-              { name: { contains: filters.q, mode: "insensitive" } },
-              { product: { name: { contains: filters.q, mode: "insensitive" } } },
-              { brand: { name: { contains: filters.q, mode: "insensitive" } } },
+            AND: [
+              {
+                OR: [
+                  { name: { contains: filters.q, mode: "insensitive" } },
+                  { product: { name: { contains: filters.q, mode: "insensitive" } } },
+                  { brand: { name: { contains: filters.q, mode: "insensitive" } } },
+                ],
+              },
             ],
           }
         : {}),
@@ -277,6 +284,7 @@ export async function listMarketplaceCampaigns(filters: MarketplaceFilters = {})
   });
 
   const live = rows.filter((c) => isCampaignLive({ status: "ACTIVE", startDate: c.startDate, endDate: c.endDate }, now));
+  const limit = (list: MarketplaceCampaign[]) => (filters.limit ? list.slice(0, filters.limit) : list);
 
   // Comparable commission value: percentage → estimated rupees on the product price.
   const commissionValue = (c: MarketplaceCampaign) =>
@@ -284,16 +292,18 @@ export async function listMarketplaceCampaigns(filters: MarketplaceFilters = {})
 
   switch (filters.sort) {
     case "commission":
-      return live.sort((a, b) => commissionValue(b) - commissionValue(a));
+      return limit(live.sort((a, b) => commissionValue(b) - commissionValue(a)));
     case "trending":
-      return live.sort((a, b) => b._count.referralClicks - a._count.referralClicks || b._count.partnerApplications - a._count.partnerApplications);
+      return limit(live.sort((a, b) => b._count.referralClicks - a._count.referralClicks || b._count.partnerApplications - a._count.partnerApplications));
     case "ending":
-      return live
-        .filter((c) => c.endDate)
-        .sort((a, b) => a.endDate!.getTime() - b.endDate!.getTime());
+      return limit(
+        live
+          .filter((c) => c.endDate)
+          .sort((a, b) => a.endDate!.getTime() - b.endDate!.getTime()),
+      );
     case "newest":
     default:
-      return live.sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0));
+      return limit(live.sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0)));
   }
 }
 

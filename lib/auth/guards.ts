@@ -15,7 +15,7 @@ export class AuthorizationError extends Error {
   }
 }
 
-export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status" | "mustChangePassword">;
+export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status" | "mustChangePassword" | "avatarUrl">;
 
 export type SessionState = { user: SessionUser; problem: null } | { user: null; problem: SessionProblem };
 
@@ -35,7 +35,7 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   if (!id) return { user: null, problem: "no-session" };
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true },
+    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true, avatarUrl: true, deletedAt: true },
   });
   const problem = classifySession({ id, sessionVersion: session?.user?.sessionVersion }, user);
   if (problem === "stale" && user) {
@@ -43,7 +43,7 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   }
   if (problem || !user) return { user: null, problem: problem ?? "not-found" };
   return {
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword, avatarUrl: user.avatarUrl },
     problem: null,
   };
 });

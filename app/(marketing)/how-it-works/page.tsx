@@ -35,7 +35,7 @@ const STEPS = [
     icon: ShoppingCartIcon,
     who: "Brand",
     title: "Record and verify orders",
-    body: "Orders carrying a referral code are recorded (manually in this MVP; store integrations later) and verified after delivery. Duplicate order references, self-referrals and paused campaigns are blocked.",
+    body: "Orders carrying a referral code are recorded (manually today; store integrations are on the roadmap) and verified after delivery. Duplicate order references, self-referrals and paused campaigns are blocked.",
   },
   {
     icon: WalletIcon,

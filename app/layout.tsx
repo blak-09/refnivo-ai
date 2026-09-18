@@ -5,8 +5,8 @@ import { MisconfiguredPage } from "@/components/system/misconfigured";
 import { isMisconfigured } from "@/lib/config/boot-state";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap", preload: false });
 
 export const metadata: Metadata = {
   title: { default: "Refnivo AI", template: "%s · Refnivo AI" },

@@ -1,11 +1,11 @@
 import "server-only";
 
 /**
- * Storage abstraction. The MVP ships a local-disk driver (writes to
- * `public/uploads`), but the interface is deliberately provider-agnostic so a
- * cloud driver (Cloudflare R2, AWS S3, Cloudinary, Supabase Storage) can be
- * dropped in later by implementing `StorageDriver` and switching `getStorage()`
- * on an env var — no calling code changes.
+ * Storage abstraction. Two drivers:
+ *   local     — writes to `public/uploads` (development / self-hosted with a disk)
+ *   supabase  — Supabase Storage public bucket over its REST API (production)
+ * The interface is provider-agnostic so R2/S3/Cloudinary can be added the same
+ * way — `StorageDriver` + a case in `getStorage()`, no calling code changes.
  *
  * Validation rules live in `image-validation.ts` (pure, unit-tested).
  */
@@ -45,7 +45,14 @@ export async function getStorage(): Promise<StorageDriver> {
   if (cached) return cached;
   const provider = (process.env.STORAGE_PROVIDER ?? "local").toLowerCase();
   switch (provider) {
-    // Future: case "r2" / "s3" / "cloudinary" / "supabase" → return that driver.
+    case "supabase": {
+      const { supabaseStorageConfig, SupabaseStorageDriver } = await import("./supabase");
+      const cfg = supabaseStorageConfig();
+      if (!cfg) throw new Error("STORAGE_PROVIDER=supabase requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+      cached = new SupabaseStorageDriver(cfg);
+      return cached;
+    }
+    // Future: case "r2" / "s3" / "cloudinary" → return that driver.
     case "local":
     default: {
       const { LocalStorageDriver } = await import("./local");

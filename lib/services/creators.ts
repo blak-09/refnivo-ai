@@ -143,7 +143,7 @@ export type PublicCreatorCard = {
 };
 
 /** Directory of creators for brands to discover. Never exposes contact details. */
-export async function listPublicCreators(opts: { q?: string; category?: string } = {}): Promise<PublicCreatorCard[]> {
+export async function listPublicCreators(opts: { q?: string; category?: string; limit?: number } = {}): Promise<PublicCreatorCard[]> {
   return prisma.creatorProfile.findMany({
     where: {
       user: { status: "APPROVED" },
@@ -159,7 +159,7 @@ export async function listPublicCreators(opts: { q?: string; category?: string }
         : {}),
     },
     orderBy: [{ verificationStatus: "desc" }, { instagramFollowers: "desc" }, { createdAt: "desc" }],
-    take: 60,
+    take: opts.limit ?? 60,
     select: {
       displayName: true,
       username: true,

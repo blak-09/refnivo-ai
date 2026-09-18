@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { optionalUrl } from "./brand";
+import { optionalImageRef, optionalUrl } from "./brand";
 
 const optionalInt = (label: string, max: number) =>
   z
@@ -22,7 +22,7 @@ export const creatorProfileSchema = z.object({
     .toLowerCase()
     .regex(/^[a-z0-9_]{3,30}$/, "3–30 characters: letters, numbers, underscores"),
   bio: z.string().trim().max(600).optional().or(z.literal("")),
-  profileImageUrl: optionalUrl,
+  profileImageUrl: optionalImageRef,
   category: z.string().trim().max(60).optional().or(z.literal("")),
   location: z.string().trim().max(80).optional().or(z.literal("")),
   instagramHandle: handle,

@@ -24,7 +24,7 @@ export default function AboutPage() {
       </ul>
       <h2>Where we are</h2>
       <p>
-        We are India-first and in MVP: order recording is manual, payouts are processed by our team, creator audience
+        We are India-first and early: order recording is manual, payouts are processed by our team, creator audience
         numbers are self-reported until verified, and every financial change is recorded in an audit log.
       </p>
     </ProsePage>

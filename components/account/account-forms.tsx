@@ -6,10 +6,11 @@ import { toast } from "sonner";
 import { changePasswordAction, updateAccountAction } from "@/app/actions/account";
 import { Input } from "@/components/ui/input";
 import { Field, FormError } from "@/components/forms/field";
+import { ImageUpload } from "@/components/uploads/image-upload";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { useFormAttempt } from "@/components/forms/use-form-attempt";
 
-export function AccountDetailsForm({ user }: { user: { name: string; email: string; phone: string | null } }) {
+export function AccountDetailsForm({ user, uploadsEnabled = true }: { user: { name: string; email: string; phone: string | null; avatarUrl?: string | null }; uploadsEnabled?: boolean }) {
   const [state, action] = useActionState(updateAccountAction, null);
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
   const values = state && !state.ok ? state.values ?? {} : {};
@@ -29,6 +30,9 @@ export function AccountDetailsForm({ user }: { user: { name: string; email: stri
       </Field>
       <Field label="Phone" htmlFor="phone" error={errors.phone}>
         <Input id="phone" name="phone" type="tel" defaultValue={values.phone ?? user.phone ?? ""} placeholder="+91 98765 43210" aria-invalid={!!errors.phone} />
+      </Field>
+      <Field label="Profile photo" htmlFor="avatarUrl" error={errors.avatarUrl} hint="Optional. Shown in your dashboard header.">
+        <ImageUpload name="avatarUrl" endpoint="/api/uploads/avatar" initialUrl={values.avatarUrl ?? user.avatarUrl ?? undefined} label="Upload photo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
       </Field>
       <div className="flex justify-end">
         <SubmitButton>Save details</SubmitButton>

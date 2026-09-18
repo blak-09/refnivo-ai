@@ -65,7 +65,7 @@ export function SiteFooter() {
       </div>
       <div className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© {new Date().getFullYear()} Refnivo AI. MVP build.</p>
+          <p>© {new Date().getFullYear()} Refnivo AI. All rights reserved.</p>
           <p>Payouts are processed manually by the Refnivo team in this version.</p>
         </div>
       </div>

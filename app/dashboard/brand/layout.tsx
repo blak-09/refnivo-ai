@@ -12,7 +12,7 @@ export default async function BrandLayout({ children }: { children: React.ReactN
       roleLabel="Brand owner"
       workspaceName={brand.name}
       workspaceSubtitle={brand.industry ?? "Brand"}
-      user={{ name: user.name, email: user.email }}
+      user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl }}
       unreadNotifications={unreadNotifications}
       onLogout={logoutAction}
     >

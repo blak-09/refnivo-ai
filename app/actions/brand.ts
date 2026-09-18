@@ -1,6 +1,7 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { LANDING_CACHE_TAG } from "@/lib/services/landing";
 import { redirect } from "next/navigation";
 import { assertRole, assertBrandOwner } from "@/lib/auth/guards";
 import { createBrand, getBrandForOwner, updateBrand } from "@/lib/services/brands";
@@ -57,5 +58,6 @@ export async function updateBrandAction(_prev: ActionResult | null, formData: Fo
   }
   revalidatePath("/dashboard/brand", "layout");
   revalidatePath("/brands");
+  revalidateTag(LANDING_CACHE_TAG, "max");
   return ok(undefined);
 }

@@ -145,6 +145,19 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
    log in again with the new password, then open `/dashboard/admin/registrations` and confirm approvals work.
 5. Rotate `AUTH_SECRET` if it was ever shared in chat/tickets — rotating invalidates all sessions (users simply log in again).
 
+### Admin cannot sign in?
+
+```bash
+powershell -ExecutionPolicy Bypass -Command "$env:DATABASE_URL = Read-Host 'Production DATABASE_URL' ; $env:ADMIN_EMAIL = 'you@company.com' ; npm.cmd run admin:check ; Remove-Item Env:DATABASE_URL"
+```
+
+`admin:check` is read-only and prints the account's state (role, status, password set, forced rotation, Google link,
+last login, schema currency) plus the exact next step. Typical causes: the bootstrap password was lost (rotate:
+run `scripts\create-admin.ps1` again and answer **y** to "Rotate the password of an existing admin"), the account
+is still on its first sign-in (it lands on Settings and asks for the bootstrap password + a new one), the login
+limiter (10 attempts / 10 min per e-mail), or Vercel's `DATABASE_URL` pointing at a different project than the one
+the admin was created in.
+
 ## 8. Start-up validation, rate limiting and security logs
 
 - On boot in production, `instrumentation.ts` runs `validateProductionEnv()` and **refuses to start** if `AUTH_SECRET` (≥ 32 chars),
@@ -205,7 +218,38 @@ INSERT INTO "_prisma_migrations" ("id","checksum","finished_at","migration_name"
 ON CONFLICT DO NOTHING;
 ```
 
-## 10. Manual payouts, e-mail and notifications
+## 10. Image uploads (Supabase Storage)
+
+One upload pipeline, `POST /api/uploads/[kind]` (`product-image`, `brand-logo`, `brand-cover`, `creator-image`,
+`avatar`): session → scope check (brand owner / creator / any user) → rate limit → size + declared type → byte
+sniff (JPG/PNG/WebP only; SVG, executables and mismatched types are rejected) → stored under
+`<folder>/<owner id>/<hash>.<ext>`. The client never chooses the name, folder or content type.
+
+Production uses the Supabase project that already hosts the database:
+
+1. Supabase → Storage → **New bucket** → name `uploads`, **Public bucket: on** (images are served by URL).
+2. Project settings → API: copy the project URL and the **service_role** key (server-only secret).
+3. Vercel → Environment Variables (Production): `STORAGE_PROVIDER=supabase`, `SUPABASE_URL`,
+   `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_STORAGE_BUCKET=uploads`,
+   `NEXT_PUBLIC_STORAGE_PUBLIC_URL=https://<ref>.supabase.co/storage/v1/object/public/uploads` → redeploy.
+4. `/api/health` must show no storage warning; the product / brand / creator / account forms then show the uploader.
+
+Uploaded images (and local `/uploads/…`) are served through `next/image` (resized, AVIF/WebP, lazy). Images pasted
+from other hosts (legacy records) stay plain `<img>` so the optimizer can never be used as an open proxy
+(`lib/storage/hosted-image.ts`).
+
+## 11. Account deletion
+
+Settings → **Danger zone** → *Delete my account* → dialog (typed `DELETE` + current password; Google-only accounts
+confirm with the phrase). Policy (`lib/services/account-deletion.ts`): personal data is removed / anonymised (name,
+e-mail — freed for re-registration — phone, photo, password, Google link, notifications, reset tokens, creator
+profile); ledger rows (referrals, conversions, commissions, rewards, payout history) and audit rows are **kept**
+attached to the anonymised user; a brand owner's brand is suspended, its campaigns ended and partner links disabled
+(partners are notified); an **open payout request blocks deletion**; an unrequested balance is forfeited (the dialog
+says so); **admins cannot self-delete** (remove admin access first; the last admin is protected). Every existing
+session is invalidated (`sessionVersion` bump) and the user is signed out to `/auth/login?reason=account-deleted`.
+
+## 12. Manual payouts, e-mail and notifications
 
 - **Payouts / redemptions** are manual: creators and customers request settlement from Earnings / Rewards once their
   approved balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins review at `/dashboard/admin/payouts`, settle off-platform and
@@ -239,7 +283,7 @@ ON CONFLICT DO NOTHING;
   recomputed, the requester is told, and the audit row carries the adjustment. A request whose entries were all
   reversed cannot be approved — reject it so the user sees why.
 
-## 11. Pre-launch checklist
+## 13. Pre-launch checklist
 
 - [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; `PAYMENT_PROVIDER=NONE`, `PAYMENTS_ENABLED=false`
 - [ ] `SIGNUP_APPROVAL` chosen deliberately (`auto` = self-service launch, `manual` = gated)
@@ -248,8 +292,9 @@ ON CONFLICT DO NOTHING;
 - [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)
 - [ ] `CRON_SECRET` set in Vercel and, with `CRON_URL`, as GitHub repository secrets (outbox retries)
 - [ ] `/api/health` shows no `warnings` you have not consciously accepted (storage, rate limit, e-mail, cron)
-- [ ] Image uploads: until a cloud storage driver exists, brands see "Uploads unavailable" on the product form in
-      production (`STORAGE_PROVIDER=local` is refused there unless `STORAGE_ALLOW_LOCAL=1` on a persistent disk)
+- [ ] Image uploads: `STORAGE_PROVIDER=supabase` + `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (+ a public bucket,
+      default `uploads`) and `NEXT_PUBLIC_STORAGE_PUBLIC_URL`; with `local` the forms show "Uploads unavailable" in
+      production (`STORAGE_ALLOW_LOCAL=1` only on a self-hosted server with a persistent disk)
 - [ ] `/dashboard/admin/health` shows the database reachable, migrations applied and no configuration errors
 - [ ] Separate values set for Preview
 - [ ] Backup taken; `_prisma_migrations` baselined (section 3); `npx prisma migrate status` clean

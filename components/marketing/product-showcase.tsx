@@ -79,7 +79,13 @@ export function ProductShowcase({ product, brand, commissionLabel, creators, qrD
         href={href}
         className="absolute top-1/2 left-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-indigo-100 bg-white p-3 shadow-xl shadow-indigo-500/15 transition-transform hover:-translate-y-[52%]"
       >
-        <ProductThumb src={product?.imageUrl} name={product?.name ?? "Featured product"} className="aspect-square w-full rounded-xl border-0 bg-linear-to-br from-slate-50 to-indigo-50" />
+        <ProductThumb
+          src={product?.imageUrl}
+          name={product?.name ?? "Featured product"}
+          className="aspect-square w-full rounded-xl border-0 bg-linear-to-br from-slate-50 to-indigo-50"
+          priority
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
+        />
         <div className="mt-3 flex items-center gap-2">
           {brand ? <BrandLogo src={brand.logoUrl} name={brand.name} className="size-6 text-[10px]" /> : null}
           <div className="min-w-0">

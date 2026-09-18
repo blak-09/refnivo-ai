@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { ProductThumb } from "@/components/products/product-thumb";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BellIcon, LogOutIcon, MenuIcon } from "lucide-react";
@@ -17,7 +18,7 @@ type ShellProps = {
   roleLabel: string;
   workspaceName: string;
   workspaceSubtitle?: string;
-  user: { name: string; email: string };
+  user: { name: string; email: string; avatarUrl?: string | null };
   /** Unread in-app notifications (server-computed). */
   unreadNotifications?: number;
   onLogout: () => Promise<void>;
@@ -86,8 +87,8 @@ function SidebarBody({
       </div>
       <Separator />
       <div className="flex items-center gap-2 p-3">
-        <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary uppercase">
-          {user.name.slice(0, 2)}
+        <div className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 text-xs font-semibold text-primary uppercase">
+          {user.avatarUrl ? <ProductThumb src={user.avatarUrl} name={user.name} className="size-8 rounded-full border-0 bg-transparent" sizes="32px" /> : user.name.slice(0, 2)}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{user.name}</p>

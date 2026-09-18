@@ -7,6 +7,7 @@ import { requireUser } from "@/lib/auth/guards";
 import { roleHome } from "@/lib/auth/roles";
 import { getBrandForOwner } from "@/lib/services/brands";
 import { getCreatorProfile } from "@/lib/services/creators";
+import { uploadsAvailable } from "@/lib/storage/availability";
 
 export const metadata: Metadata = { title: "Onboarding" };
 
@@ -28,7 +29,7 @@ export default async function OnboardingPage() {
             <p className="mt-2 text-sm text-muted-foreground">This is what creators and customers will see. Next you will add your first product.</p>
           </div>
           <AuthCard title="Brand profile" wide>
-            <BrandForm mode="create" />
+            <BrandForm mode="create" uploadsEnabled={uploadsAvailable()} />
           </AuthCard>
         </div>
       </div>
@@ -46,7 +47,7 @@ export default async function OnboardingPage() {
             <p className="mt-2 text-sm text-muted-foreground">Brands review this profile when you apply to their campaigns. You can edit it any time.</p>
           </div>
           <AuthCard title="Creator profile" wide>
-            <CreatorProfileForm defaultName={user.name} />
+            <CreatorProfileForm defaultName={user.name} uploadsEnabled={uploadsAvailable()} />
           </AuthCard>
         </div>
       </div>

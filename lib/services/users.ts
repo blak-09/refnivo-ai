@@ -129,12 +129,12 @@ export async function rejectUser(userId: string, adminId: string, reason: string
   });
 }
 
-export async function updateAccount(userId: string, input: { name: string; phone?: string | null }) {
+export async function updateAccount(userId: string, input: { name: string; phone?: string | null; avatarUrl?: string | null }) {
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.update({
       where: { id: userId },
-      data: { name: input.name, phone: input.phone || null },
-      select: { id: true, name: true, phone: true },
+      data: { name: input.name, phone: input.phone || null, ...(input.avatarUrl !== undefined ? { avatarUrl: input.avatarUrl || null } : {}) },
+      select: { id: true, name: true, phone: true, avatarUrl: true },
     });
     await recordAudit({ userId, action: "ACCOUNT_UPDATED", entityType: "User", entityId: userId }, tx);
     return user;

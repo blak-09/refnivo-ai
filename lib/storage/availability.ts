@@ -7,7 +7,8 @@
  */
 export function uploadsAvailable(env: NodeJS.ProcessEnv = process.env): boolean {
   const provider = (env.STORAGE_PROVIDER ?? "local").trim().toLowerCase();
-  if (provider !== "local") return true;
+  if (provider === "supabase") return !!env.SUPABASE_URL?.trim() && !!env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (provider !== "local") return false;
   if (env.NODE_ENV !== "production") return true;
   return env.STORAGE_ALLOW_LOCAL === "1";
 }

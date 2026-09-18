@@ -2,9 +2,12 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/dashboard/primitives";
 import { AccountDetailsForm, ChangePasswordForm } from "@/components/account/account-forms";
+import { DeleteAccountCard } from "@/components/account/delete-account";
+import { previewAccountDeletion } from "@/lib/services/account-deletion";
 import { NotificationPreferences } from "@/components/account/notification-preferences";
 import { prisma } from "@/lib/db/prisma";
 import { isEmailConfigured } from "@/lib/email";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/guards";
 
@@ -16,12 +19,14 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
       name: true,
       email: true,
       phone: true,
+      avatarUrl: true,
       createdAt: true,
       emailNotifications: true,
       passwordHash: true,
     },
   });
   const hasPassword = full.passwordHash !== null;
+  const deletion = await previewAccountDeletion(user.id);
   // Separate query, tolerant of a deploy that lands before the google_oauth
   // migration: the page must never 500 over an informational line.
   const linkedProviders = await prisma.oAuthAccount
@@ -47,7 +52,7 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
             <CardDescription>Your name is shown to partners you work with.</CardDescription>
           </CardHeader>
           <CardContent>
-            <AccountDetailsForm user={full} />
+            <AccountDetailsForm user={full} uploadsEnabled={uploadsAvailable()} />
           </CardContent>
         </Card>
         <Card>
@@ -82,6 +87,15 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
           </CardContent>
         </Card>
         {extra}
+        <Card className="border-destructive/40 lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-destructive">Danger zone</CardTitle>
+            <CardDescription>Actions here are permanent.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DeleteAccountCard preview={deletion} />
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

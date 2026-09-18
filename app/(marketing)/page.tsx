@@ -1,5 +1,4 @@
 import Link from "next/link";
-import QRCode from "qrcode";
 import {
   BarChart3Icon,
   GiftIcon,
@@ -20,41 +19,11 @@ import { CTAButton } from "@/components/marketing/cta-button";
 import { FloatingProfile } from "@/components/marketing/product-showcase";
 import { shortCommission } from "@/components/campaigns/campaign-summary";
 import { EmptyState } from "@/components/dashboard/primitives";
-import { prisma } from "@/lib/db/prisma";
-import { listMarketplaceCampaigns } from "@/lib/services/campaigns";
-import { listPublicBrands } from "@/lib/services/brands";
-import { listPublicCreators } from "@/lib/services/creators";
-import { appOrigin } from "@/lib/services/links";
-
-/** The landing page must render even if the database is unreachable. */
-async function safe<T>(label: string, fn: () => Promise<T>, fallback: T): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    console.error(`[landing] ${label} failed`, err instanceof Error ? err.message : err);
-    return fallback;
-  }
-}
+import { getLandingData, getMarketplaceQr } from "@/lib/services/landing";
 
 export default async function LandingPage() {
-  const [campaigns, brands, creators, stats, qrDataUrl] = await Promise.all([
-    safe("campaigns", () => listMarketplaceCampaigns({ sort: "trending" }), []),
-    safe("brands", () => listPublicBrands(), []),
-    safe("creators", () => listPublicCreators(), []),
-    safe(
-      "stats",
-      async () => {
-        const [activeCampaigns, brandCount, creatorCount] = await Promise.all([
-          prisma.campaign.count({ where: { status: "ACTIVE" } }),
-          prisma.brand.count({ where: { status: "ACTIVE" } }),
-          prisma.creatorProfile.count(),
-        ]);
-        return { activeCampaigns, brandCount, creatorCount };
-      },
-      null,
-    ),
-    safe("qr", () => QRCode.toDataURL(`${appOrigin()}/campaigns`, { margin: 1, width: 128, color: { dark: "#1e1b4b", light: "#ffffff" } }), null),
-  ]);
+  // Cached for 60 s and bounded to what is shown (lib/services/landing.ts); renders even if the database is down.
+  const [{ campaigns, brands, creators, stats }, qrDataUrl] = await Promise.all([getLandingData(), getMarketplaceQr()]);
 
   const featured = campaigns.slice(0, 4);
   const hero = campaigns[0] ?? null;

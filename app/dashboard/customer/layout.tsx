@@ -12,7 +12,7 @@ export default async function CustomerLayout({ children }: { children: React.Rea
       roleLabel="Customer"
       workspaceName={user.name}
       workspaceSubtitle="Customer rewards"
-      user={{ name: user.name, email: user.email }}
+      user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl }}
       unreadNotifications={unreadNotifications}
       onLogout={logoutAction}
     >

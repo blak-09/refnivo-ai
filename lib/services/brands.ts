@@ -78,7 +78,7 @@ export const publicBrandSelect = {
   createdAt: true,
 } satisfies Prisma.BrandSelect;
 
-export async function listPublicBrands(opts: { industry?: string; q?: string } = {}) {
+export async function listPublicBrands(opts: { industry?: string; q?: string; limit?: number } = {}) {
   const brands = await prisma.brand.findMany({
     where: {
       status: "ACTIVE",
@@ -86,6 +86,7 @@ export async function listPublicBrands(opts: { industry?: string; q?: string } =
       ...(opts.q ? { name: { contains: opts.q, mode: "insensitive" } } : {}),
     },
     orderBy: [{ verificationStatus: "desc" }, { createdAt: "desc" }],
+    ...(opts.limit ? { take: opts.limit } : {}),
     select: {
       ...publicBrandSelect,
       _count: { select: { products: { where: { status: "ACTIVE" } }, campaigns: { where: { status: "ACTIVE" } } } },

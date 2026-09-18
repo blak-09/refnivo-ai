@@ -20,10 +20,10 @@ export type SessionProblem = "no-session" | "not-found" | "stale" | "suspended" 
 
 export function classifySession(
   token: { id?: string | null; sessionVersion?: unknown } | null | undefined,
-  dbUser: { status: UserStatus; sessionVersion: number } | null,
+  dbUser: { status: UserStatus; sessionVersion: number; deletedAt?: Date | null } | null,
 ): SessionProblem | null {
   if (!token?.id) return "no-session";
-  if (!dbUser) return "not-found";
+  if (!dbUser || dbUser.deletedAt) return "not-found";
   if (!isSessionCurrent(token.sessionVersion, dbUser.sessionVersion)) return "stale";
   if (dbUser.status === "SUSPENDED") return "suspended";
   if (dbUser.status === "PENDING") return "pending";

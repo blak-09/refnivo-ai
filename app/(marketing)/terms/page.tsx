@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Terms" };
 
 export default function TermsPage() {
   return (
-    <ProsePage title="Terms of use" intro="Plain-language terms for the Refnivo AI MVP.">
+    <ProsePage title="Terms of use" intro="Plain-language terms for using Refnivo AI.">
       <h2>Campaigns and rewards</h2>
       <ul>
         <li>Brands define and fund their own creator commissions and customer referral rewards.</li>

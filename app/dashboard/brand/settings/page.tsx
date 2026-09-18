@@ -33,7 +33,7 @@ export default async function BrandSettingsPage() {
               </div>
             </dl>
             <p className="mt-3 text-xs text-muted-foreground">
-              Automatic order import from Shopify / WooCommerce, team members and billing are on the roadmap and not part of this MVP.
+              Automatic order import from Shopify / WooCommerce, team members and billing are on the roadmap and not available yet.
             </p>
           </CardContent>
         </Card>

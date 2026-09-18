@@ -228,6 +228,10 @@ model User {
   emailNotifications Boolean   @default(true)
   suspendedAt        DateTime?
   suspensionReason   String?
+  /// Self-service account deletion: the row is kept (anonymised) so ledger and
+  /// audit history stay intact; status becomes SUSPENDED and every login path
+  /// treats the account as gone. See lib/services/account-deletion.ts.
+  deletedAt          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

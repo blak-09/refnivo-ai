@@ -12,7 +12,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       roleLabel="Admin"
       workspaceName="Refnivo AI"
       workspaceSubtitle="Platform admin"
-      user={{ name: user.name, email: user.email }}
+      user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl }}
       unreadNotifications={unreadNotifications}
       onLogout={logoutAction}
     >

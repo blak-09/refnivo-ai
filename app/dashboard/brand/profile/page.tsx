@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import type { Metadata } from "next";
 import { ExternalLinkIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,7 +34,7 @@ export default async function BrandProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <BrandForm mode="edit" brand={brand} />
+          <BrandForm mode="edit" brand={brand} uploadsEnabled={uploadsAvailable()} />
         </CardContent>
       </Card>
     </div>

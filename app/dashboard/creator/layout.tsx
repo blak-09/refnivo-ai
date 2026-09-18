@@ -12,7 +12,7 @@ export default async function CreatorLayout({ children }: { children: React.Reac
       roleLabel="Creator"
       workspaceName={profile.displayName}
       workspaceSubtitle={`@${profile.username}`}
-      user={{ name: user.name, email: user.email }}
+      user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl }}
       unreadNotifications={unreadNotifications}
       onLogout={logoutAction}
     >
