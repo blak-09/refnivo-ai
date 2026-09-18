@@ -1,11 +1,46 @@
 import "server-only";
 import { prisma } from "./prisma";
+import { describeError, errorHint, logServerError } from "@/lib/utils/server-log";
 
-export type DatabaseHealth = { ok: true; latencyMs: number } | { ok: false; latencyMs: number };
+/**
+ * Coarse, operator-facing reason for a failed probe. Derived from the error
+ * class/code only — never from the message, host or credentials.
+ */
+export type DatabaseFailureReason = "timeout" | "auth-failed" | "unreachable" | "database-not-found" | "pooler-misconfigured" | "unknown";
+
+export type DatabaseHealth =
+  | { ok: true; latencyMs: number }
+  | { ok: false; latencyMs: number; reason: DatabaseFailureReason; code: string | null; hint: string | null };
+
+export function classifyDatabaseError(err: unknown): { reason: DatabaseFailureReason; code: string | null; hint: string | null } {
+  const summary = describeError(err);
+  const hint = errorHint(summary);
+  if (summary.message === "timeout") return { reason: "timeout", code: null, hint: "no reply from the database within the time limit — wrong host/port, paused project, or an IPv6-only direct host from an IPv4 runtime; use the pooler URL" };
+  switch (summary.code) {
+    case "P1000":
+      return { reason: "auth-failed", code: summary.code, hint };
+    case "P1001":
+    case "P1002":
+    case "P1017":
+    case "ECONNREFUSED":
+    case "ENOTFOUND":
+    case "ETIMEDOUT":
+      return { reason: "unreachable", code: summary.code, hint };
+    case "P1003":
+      return { reason: "database-not-found", code: summary.code, hint: "the database name in DATABASE_URL does not exist" };
+    case "42P05":
+      return { reason: "pooler-misconfigured", code: summary.code, hint };
+    default:
+      if (/prepared statement/i.test(summary.message)) return { reason: "pooler-misconfigured", code: summary.code, hint };
+      if (/Tenant or user not found/i.test(summary.message)) return { reason: "auth-failed", code: summary.code, hint: "pooler rejected the user — the username must be postgres.<project-ref> on the Supabase pooler" };
+      return { reason: "unknown", code: summary.code, hint };
+  }
+}
 
 /**
  * Cheap liveness probe. Never throws and never returns connection details —
- * a failure is reported as `ok: false` only (the reason goes to the server log).
+ * a failure carries only a coarse reason + error code (the redacted detail
+ * goes to the server log).
  */
 export async function checkDatabase(timeoutMs = 3000): Promise<DatabaseHealth> {
   const started = Date.now();
@@ -14,7 +49,8 @@ export async function checkDatabase(timeoutMs = 3000): Promise<DatabaseHealth> {
     await Promise.race([prisma.$queryRaw`SELECT 1`, timeout]);
     return { ok: true, latencyMs: Date.now() - started };
   } catch (err) {
-    console.error("[health] database check failed", err instanceof Error ? err.message : "unknown error");
-    return { ok: false, latencyMs: Date.now() - started };
+    logServerError("health", err);
+    const c = classifyDatabaseError(err);
+    return { ok: false, latencyMs: Date.now() - started, ...c };
   }
 }

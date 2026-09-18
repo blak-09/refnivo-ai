@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/health — uptime probe for load balancers / monitors.
  *  200  app + database respond
- *  503  database down, or the deployment is misconfigured (lists the failing
+ *  503  database down (coarse reason + error code + hint, never host or
+ *       credentials), or the deployment is misconfigured (lists the failing
  *       rules by variable NAME so an operator can fix it without log access;
  *       values are never included)
  * Deliberately exposes no versions, hostnames or env values.
@@ -22,6 +23,8 @@ export async function GET() {
     );
   }
   const db = await checkDatabase();
-  const body = { ok: db.ok, status: db.ok ? "ok" : "database-down", db: db.ok ? "up" : "down", latencyMs: db.latencyMs, time: new Date().toISOString() };
+  const body = db.ok
+    ? { ok: true, status: "ok", db: "up", latencyMs: db.latencyMs, time: new Date().toISOString() }
+    : { ok: false, status: "database-down", db: "down", reason: db.reason, code: db.code, hint: db.hint, latencyMs: db.latencyMs, time: new Date().toISOString() };
   return NextResponse.json(body, { status: db.ok ? 200 : 503, headers: { "Cache-Control": "no-store" } });
 }

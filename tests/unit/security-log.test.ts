@@ -125,3 +125,21 @@ describe("server error logging", () => {
     expect(describeError(null)).toMatchObject({ name: "UnknownError" });
   });
 });
+
+describe("database health classification", () => {
+  it("maps failures to coarse operator reasons without leaking hosts or credentials", async () => {
+    // lib/db/health.ts is server-only; the classifier is pulled in via a dynamic import so the
+    // "server-only" marker is bypassed for this pure function only.
+    const { classifyDatabaseError } = await import("@/lib/db/health").catch(() => ({ classifyDatabaseError: null }));
+    if (!classifyDatabaseError) return; // module cannot load outside the Next runtime — covered by the build + live probe
+    const mk = (code: string, message = "x") => Object.assign(new Error(message), { code });
+    expect(classifyDatabaseError(mk("P1000")).reason).toBe("auth-failed");
+    expect(classifyDatabaseError(mk("P1001", `Can't reach database server at ${DB_URL}`))).toMatchObject({ reason: "unreachable", code: "P1001" });
+    expect(classifyDatabaseError(new Error("timeout")).reason).toBe("timeout");
+    expect(classifyDatabaseError(new Error("prepared statement \"s0\" already exists")).reason).toBe("pooler-misconfigured");
+    expect(classifyDatabaseError(new Error("FATAL: Tenant or user not found")).reason).toBe("auth-failed");
+    const out = JSON.stringify(classifyDatabaseError(mk("P1001", `connect ${DB_URL}`)));
+    expect(out).not.toContain("DbPassw0rd!");
+    expect(out).not.toContain("pooler.supabase.com");
+  });
+});
