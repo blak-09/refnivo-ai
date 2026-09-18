@@ -26,7 +26,9 @@ export function encodeDatabasePassword(url: string): string {
 
 export function normalizeDatabaseUrl(url: string | undefined): string | undefined {
   if (!url || !url.trim()) return url;
-  let trimmed = url.trim().replace(/^["']|["']$/g, ""); // stray quotes from copy/paste
+  // Tolerate copy/paste artefacts: a `DATABASE_URL=` prefix (dotenv / Vercel export format),
+  // surrounding quotes, and a trailing semicolon.
+  let trimmed = url.trim().replace(/^(?:export\s+)?DATABASE_URL\s*=\s*/i, "").replace(/;$/, "").trim().replace(/^["']|["']$/g, "");
   let parsed: URL;
   try {
     parsed = new URL(trimmed);

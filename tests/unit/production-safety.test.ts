@@ -302,6 +302,12 @@ describe("DATABASE_URL password encoding", () => {
     expect(u.searchParams.get("pgbouncer")).toBe("true");
   });
 
+  it("strips a DATABASE_URL= prefix, quotes and trailing semicolon from pasted dotenv-style values", () => {
+    const uri = "postgresql://postgres.ref:Pass123@aws-0-ap-south-1.pooler.supabase.com:6543/postgres";
+    expect(normalizeDatabaseUrl(`DATABASE_URL="${uri}"`)).toBe(`${uri}?pgbouncer=true`);
+    expect(normalizeDatabaseUrl(`export DATABASE_URL='${uri}';`)).toBe(`${uri}?pgbouncer=true`);
+  });
+
   it("leaves already-valid or already-encoded passwords untouched", () => {
     const ok = "postgresql://postgres.ref:Pass123@host.example:5432/db";
     expect(encodeDatabasePassword(ok)).toBe(ok);

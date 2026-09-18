@@ -22,13 +22,30 @@ Write-Host "Refnivo AI - create the bootstrap admin" -ForegroundColor Cyan
 Write-Host "Values are typed hidden and used only for this run." -ForegroundColor DarkGray
 Write-Host ""
 
-$url = Read-Secret "Database URL (the DATABASE_URL value from Vercel, typed hidden)"
+Write-Host "Paste the connection URI from Supabase > Connect > Transaction pooler (the line that starts with" -ForegroundColor DarkGray
+Write-Host "postgresql://). Replace [YOUR-PASSWORD] with the real password first." -ForegroundColor DarkGray
+$url = Read-Secret "Database URL (typed hidden)"
 if (-not $url) { Write-Host "No database URL given - aborting." -ForegroundColor Red; exit 1 }
 
+# Tolerate copy/paste artefacts: DATABASE_URL= prefix, quotes, trailing semicolon, whitespace.
+$url = $url.Trim()
+$url = [regex]::Replace($url, '^(export\s+)?DATABASE_URL\s*=\s*', '', 'IgnoreCase')
+$url = $url.Trim().TrimEnd(';').Trim('"', "'").Trim()
+
+if ($url -notmatch '^postgres(ql)?://') {
+  Write-Host "The value must start with postgresql:// - it looks like something else was pasted. Aborting." -ForegroundColor Red; exit 1
+}
+if ($url -match '\[YOUR-PASSWORD\]') {
+  Write-Host "The placeholder [YOUR-PASSWORD] is still in the URL - replace it with the real password. Aborting." -ForegroundColor Red; exit 1
+}
 try {
   $host_ = ([Uri]$url).Host
 } catch {
-  Write-Host "That does not look like a valid postgresql:// URL - aborting." -ForegroundColor Red; exit 1
+  $host_ = ""
+}
+if (-not $host_) {
+  # A password with URL-illegal characters can confuse the parser; fall back to a plain split.
+  if ($url -match '@([^@/:?]+)(:\d+)?/') { $host_ = $Matches[1] } else { Write-Host "Could not find the host in the URL - aborting." -ForegroundColor Red; exit 1 }
 }
 Write-Host "Target host: $host_" -ForegroundColor Yellow
 $confirm = Read-Host "Type YES to confirm this is the database you want to create the admin in"
