@@ -6,7 +6,7 @@ import { describeError, errorHint, logServerError } from "@/lib/utils/server-log
  * Coarse, operator-facing reason for a failed probe. Derived from the error
  * class/code only — never from the message, host or credentials.
  */
-export type DatabaseFailureReason = "timeout" | "auth-failed" | "unreachable" | "database-not-found" | "pooler-misconfigured" | "unknown";
+export type DatabaseFailureReason = "timeout" | "auth-failed" | "unreachable" | "database-not-found" | "pooler-misconfigured" | "invalid-url" | "tls" | "capacity" | "unknown";
 
 export type DatabaseHealth =
   | { ok: true; latencyMs: number }
@@ -30,10 +30,24 @@ export function classifyDatabaseError(err: unknown): { reason: DatabaseFailureRe
       return { reason: "database-not-found", code: summary.code, hint: "the database name in DATABASE_URL does not exist" };
     case "42P05":
       return { reason: "pooler-misconfigured", code: summary.code, hint };
-    default:
-      if (/prepared statement/i.test(summary.message)) return { reason: "pooler-misconfigured", code: summary.code, hint };
-      if (/Tenant or user not found/i.test(summary.message)) return { reason: "auth-failed", code: summary.code, hint: "pooler rejected the user — the username must be postgres.<project-ref> on the Supabase pooler" };
-      return { reason: "unknown", code: summary.code, hint };
+    default: {
+      const m = summary.message;
+      const code = summary.code ?? summary.name ?? null;
+      if (/prepared statement/i.test(m)) return { reason: "pooler-misconfigured", code, hint };
+      if (/Tenant or user not found/i.test(m)) return { reason: "auth-failed", code, hint: "the pooler rejected the user — on the Supabase pooler the username must be postgres.<project-ref>" };
+      if (/password authentication failed|authentication failed/i.test(m)) return { reason: "auth-failed", code, hint: "wrong database password in DATABASE_URL" };
+      if (/must start with the protocol|invalid port|Error parsing connection string|Error validating datasource|invalid connection string|the URL/i.test(m)) {
+        return { reason: "invalid-url", code, hint: "DATABASE_URL is not a valid postgresql:// connection string — check for stray quotes, spaces, brackets or an unencoded password" };
+      }
+      if (/does not exist/i.test(m) && /database/i.test(m)) return { reason: "database-not-found", code, hint: "the database name in DATABASE_URL does not exist" };
+      if (/SSL|TLS|certificate/i.test(m)) return { reason: "tls", code, hint: "TLS negotiation failed — add ?sslmode=require (Neon) or use the Supabase pooler URL" };
+      if (/too many connections|MaxClients|remaining connection slots/i.test(m)) return { reason: "capacity", code, hint: "the database is out of connections — use the transaction pooler URL (port 6543, pgbouncer=true)" };
+      if (/ECONNRESET|server closed the connection|Connection terminated|Closed|connection refused|getaddrinfo|ENOTFOUND|ETIMEDOUT|timed out|Can't reach/i.test(m)) {
+        return { reason: "unreachable", code, hint: "the host did not answer — check the host/port, that the project is not paused, and use the pooler URL (direct Supabase hosts are IPv6-only)" };
+      }
+      if (/starting up|shutting down|recovery/i.test(m)) return { reason: "unreachable", code, hint: "the database is restarting — retry shortly" };
+      return { reason: "unknown", code, hint };
+    }
   }
 }
 
