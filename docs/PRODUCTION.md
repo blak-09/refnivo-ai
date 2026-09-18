@@ -96,6 +96,8 @@ Remote targets additionally require `DB_DEPLOY_CONFIRM_HOST` to equal the parsed
 migration history yet (P3005) so the baseline in section 3 can never be skipped by accident.
 The developer commands `db:migrate`, `db:push:local` and `db:reset:local` run only against `localhost` (no override flag exists).
 On Vercel, run migrations from CI or your machine **before** promoting the deployment; do not run them in the build step.
+The build script runs `prisma generate` explicitly (`prisma generate && next build`): Vercel restores cached `node_modules`
+and may skip `postinstall`, which would otherwise ship a Prisma client that predates the latest schema change.
 
 ## 5. Connection pooling
 
