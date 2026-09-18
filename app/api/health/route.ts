@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getBootState } from "@/lib/config/boot-state";
 import { describeDatabaseTarget } from "@/lib/config/database-url";
 import { checkDatabase, checkSchema } from "@/lib/db/health";
+import { describeStorage } from "@/lib/storage/availability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -35,6 +36,8 @@ export async function GET() {
         ...(schema && !schema.ok ? { missingMigration: schema.missing, hint: schema.hint } : {}),
         // Non-fatal configuration gaps (rate limiting, e-mail, storage, cron) — rule text only, never values.
         ...(boot.warnings.length ? { warnings: boot.warnings } : {}),
+        // Where uploads go (provider, project host, bucket) — no keys.
+        storage: describeStorage(process.env),
         latencyMs: db.latencyMs,
         time: new Date().toISOString(),
       }

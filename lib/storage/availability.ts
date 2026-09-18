@@ -12,3 +12,19 @@ export function uploadsAvailable(env: NodeJS.ProcessEnv = process.env): boolean 
   if (env.NODE_ENV !== "production") return true;
   return env.STORAGE_ALLOW_LOCAL === "1";
 }
+
+/** Operator-facing, secret-free description of the storage configuration (shown on /api/health). */
+export function describeStorage(env: NodeJS.ProcessEnv = process.env): { provider: string; available: boolean; host?: string; bucket?: string; publicBase?: string } {
+  const provider = (env.STORAGE_PROVIDER ?? "local").trim().toLowerCase();
+  const out: { provider: string; available: boolean; host?: string; bucket?: string; publicBase?: string } = { provider, available: uploadsAvailable(env) };
+  if (provider === "supabase") {
+    try {
+      out.host = env.SUPABASE_URL ? new URL(env.SUPABASE_URL.trim()).host : undefined;
+    } catch {
+      out.host = "(invalid SUPABASE_URL)";
+    }
+    out.bucket = env.SUPABASE_STORAGE_BUCKET?.trim() || "uploads";
+    out.publicBase = env.NEXT_PUBLIC_STORAGE_PUBLIC_URL?.trim() || undefined;
+  }
+  return out;
+}
