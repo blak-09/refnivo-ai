@@ -52,6 +52,31 @@ export function classifyDatabaseError(err: unknown): { reason: DatabaseFailureRe
 }
 
 /**
+ * The newest migration the running code REQUIRES. Bump it whenever a migration
+ * adds something the app reads. Lets /api/health say "schema behind" when a
+ * deploy went out before `npm run db:deploy` — without exposing anything but
+ * the migration's name.
+ */
+export const REQUIRED_MIGRATION = "20260918120000_google_oauth";
+
+export type SchemaHealth = { ok: true; latest: string } | { ok: false; missing: string; hint: string } | { ok: false; missing: null; hint: string };
+
+/** Is `REQUIRED_MIGRATION` recorded as applied in `_prisma_migrations`? Never throws. */
+export async function checkSchema(): Promise<SchemaHealth> {
+  try {
+    const rows = await prisma.$queryRaw<{ n: bigint | number }[]>`
+      SELECT COUNT(*)::int AS n FROM "_prisma_migrations"
+      WHERE "migration_name" = ${REQUIRED_MIGRATION} AND "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL`;
+    const n = Number(rows[0]?.n ?? 0);
+    if (n > 0) return { ok: true, latest: REQUIRED_MIGRATION };
+    return { ok: false, missing: REQUIRED_MIGRATION, hint: "run `npm run db:deploy` against this database (docs/PRODUCTION.md §4)" };
+  } catch (err) {
+    logServerError("health.schema", err);
+    return { ok: false, missing: null, hint: "could not read _prisma_migrations — the migration history baseline (docs/PRODUCTION.md §3) may be missing" };
+  }
+}
+
+/**
  * Cheap liveness probe. Never throws and never returns connection details —
  * a failure carries only a coarse reason + error code (the redacted detail
  * goes to the server log).

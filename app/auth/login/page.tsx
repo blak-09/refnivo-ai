@@ -48,16 +48,17 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; error?: string; registered?: string; reason?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string; registered?: string; reason?: string; ref?: string }>;
 }) {
-  const { callbackUrl, error, registered, reason } = await searchParams;
+  const { callbackUrl, error, registered, reason, ref } = await searchParams;
   const safeCallback = callbackUrl && callbackUrl.startsWith("/") && !callbackUrl.startsWith("//") ? callbackUrl : undefined;
   const notice = registered
     ? "Your account was created. Log in to continue."
     : reason === "password-changed"
       ? "Your password was changed and all sessions were signed out. Log in with your new password."
       : undefined;
-  const errorMessage = error ? ERROR_MESSAGES[error] ?? "Please log in to continue." : undefined;
+  const reference = ref && /^[A-Za-z0-9_]{1,40}$/.test(ref) ? ref : undefined;
+  const errorMessage = error ? `${ERROR_MESSAGES[error] ?? "Please log in to continue."}${reference ? ` (reference: ${reference})` : ""}` : undefined;
   const quickAccounts = await getQuickAccounts();
 
   return (

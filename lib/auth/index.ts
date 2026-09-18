@@ -9,7 +9,7 @@ import { googleOAuthConfig } from "@/lib/config/oauth";
 import { notifyRegistration } from "@/lib/services/notifications";
 import { GOOGLE_PROVIDER, resolveGoogleSignIn, userForGoogleAccount, type GoogleIdentity } from "@/lib/services/oauth";
 import { securityEvent } from "@/lib/utils/security-log";
-import { logServerError } from "@/lib/utils/server-log";
+import { describeError, logServerError } from "@/lib/utils/server-log";
 import { authConfig } from "./config";
 import { consumeOAuthRoleCookie } from "./oauth-role-cookie";
 import { tokenSessionVersion } from "./session-version";
@@ -57,7 +57,11 @@ const callbacks: NextAuthConfig["callbacks"] = {
       resolution = await resolveGoogleSignIn(identity, requestedRole);
     } catch (err) {
       logServerError("oauth.google", err);
-      return `/auth/login?error=${OAUTH_ERROR.unavailable}`;
+      // A short, secret-free reference (Prisma code such as P2021, or the error
+      // class name) so the failure can be diagnosed from the page alone.
+      const summary = describeError(err);
+      const ref = String(summary.code ?? summary.name ?? "").replace(/[^A-Za-z0-9_]/g, "").slice(0, 40);
+      return `/auth/login?error=${OAUTH_ERROR.unavailable}${ref ? `&ref=${ref}` : ""}`;
     }
 
     switch (resolution.kind) {

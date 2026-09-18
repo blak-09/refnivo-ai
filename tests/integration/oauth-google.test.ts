@@ -127,3 +127,14 @@ describe("Google sign-in resolution", () => {
     await expect(changePassword(res.user.id, "anything", "NewPassword2")).rejects.toBeInstanceOf(WrongPasswordError);
   });
 });
+
+describe("schema currency probe (/api/health)", () => {
+  // lib/db/health.ts is `server-only`; this mirrors its REQUIRED_MIGRATION query so the
+  // constant can never point at a migration that does not exist in the repo.
+  it("the migration the code requires is applied on a migrated database", async () => {
+    const rows = await prisma.$queryRaw<{ n: number }[]>`
+      SELECT COUNT(*)::int AS n FROM "_prisma_migrations"
+      WHERE "migration_name" = ${"20260918120000_google_oauth"} AND "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL`;
+    expect(Number(rows[0]?.n)).toBe(1);
+  });
+});

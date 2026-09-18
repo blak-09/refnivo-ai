@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getBootState } from "@/lib/config/boot-state";
 import { describeDatabaseTarget } from "@/lib/config/database-url";
-import { checkDatabase } from "@/lib/db/health";
+import { checkDatabase, checkSchema } from "@/lib/db/health";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,8 +24,18 @@ export async function GET() {
     );
   }
   const db = await checkDatabase();
+  const schema = db.ok ? await checkSchema() : null;
   const body = db.ok
-    ? { ok: true, status: "ok", db: "up", latencyMs: db.latencyMs, time: new Date().toISOString() }
+    ? {
+        ok: true,
+        status: schema?.ok ? "ok" : "schema-behind",
+        db: "up",
+        // Whether the newest migration the code needs has been applied (name only).
+        schema: schema?.ok ? "current" : "behind",
+        ...(schema && !schema.ok ? { missingMigration: schema.missing, hint: schema.hint } : {}),
+        latencyMs: db.latencyMs,
+        time: new Date().toISOString(),
+      }
     : {
         ok: false,
         status: "database-down",
