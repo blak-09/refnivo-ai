@@ -24,7 +24,8 @@ export function describeStorage(env: NodeJS.ProcessEnv = process.env): { provide
       out.host = "(invalid SUPABASE_URL)";
     }
     out.bucket = env.SUPABASE_STORAGE_BUCKET?.trim() || "uploads";
-    out.publicBase = env.NEXT_PUBLIC_STORAGE_PUBLIC_URL?.trim() || undefined;
+    const override = env.NEXT_PUBLIC_STORAGE_PUBLIC_URL?.trim();
+    out.publicBase = override && /^https?:\/\//.test(override) ? override : out.host ? `https://${out.host}/storage/v1/object/public/${encodeURIComponent(out.bucket)} (derived)` : undefined;
   }
   return out;
 }

@@ -69,3 +69,15 @@ describe("Supabase Storage driver (REST, mocked fetch)", () => {
     expect(calls.at(-1)?.url).toBe(`https://abc.supabase.co/storage/v1/object/uploads/${stored.key}`);
   });
 });
+
+describe("public base override safety", () => {
+  it("ignores a NEXT_PUBLIC_STORAGE_PUBLIC_URL that is not an absolute URL", async () => {
+    vi.resetModules();
+    vi.doMock("server-only", () => ({}));
+    const { supabaseStorageConfig } = await import("@/lib/storage/supabase");
+    const cfg = supabaseStorageConfig(env({ SUPABASE_URL: "https://abc.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k", SUPABASE_STORAGE_BUCKET: "uploads", NEXT_PUBLIC_STORAGE_PUBLIC_URL: "uploads" }));
+    expect(cfg?.publicBase).toBe("https://abc.supabase.co/storage/v1/object/public/uploads");
+    const ok = supabaseStorageConfig(env({ SUPABASE_URL: "https://abc.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "k", NEXT_PUBLIC_STORAGE_PUBLIC_URL: "https://cdn.example.com/uploads/" }));
+    expect(ok?.publicBase).toBe("https://cdn.example.com/uploads");
+  });
+});

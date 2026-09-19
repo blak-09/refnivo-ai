@@ -23,7 +23,9 @@ export function supabaseStorageConfig(env: NodeJS.ProcessEnv = process.env): Sup
   const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !serviceKey) return null;
   const bucket = env.SUPABASE_STORAGE_BUCKET?.trim() || "uploads";
-  const publicBase = (env.NEXT_PUBLIC_STORAGE_PUBLIC_URL?.trim() || `${url}/storage/v1/object/public/${bucket}`).replace(/\/$/, "");
+  // Only an absolute https URL may override the derived public base — a bare bucket name or typo must never yield host-less image URLs.
+  const override = env.NEXT_PUBLIC_STORAGE_PUBLIC_URL?.trim();
+  const publicBase = (override && /^https?:\/\//.test(override) ? override : `${url}/storage/v1/object/public/${encodeURIComponent(bucket)}`).replace(/\/$/, "");
   return { url, serviceKey, bucket, publicBase };
 }
 

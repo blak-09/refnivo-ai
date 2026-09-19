@@ -177,6 +177,7 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
     if (!set(env.SUPABASE_URL) || !set(env.SUPABASE_SERVICE_ROLE_KEY)) errors.push("STORAGE_PROVIDER=supabase requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
     else if (!isHttps(env.SUPABASE_URL)) errors.push("SUPABASE_URL must be an https:// URL.");
     if (!set(env.NEXT_PUBLIC_STORAGE_PUBLIC_URL)) warnings.push("NEXT_PUBLIC_STORAGE_PUBLIC_URL is not set: uploaded images are served unoptimised (set it to the bucket's public URL to enable next/image).");
+    else if (!isHttps(env.NEXT_PUBLIC_STORAGE_PUBLIC_URL)) warnings.push("NEXT_PUBLIC_STORAGE_PUBLIC_URL must be the bucket's full https:// public URL (e.g. https://<ref>.supabase.co/storage/v1/object/public/uploads); the current value is ignored.");
   } else if (storage === "local") {
     if (env.STORAGE_ALLOW_LOCAL !== "1") {
       warnings.push("STORAGE_PROVIDER is local: image uploads are disabled on this deployment (serverless filesystems are read-only). Set STORAGE_PROVIDER=supabase (see .env.example), or STORAGE_ALLOW_LOCAL=1 on a self-hosted server with a persistent disk.");
