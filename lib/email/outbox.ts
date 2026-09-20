@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { after } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { getEmailDriver, type EmailDriver } from "@/lib/email";
 
@@ -139,10 +140,28 @@ export async function dispatchPendingEmails(
 let dispatchInFlight: Promise<void> | null = null;
 let dispatchAgain = false;
 
+/**
+ * Serverless hosts (Vercel) freeze the function as soon as the response is
+ * sent, so a plain fire-and-forget promise never finishes and rows stay in
+ * SENDING until the cron recovers them. Inside a request we therefore hand the
+ * work to Next's `after()`, which keeps the function alive until it completes.
+ * Outside a request scope (scripts, tests) `after` throws and we fall back to
+ * the in-process promise.
+ */
 export function scheduleEmailDispatch(): void {
+  try {
+    after(() => runDispatch());
+    return;
+  } catch {
+    /* not inside a request — run inline */
+  }
+  runDispatch();
+}
+
+function runDispatch(): Promise<void> {
   if (dispatchInFlight) {
     dispatchAgain = true;
-    return;
+    return dispatchInFlight;
   }
   dispatchInFlight = (async () => {
     try {
@@ -156,6 +175,7 @@ export function scheduleEmailDispatch(): void {
       dispatchInFlight = null;
     }
   })();
+  return dispatchInFlight;
 }
 
 /** Test/ops helper: wait for an in-flight dispatch to finish. */
