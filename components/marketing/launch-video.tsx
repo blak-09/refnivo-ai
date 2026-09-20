@@ -5,7 +5,7 @@ import * as React from "react";
 import { PlayIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const YOUTUBE_ID = "SgE6DVgfIlw";
+const YOUTUBE_ID = "uGDQBXp0m-M";
 const EMBED_URL = `https://www.youtube.com/embed/${YOUTUBE_ID}`;
 const POSTER_URL = `https://i.ytimg.com/vi/${YOUTUBE_ID}/hqdefault.jpg`;
 
