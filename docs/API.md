@@ -84,6 +84,8 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 | --- | --- | --- |
 | `recordOrderAction(prev, formData)` | `code, orderReference, amount (₹), quantity, source, customerContact?, note?` | Creates PURCHASED referral + conversion + PENDING commission/reward |
 | `conversionDecisionAction({ referralId, decision, reason? })` | `decision ∈ VERIFY, REJECT` | VERIFY → VERIFIED + APPROVED/AVAILABLE ledger (budget-checked, campaign row lock); REJECT → REJECTED |
+| `submitOrderClaimAction(prev, formData)` (public, `app/actions/order-claims.ts`) | `campaignId, code, orderReference, contact, note?, website (honeypot)` | Customer order handshake: creates a PENDING `OrderClaim` with attribution evidence from the `lg_ref` cookie; notifies the brand. Rate-limited per IP (10/h) and per contact (10/day) |
+| `orderClaimDecisionAction(input)` | `{ claimId, decision: "CONFIRM", amount (₹), quantity }` or `{ claimId, decision: "REJECT", reason }` | CONFIRM records + verifies the order in one transaction (source CUSTOMER_CLAIM) and releases the ledger; REJECT stores the reason (signed-in claimants are notified) |
 | `conversionReversalAction({ referralId, reason })` | VERIFIED only | Refund: referral REFUNDED, commissions/rewards REVERSED, budget freed; partner notified |
 
 ## Payouts & notifications (`app/actions/payouts.ts`, `app/actions/notifications.ts`)

@@ -35,7 +35,7 @@ const STEPS = [
     icon: ShoppingCartIcon,
     who: "Brand",
     title: "Record and verify orders",
-    body: "Orders carrying a referral code are recorded (manually today; store integrations are on the roadmap) and verified after delivery. Duplicate order references, self-referrals and paused campaigns are blocked.",
+    body: "After buying on the brand's store, the customer confirms their order number on the campaign page. The brand matches it in its store and confirms it — that records and verifies the order in one step. Brands can also record orders by hand. Duplicate order numbers, self-referrals and paused campaigns are blocked.",
   },
   {
     icon: WalletIcon,

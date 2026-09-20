@@ -6,8 +6,8 @@ import { actorPage as newPage, confirmAction, createAdmin, db, email, login, reg
  *
  *   brand signs up → onboarding → product → campaign published
  *   → creator signs up → onboarding → applies → brand approves → referral link + QR
- *   → anonymous click on /r/CODE lands on the campaign page
- *   → brand records the order with the code → verifies it
+ *   → anonymous click on /r/CODE lands on the campaign page → buys → confirms the order number (claim)
+ *   → brand confirms the claim with the order value → recorded + verified in one step
  *   → creator sees the approved commission → requests payout
  *   → admin approves → marks paid with a reference
  *   → creator sees PAID
@@ -21,6 +21,7 @@ const creator = { name: "E2E Creator", email: email("creator"), username: uniq("
 let campaignSlug = "";
 let referralCode = "";
 let adminEmail = "";
+const orderNumber = `E2E-ORD-${uniq("o")}`;
 
 test("brand: signup → onboarding → product → published campaign", async ({ browser }) => {
   const page = await newPage(browser);
@@ -117,36 +118,54 @@ test("brand: approves the application; creator receives referral link and QR", a
   await creatorPage.context().close();
 });
 
-test("anonymous visitor: /r/CODE redirects to the campaign with the referrer shown", async ({ browser }) => {
+test("anonymous visitor: /r/CODE lands on the campaign, buys, and confirms the order number (claim)", async ({ browser }) => {
   const page = await newPage(browser);
   const res = await page.goto(`/r/${referralCode}`);
   expect(res?.status()).toBe(200); // after the 302
-  await expect(page).toHaveURL(new RegExp(`/campaigns/${campaignSlug}\\?ref=${referralCode}`));
+  await expect(page).toHaveURL(`/campaigns/${campaignSlug}?ref=${referralCode}`);
   await expect(page.getByText(`Recommended by ${creator.name}`)).toBeVisible();
-  await expect(page.getByText(referralCode).first()).toBeVisible();
+
+  // Order handshake: the code is pre-filled from the link; the claim carries last-click evidence from the cookie.
+  await page.getByRole("button", { name: "I have an order number" }).click();
+  await expect(page.getByLabel("Referral code")).toHaveValue(referralCode);
+  await page.getByLabel("Order number").fill(orderNumber);
+  await page.getByLabel("Email or phone used for the order").fill("buyer@e2e.refnivo.test");
+  await page.getByRole("button", { name: "Submit order" }).click();
+  await expect(page.getByText("Order submitted — thank you!")).toBeVisible({ timeout: 30_000 });
+
+  const claim = await db().orderClaim.findFirstOrThrow({ where: { orderReference: orderNumber } });
+  expect(claim.status).toBe("PENDING");
+  expect(claim.evidence).toBe("LAST_CLICK");
+  // Nothing is owed yet.
+  expect(await db().commission.count({ where: { creator: { email: creator.email } } })).toBe(0);
   await page.context().close();
 });
 
-test("brand: records the order with the code and verifies it", async ({ browser }) => {
+test("brand: confirms the claim with the order value → recorded and verified in one step", async ({ browser }) => {
   const page = await newPage(browser);
   await login(page, brand.email);
-  await expect(page).toHaveURL(/\/dashboard\/brand/, { timeout: 60_000 });
   await page.goto("/dashboard/brand/orders");
-  await page.getByLabel("Referral code").fill(referralCode);
-  await page.getByLabel("Order reference").fill(`E2E-ORD-${uniq("o")}`);
-  await page.getByLabel("Order value (₹)").fill("1999");
-  await page.getByRole("button", { name: "Record order" }).click();
-  await expect(page.getByText("Pending verification").first()).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Verify" }).first().click();
-  // The row swaps its Verify/Reject controls for the reversal control once the action has committed.
-  await expect(page.getByRole("button", { name: "Verify" })).toHaveCount(0, { timeout: 30_000 });
-  await expect(page.getByText("Verified", { exact: true }).first()).toBeVisible();
+  const row = page.getByRole("row").filter({ hasText: orderNumber });
+  await expect(row).toBeVisible();
+  await expect(row.getByText(/Clicked the link .* before claiming/)).toBeVisible();
+  await row.getByRole("button", { name: "Confirm" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Order value (₹)").fill("1999");
+  await dialog.getByRole("button", { name: "Confirm & verify" }).click();
+  await expect(dialog).toBeHidden({ timeout: 30_000 });
+  await expect(page.getByText("No claims waiting")).toBeVisible();
 
   await expect
     .poll(async () => (await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } } })).status, { timeout: 15_000 })
     .toBe("APPROVED");
-  const commission = await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } } });
-  expect(commission.amount).toBe(60_000); // ₹600 in paise
+  const commission = await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } }, include: { referral: { include: { conversion: true } } } });
+  expect(commission.amount).toBe(60_000); // ₹600 fixed commission, in paise
+  expect(commission.referral.status).toBe("VERIFIED");
+  expect(commission.referral.conversion?.source).toBe("CUSTOMER_CLAIM");
+  expect(commission.referral.conversion?.amount).toBe(199_900);
+  // The order now shows in the verified list too.
+  await page.goto("/dashboard/brand/orders?status=VERIFIED");
+  await expect(page.getByText(orderNumber)).toBeVisible();
   await page.context().close();
 });
 

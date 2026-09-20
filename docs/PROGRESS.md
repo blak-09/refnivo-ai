@@ -26,7 +26,8 @@ Legend: ✅ done · 🔜 next · ⬜ pending
 ### R3 — Tracking & money ✅
 - ✅ `/r/[code]` records click (link vs QR), anonymous visitor id, hashed IP, referral session; duplicate hits from the same visitor within 30 s are not counted; per-IP click throttle; last-click attribution cookie sized to the campaign window; redirect with `?ref=`
 - ✅ Campaign page marks session VISITED; purchase link carries `?ref=CODE`
-- ✅ Brand records orders (code, order ref, value, quantity, source, hashed customer contact) → pending commission/reward
+- ✅ Order handshake (real click→order attribution without a store plugin): customer confirms their order number on the campaign page (code pre-filled from the link / last-click cookie, evidence recorded) → brand confirms with the order value = recorded + verified atomically, or rejects with a reason; claims listed on Orders with a "to confirm" KPI; signed-in customers see their claims on their dashboard
+- ✅ Brand records orders by hand (code, order ref, value, quantity, source, hashed customer contact) → pending commission/reward
 - ✅ Verify / reject orders → APPROVED / AVAILABLE or REJECTED; budget enforcement under a campaign row lock
 - ✅ Refunds: brand reverses a verified order → REFUNDED, ledger entries REVERSED, budget freed
 - ✅ Guards: paused/expired campaigns, minimum order value, duplicate order reference, self-referral, duplicate customer on new-customer-only campaigns

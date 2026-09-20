@@ -6,7 +6,8 @@
 Brand lists products → creates a product campaign (commission + customer reward + rules)
 → creators apply / customers join → unique referral link + QR (HANDLE-BRAND-XXXX)
 → /r/CODE records the click (LINK or QR) + a referral session, sets last-click attribution
-→ shopper buys on the brand store (?ref=CODE) → brand records the order → verifies it
+→ shopper buys on the brand store (?ref=CODE) → shopper confirms the order number on the campaign page (order claim)
+→ brand matches it in its store and confirms → order recorded + verified in one transaction (or the brand records by hand)
 → commission (creator) or reward (customer) approved in the ledger → payout
 ```
 
@@ -81,6 +82,14 @@ DRAFT/PAUSED/ENDED ──ARCHIVE──▶ ARCHIVED     DRAFT ──DELETE
   redirects to `/campaigns/[slug]?ref=CODE`.
 - The campaign page shows "Recommended by …", marks the session VISITED and appends `?ref=CODE` to the product's
   purchase URL so the brand's store can capture it.
+- **Order handshake** (`lib/services/order-claims.ts`): the campaign page offers "Already ordered? Confirm your order".
+  The customer submits their order number + the e-mail/phone used for the order (no account needed); the code is
+  pre-filled from `?ref=` or the `lg_ref` cookie. The `OrderClaim` row stores a salted contact hash + masked display
+  value and the attribution evidence: `LAST_CLICK` (this browser carried the cookie for that code, with the click
+  time) or `CODE_ENTERED`. The brand sees claims on Orders → confirms with the order value (`confirmOrderClaim`
+  = `recordOrderInTx` + `verifyConversionInTx` in one transaction, source `CUSTOMER_CLAIM`) or rejects with a reason.
+  Guards: live campaign, code belongs to the campaign, self-referral (contact hash), one claim per order number per
+  brand (a rejected one may be re-submitted), already-recorded orders, honeypot + per-IP/per-contact rate limits.
 - Orders are attributed by code when the brand records them (`recordOrder`): the code identifies brand, product,
   campaign and partner. Rejected: inactive campaign, order below the minimum, duplicate order reference, self-referral
   (hashed customer contact equals the partner's email/phone), duplicate customer on new-customer-only campaigns.

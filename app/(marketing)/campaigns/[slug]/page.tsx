@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/primitives";
 import { describeCreatorCommission, describeCustomerReward, describeEligibility, describeDuration } from "@/components/campaigns/campaign-summary";
+import { OrderClaimForm } from "@/components/orders/order-claim-form";
 import { BrandLogo, ProductThumb } from "@/components/products/product-thumb";
 import { JoinCampaignPanel } from "@/components/marketplace/join-campaign";
 import { ReferralLinkCard } from "@/components/links/referral-link-card";
@@ -18,7 +19,7 @@ import { formatMoney } from "@/lib/money";
 import { getPublicCampaign } from "@/lib/services/campaigns";
 import { referralQrDataUrl, referralUrl, shareTargets } from "@/lib/services/links";
 import { getPartnerStatus } from "@/lib/services/partners";
-import { markVisited, resolveReferralCode, VISITOR_COOKIE } from "@/lib/services/tracking";
+import { ATTRIBUTION_COOKIE, markVisited, resolveReferralCode, VISITOR_COOKIE } from "@/lib/services/tracking";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -72,6 +73,17 @@ export default async function CampaignPage({ params, searchParams }: { params: P
   }
 
   const purchaseHref = referrer ? withRef(campaign.product.purchaseUrl, referrer.code) : campaign.product.purchaseUrl;
+  // Without ?ref, pre-fill the claim form from the last-click cookie if it belongs to this campaign.
+  let claimCode: string | null = null;
+  if (!referrer) {
+    const raw = (await cookies()).get(ATTRIBUTION_COOKIE)?.value;
+    try {
+      const parsed = raw ? (JSON.parse(raw) as { code?: string; campaignId?: string }) : null;
+      if (parsed?.campaignId === campaign.id && typeof parsed.code === "string") claimCode = parsed.code;
+    } catch {
+      claimCode = null;
+    }
+  }
   const shareText = `${campaign.product.name} by ${campaign.brand.name}${campaign.offerTitle ? ` — ${campaign.offerTitle}` : ""}`;
 
   return (
@@ -80,7 +92,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <p className="font-medium">Recommended by {referrer.name}</p>
           <p className="text-muted-foreground">
-            {campaign.offerTitle ? `${campaign.offerTitle}. ` : ""}Buy through the button below and quote referral code <span className="font-mono font-medium">{referrer.code}</span> with your order so the brand can attribute it to them.
+            {campaign.offerTitle ? `${campaign.offerTitle}. ` : ""}Buy through the button below, then come back and <a href="#claim" className="font-medium text-primary underline-offset-2 hover:underline">confirm your order number</a> so {campaign.brand.name} can credit {referrer.name}. Your code: <span className="font-mono font-medium">{referrer.code}</span>.
           </p>
         </div>
       ) : null}
@@ -205,6 +217,11 @@ export default async function CampaignPage({ params, searchParams }: { params: P
               )}
             </CardContent>
           </Card>
+
+          {/* Order handshake: customers confirm their store order so the brand can attribute it. Hidden for the link owner. */}
+          {live && !linkCard ? (
+            <OrderClaimForm campaignId={campaign.id} brandName={campaign.brand.name} referralCode={referrer?.code ?? claimCode} referrerName={referrer?.name ?? null} />
+          ) : null}
 
           <p className="text-xs text-muted-foreground">
             Brand website:{" "}

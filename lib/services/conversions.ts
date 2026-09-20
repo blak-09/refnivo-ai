@@ -23,8 +23,12 @@ export type RecordOrderInput = {
   source?: ConversionSource;
   /** Optional customer email/phone. Stored only as a salted hash for duplicate & self-referral checks. */
   customerContact?: string | null;
+  /** Already-hashed contact (order claims store only the hash); takes precedence over customerContact. */
+  customerContactHash?: string | null;
   note?: string | null;
 };
+
+type Tx = Prisma.TransactionClient;
 
 /**
  * A brand records an online order that came through a referral code. Creates a
@@ -32,8 +36,13 @@ export type RecordOrderInput = {
  * until the brand verifies the order.
  */
 export async function recordOrder(brandId: string, actorId: string, input: RecordOrderInput, now = new Date()) {
+  return transaction((tx) => recordOrderInTx(tx, brandId, actorId, input, now));
+}
+
+/** Transaction-scoped body of recordOrder, so callers can compose it (e.g. confirming an order claim). */
+export async function recordOrderInTx(tx: Tx, brandId: string, actorId: string, input: RecordOrderInput, now = new Date()) {
   const code = normalizeReferralCode(input.code);
-  return transaction(async (tx) => {
+  {
     const link = await tx.referralLink.findUnique({
       where: { code },
       include: {
@@ -48,7 +57,7 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
       throw new ConversionError("Order value is below the campaign's minimum order value.");
     }
 
-    const contactHash = input.customerContact ? hashValue(input.customerContact) : null;
+    const contactHash = input.customerContactHash ?? (input.customerContact ? hashValue(input.customerContact) : null);
     if (contactHash) {
       const selfHashes = [link.owner.email, link.owner.phone].filter(Boolean).map((v) => hashValue(v as string));
       if (selfHashes.includes(contactHash)) throw new ConversionError("Self-referral blocked: the customer contact matches the referring partner.");
@@ -137,7 +146,7 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
       tx,
     );
     return { referral, conversion };
-  });
+  }
 }
 
 /**
@@ -150,7 +159,12 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
  * committed ledger rows and the campaign can never be over-committed.
  */
 export async function verifyConversion(brandId: string, actorId: string, referralId: string, now = new Date()) {
-  return transaction(async (tx) => {
+  return transaction((tx) => verifyConversionInTx(tx, brandId, actorId, referralId, now));
+}
+
+/** Transaction-scoped body of verifyConversion (the campaign lock is held until the caller's transaction ends). */
+export async function verifyConversionInTx(tx: Tx, brandId: string, actorId: string, referralId: string, now = new Date()) {
+  {
     // 1. Ownership-scoped lookup to learn the campaign (no lock yet).
     const target = await tx.referral.findFirst({ where: { id: referralId, campaign: { brandId } }, select: { campaignId: true } });
     if (!target) throw new ConversionError("Order not found.");
@@ -204,7 +218,7 @@ export async function verifyConversion(brandId: string, actorId: string, referra
       { userId: actorId, action: "CONVERSION_VERIFIED", entityType: "Referral", entityId: referralId, metadata: { brandId, orderReference: referral.conversion.orderReference, owed } },
       tx,
     );
-  });
+  }
 }
 
 export async function rejectConversion(brandId: string, actorId: string, referralId: string, reason?: string | null) {

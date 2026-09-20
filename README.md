@@ -180,7 +180,7 @@ Read **[docs/PRODUCTION.md](docs/PRODUCTION.md)** first — backups, migration b
 
 - Product images are uploaded from the device to local disk (`public/uploads`) via the `local` storage driver — great for dev/self-hosted. On ephemeral/serverless hosts, switch `STORAGE_PROVIDER` to a cloud driver (interface in `lib/storage`). Existing external image URLs keep working.
 
-- Orders are recorded manually by the brand (referral code + order reference) and verified/refunded by the brand. Store integrations (Shopify/WooCommerce webhooks) are on the roadmap; the `?ref=CODE` parameter is already passed to the purchase URL.
+- Orders reach the ledger through the **order handshake**: the customer confirms their order number on the campaign page, the brand matches it in its store and confirms it (recorded + verified in one step). Brands can also record orders by hand. Automatic store webhooks (Shopify/WooCommerce) remain a possible add-on; the `?ref=CODE` parameter is already passed to the purchase URL.
 - Payouts and reward redemptions are a **manual settlement workflow**: partners request, an admin approves, settles off-platform (UPI / bank / voucher) and records the reference. No money moves through the platform and no payment provider is integrated.
 - E-mail verification at signup is not implemented. Password reset needs `EMAIL_PROVIDER=resend`.
 - Image uploads (product, brand logo/cover, creator photo, account photo) go through one validated pipeline. Locally

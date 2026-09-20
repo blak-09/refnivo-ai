@@ -1,20 +1,28 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CompassIcon, GiftIcon, LinkIcon, MousePointerClickIcon, ShoppingCartIcon } from "lucide-react";
+import { CompassIcon, GiftIcon, LinkIcon, MousePointerClickIcon, PackageCheckIcon, ShoppingCartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { KpiCard, PageHeader } from "@/components/dashboard/primitives";
+import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { PartnerLinksList } from "@/components/links/partner-links-list";
 import { requireRole } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { formatMoney } from "@/lib/money";
 import { getPartnerStats } from "@/lib/services/metrics";
+import { listCustomerClaims } from "@/lib/services/order-claims";
+import { formatDate } from "@/lib/utils/dates";
+
+const CLAIM_LABEL: Record<string, string> = { PENDING: "Waiting for the brand", CONFIRMED: "Confirmed", REJECTED: "Not matched" };
 
 export const metadata: Metadata = { title: "My rewards" };
 
 export default async function CustomerOverviewPage() {
   const user = await requireRole("CUSTOMER");
-  const [stats, links] = await Promise.all([getPartnerStats(user.id), prisma.referralLink.count({ where: { ownerId: user.id, status: "ACTIVE" } })]);
+  const [stats, links, claims] = await Promise.all([
+    getPartnerStats(user.id),
+    prisma.referralLink.count({ where: { ownerId: user.id, status: "ACTIVE" } }),
+    listCustomerClaims(user.id),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -41,6 +49,34 @@ export default async function CustomerOverviewPage() {
           <PartnerLinksList userId={user.id} emptyDescription="Open any campaign and tap “Join & generate my referral link” — you get a link and QR code instantly." />
         </CardContent>
       </Card>
+      {claims.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <PackageCheckIcon className="size-5 text-primary" aria-hidden /> Orders I confirmed
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y">
+              {claims.map((c) => (
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+                  <div>
+                    <span className="font-mono font-medium">{c.orderReference}</span>
+                    <span className="block text-xs text-muted-foreground">
+                      <Link href={`/campaigns/${c.campaign.slug}`} className="hover:underline">
+                        {c.campaign.name}
+                      </Link>{" "}
+                      · {c.campaign.brand.name} · {formatDate(c.createdAt)}
+                    </span>
+                    {c.status === "REJECTED" && c.rejectionReason ? <span className="block text-xs text-muted-foreground">Brand: “{c.rejectionReason}”</span> : null}
+                  </div>
+                  <StatusBadge status={c.status === "CONFIRMED" ? "VERIFIED" : c.status === "REJECTED" ? "REJECTED" : "PURCHASED"} label={CLAIM_LABEL[c.status]} />
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

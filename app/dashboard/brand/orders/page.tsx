@@ -9,9 +9,11 @@ import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashb
 import { RecordOrderForm } from "@/components/orders/record-order-form";
 import { ConversionDecision } from "@/components/orders/conversion-decision";
 import { ConversionReversal } from "@/components/orders/conversion-reversal";
+import { OrderClaimsPanel } from "@/components/orders/order-claims-panel";
 import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
 import { countOrdersByStatus, listBrandOrders } from "@/lib/services/conversions";
+import { countPendingClaims, listBrandClaims } from "@/lib/services/order-claims";
 import { formatDate } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils";
 
@@ -27,21 +29,28 @@ const FILTERS: { value: ReferralStatus | "ALL"; label: string }[] = [
 
 const STATUS_LABEL: Record<string, string> = { PURCHASED: "Pending verification", VERIFIED: "Verified", REJECTED: "Rejected", REFUNDED: "Refunded" };
 
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ status?: string; claims?: string }> }) {
   const { brand } = await requireBrand();
-  const { status } = await searchParams;
+  const { status, claims: claimsParam } = await searchParams;
   const filter = FILTERS.some((f) => f.value === status) ? (status as ReferralStatus | "ALL") : "ALL";
-  const [orders, counts] = await Promise.all([listBrandOrders(brand.id, filter), countOrdersByStatus(brand.id)]);
+  const showAllClaims = claimsParam === "all";
+  const [orders, counts, claims, pendingClaims] = await Promise.all([
+    listBrandOrders(brand.id, filter),
+    countOrdersByStatus(brand.id),
+    listBrandClaims(brand.id, showAllClaims ? "ALL" : "PENDING"),
+    countPendingClaims(brand.id),
+  ]);
   const total = Object.values(counts).reduce((s, n) => s + (n ?? 0), 0);
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Orders & Conversions"
-        description="Record online orders that carried a referral code, then verify them to release commissions and rewards. A click is never counted as a sale."
+        description="Customers confirm their order numbers from the campaign page; you match them in your store and confirm. You can also record orders by hand. A click is never counted as a sale."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <KpiCard label="Claims to confirm" value={pendingClaims} hint="Customer order numbers awaiting you" />
         <KpiCard label="Orders recorded" value={total} />
         <KpiCard label="Pending verification" value={counts.PURCHASED ?? 0} />
         <KpiCard label="Verified conversions" value={counts.VERIFIED ?? 0} />
@@ -49,11 +58,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         <KpiCard label="Refunded" value={counts.REFUNDED ?? 0} hint="Ledger entries reversed" />
       </div>
 
+      <OrderClaimsPanel claims={claims} showAll={showAllClaims} pendingCount={pendingClaims} />
+
       <Card>
         <CardHeader>
-          <CardTitle>Record an order</CardTitle>
+          <CardTitle>Record an order by hand</CardTitle>
           <CardDescription>
-            Until your store is integrated, add orders here. The referral code identifies the campaign, product and partner automatically.
+            For orders you matched yourself (coupon code at checkout, phone order). The referral code identifies the campaign, product and partner automatically.
           </CardDescription>
         </CardHeader>
         <CardContent>

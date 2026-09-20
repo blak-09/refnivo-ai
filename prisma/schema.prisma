@@ -118,6 +118,22 @@ enum ConversionSource {
   REFERRAL_CODE
   QR_SCAN
   IMPORT
+  /// Recorded by confirming a customer's order claim (order handshake).
+  CUSTOMER_CLAIM
+}
+
+enum OrderClaimStatus {
+  PENDING
+  CONFIRMED
+  REJECTED
+}
+
+/// How a claim was attributed to a referral link when it was submitted.
+enum ClaimEvidence {
+  /// The claimant's browser carried the last-click attribution cookie for this code.
+  LAST_CLICK
+  /// The claimant typed the referral code (no click on record from this browser).
+  CODE_ENTERED
 }
 
 enum RewardStatus {
@@ -170,6 +186,7 @@ enum NotificationType {
   CAMPAIGN_PUBLISHED
   CAMPAIGN_PAUSED
   ORDER_RECORDED
+  ORDER_CLAIMED
   CONVERSION_VERIFIED
   CONVERSION_REJECTED
   CONVERSION_REVERSED
@@ -251,6 +268,8 @@ model User {
   passwordResetTokens PasswordResetToken[]
   emailOutbox         EmailOutbox[]
   oauthAccounts       OAuthAccount[]
+  orderClaims         OrderClaim[]         @relation("OrderClaimCustomer")
+  decidedOrderClaims  OrderClaim[]         @relation("OrderClaimDecider")
 
   @@index([role])
   @@index([status])
@@ -303,6 +322,7 @@ model Brand {
   campaigns   Campaign[]
   conversions Conversion[]
   aiInsights  AIInsight[]
+  orderClaims OrderClaim[]
 
   /// v1: one brand per owner (enforced here, not only in the action).
   @@unique([ownerId])
@@ -422,6 +442,7 @@ model Campaign {
   referralClicks      ReferralClick[]
   referrals           Referral[]
   aiInsights          AIInsight[]
+  orderClaims         OrderClaim[]
 
   @@index([brandId])
   @@index([productId])
@@ -461,10 +482,11 @@ model ReferralLink {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
-  campaign  Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  owner     User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  clicks    ReferralClick[]
-  referrals Referral[]
+  campaign    Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  clicks      ReferralClick[]
+  referrals   Referral[]
+  orderClaims OrderClaim[]
 
   @@unique([campaignId, ownerId])
   @@index([ownerId])
@@ -492,6 +514,55 @@ model ReferralClick {
   @@map("referral_clicks")
 }
 
+/**
+ * Order handshake: a customer who bought on the brand's store submits their
+ * order number so the brand can attribute the sale to a referral link. Nothing
+ * is owed until the brand confirms the claim (which records AND verifies the
+ * order in one transaction). Contacts are stored as a salted hash plus a masked
+ * display value only.
+ */
+model OrderClaim {
+  id                String           @id @default(cuid())
+  campaignId        String
+  brandId           String
+  referralLinkId    String
+  /// Signed-in claimant, if any. Anonymous claims carry only the contact hash.
+  customerId        String?
+  contactHash       String
+  /// e.g. "ar•••@gmail.com" or "+91 ••••• 4321" — enough for the brand to match the order, nothing more.
+  contactMasked     String
+  orderReference    String
+  /// Upper-cased, whitespace-free reference used for the per-brand uniqueness check.
+  orderReferenceKey String
+  note              String?
+  evidence          ClaimEvidence
+  /// When the attributed click happened (LAST_CLICK evidence only).
+  clickedAt         DateTime?
+  status            OrderClaimStatus @default(PENDING)
+  rejectionReason   String?
+  decidedById       String?
+  decidedAt         DateTime?
+  /// The referral created when the claim was confirmed.
+  referralId        String?          @unique
+  ipHash            String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  campaign     Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  brand        Brand        @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  referralLink ReferralLink @relation(fields: [referralLinkId], references: [id], onDelete: Cascade)
+  customer     User?        @relation("OrderClaimCustomer", fields: [customerId], references: [id], onDelete: SetNull)
+  decidedBy    User?        @relation("OrderClaimDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+  referral     Referral?    @relation(fields: [referralId], references: [id], onDelete: SetNull)
+
+  @@unique([brandId, orderReferenceKey])
+  @@index([brandId, status, createdAt])
+  @@index([campaignId, status])
+  @@index([customerId])
+  @@index([contactHash])
+  @@map("order_claims")
+}
+
 model Referral {
   id                 String         @id @default(cuid())
   campaignId         String
@@ -513,6 +584,7 @@ model Referral {
   conversion   Conversion?
   rewards      Reward[]
   commissions  Commission[]
+  orderClaim   OrderClaim?
 
   @@index([campaignId, status])
   @@index([referrerId])
