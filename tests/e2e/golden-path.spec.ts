@@ -1,5 +1,5 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
-import { confirmAction, createAdmin, db, email, login, register, uniq } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { actorPage as newPage, confirmAction, createAdmin, db, email, login, register, uniq } from "./helpers";
 
 /**
  * The money path, end to end, through the real UI:
@@ -21,11 +21,6 @@ const creator = { name: "E2E Creator", email: email("creator"), username: uniq("
 let campaignSlug = "";
 let referralCode = "";
 let adminEmail = "";
-
-async function newPage(browser: Browser): Promise<Page> {
-  const context = await browser.newContext();
-  return context.newPage();
-}
 
 test("brand: signup → onboarding → product → published campaign", async ({ browser }) => {
   const page = await newPage(browser);
@@ -114,7 +109,11 @@ test("brand: approves the application; creator receives referral link and QR", a
   await login(creatorPage, creator.email);
   await creatorPage.goto("/dashboard/creator/links");
   await expect(creatorPage.getByText(referralCode).first()).toBeVisible({ timeout: 30_000 });
-  await expect(creatorPage.getByRole("img", { name: /QR code/i }).first()).toBeVisible();
+  // The QR code lives behind the "QR code" button (dialog); the image is a data: URL generated server-side.
+  await creatorPage.getByRole("button", { name: "QR code" }).first().click();
+  const qr = creatorPage.getByRole("dialog").getByRole("img", { name: `QR code for referral code ${referralCode}` });
+  await expect(qr).toBeVisible();
+  expect(await qr.getAttribute("src")).toMatch(/^data:image\/png;base64,/);
   await creatorPage.context().close();
 });
 
@@ -139,10 +138,14 @@ test("brand: records the order with the code and verifies it", async ({ browser 
   await page.getByRole("button", { name: "Record order" }).click();
   await expect(page.getByText("Pending verification").first()).toBeVisible({ timeout: 30_000 });
   await page.getByRole("button", { name: "Verify" }).first().click();
-  await expect(page.getByText("Verified", { exact: true }).first()).toBeVisible({ timeout: 30_000 });
+  // The row swaps its Verify/Reject controls for the reversal control once the action has committed.
+  await expect(page.getByRole("button", { name: "Verify" })).toHaveCount(0, { timeout: 30_000 });
+  await expect(page.getByText("Verified", { exact: true }).first()).toBeVisible();
 
+  await expect
+    .poll(async () => (await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } } })).status, { timeout: 15_000 })
+    .toBe("APPROVED");
   const commission = await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } } });
-  expect(commission.status).toBe("APPROVED");
   expect(commission.amount).toBe(60_000); // ₹600 in paise
   await page.context().close();
 });
@@ -167,10 +170,13 @@ test("admin: approves and marks the payout paid; creator sees PAID", async ({ br
   await expect(page.getByText(creator.email)).toBeVisible();
   await confirmAction(page, "Approve", { input: "looks good", confirm: "Approve" });
   await confirmAction(page, "Mark paid", { input: "UPI-E2E-0001", confirm: "Mark as paid" });
+  // Settled requests leave the default "Open" queue; the reference shows under the PAID filter.
+  await page.goto("/dashboard/admin/payouts?status=PAID");
   await expect(page.getByText("UPI-E2E-0001")).toBeVisible();
 
-  const commission = await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } } });
-  expect(commission.status).toBe("PAID");
+  await expect
+    .poll(async () => (await db().commission.findFirstOrThrow({ where: { creator: { email: creator.email } } })).status, { timeout: 15_000 })
+    .toBe("PAID");
   await page.context().close();
 
   const creatorPage = await newPage(browser);

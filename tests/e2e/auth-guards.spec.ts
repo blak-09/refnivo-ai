@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { db, email, login, PASSWORD, register } from "./helpers";
+import { actorContext, actorPage, db, email, login, PASSWORD, register } from "./helpers";
+
+// Each test is its own "client": separate cookies and a separate simulated IP.
+test.use({ context: async ({ browser }, provide) => provide(await actorContext(browser)) });
 
 /**
  * Authorisation at the HTTP level — the part unit/integration tests cannot
@@ -57,4 +60,20 @@ test("logout ends the session", async ({ page }) => {
   await expect(page).toHaveURL(/\/auth\/login/);
   await login(page, userEmail, PASSWORD);
   await expect(page).toHaveURL(/\/dashboard\/customer/);
+});
+
+test("brute force is throttled: the 11th wrong password in a row is refused", async ({ browser }) => {
+  const page = await actorPage(browser);
+  const userEmail = email("throttle");
+  await register(page, "CUSTOMER", { name: "E2E Throttle", email: userEmail });
+  await page.context().clearCookies();
+  for (let i = 0; i < 10; i++) {
+    await login(page, userEmail, "definitely-wrong", { expectSuccess: false });
+    await expect(page.getByText("Invalid email or password.")).toBeVisible();
+  }
+  await login(page, userEmail, "definitely-wrong", { expectSuccess: false });
+  await expect(page.getByText(/Too many attempts/)).toBeVisible();
+  // The right password is refused too while the window is open — the lock is per IP + e-mail, not per password.
+  await login(page, userEmail, PASSWORD, { expectSuccess: false });
+  await expect(page.getByText(/Too many attempts/)).toBeVisible();
 });

@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Browser, type Page } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { E2E_DATABASE_URL } from "./global-setup";
@@ -7,6 +7,20 @@ export const PASSWORD = "E2e-Password-2026";
 let counter = 0;
 export const uniq = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${++counter}`;
 export const email = (prefix: string) => `${uniq(prefix)}@e2e.refnivo.test`;
+
+/**
+ * Every actor gets its own simulated client IP (the app keys rate limits on
+ * x-forwarded-for, as it does behind Vercel). Otherwise all signups in a run
+ * share 127.0.0.1 and the 6th one trips the real "5 signups / 10 min" limit.
+ */
+let ipCounter = 0;
+export function actorContext(browser: Browser) {
+  ipCounter += 1;
+  return browser.newContext({ extraHTTPHeaders: { "x-forwarded-for": `10.99.${Math.floor(ipCounter / 250)}.${(ipCounter % 250) + 1}` } });
+}
+export async function actorPage(browser: Browser): Promise<Page> {
+  return (await actorContext(browser)).newPage();
+}
 
 let prisma: PrismaClient | null = null;
 export function db(): PrismaClient {
