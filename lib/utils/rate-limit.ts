@@ -21,16 +21,21 @@ export async function clientIp(): Promise<string> {
  */
 let store: RateLimitStore | null = null;
 let memory: MemoryStore | null = null;
+let effective: "upstash" | "memory" = "memory";
+let lastStoreError: { message: string; at: string } | null = null;
 
 async function getStore(): Promise<RateLimitStore> {
   if (store) return store;
   const provider = (process.env.RATE_LIMIT_PROVIDER ?? "memory").trim().toLowerCase();
-  const onError = (err: unknown) =>
-    securityEvent("RATE_LIMIT_STORE_ERROR", { provider, message: err instanceof Error ? err.message : "unknown error" });
+  const onError = (err: unknown) => {
+    lastStoreError = { message: (err instanceof Error ? err.message : "unknown error").slice(0, 200), at: new Date().toISOString() };
+    securityEvent("RATE_LIMIT_STORE_ERROR", { provider, message: lastStoreError.message });
+  };
 
   if (provider === "upstash" && process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     const { UpstashRestStore } = await import("./rate-limit-upstash");
     store = new FailOpenStore(new UpstashRestStore(process.env.UPSTASH_REDIS_REST_URL, process.env.UPSTASH_REDIS_REST_TOKEN), onError);
+    effective = "upstash";
     return store;
   }
   if (provider !== "memory") {
@@ -51,4 +56,17 @@ export async function rateLimit(key: string, limit: number, windowMs: number): P
   const result = await checkRateLimit(await getStore(), key, limit, windowMs);
   if (!result.ok) securityEvent("RATE_LIMITED", { scope: key.split(":")[0], retryAfterSeconds: result.retryAfterSeconds });
   return result;
+}
+
+/**
+ * Operator probe for /api/health: performs one real hit on a probe key and
+ * reports which store answered. A fail-open store hides provider errors from
+ * users, so this is the only place an operator can see them (message only).
+ */
+export async function probeRateLimitStore(): Promise<{ provider: string; store: "upstash" | "memory"; ok: boolean; lastError: { message: string; at: string } | null }> {
+  const provider = (process.env.RATE_LIMIT_PROVIDER ?? "memory").trim().toLowerCase();
+  const before = lastStoreError?.at ?? null;
+  await checkRateLimit(await getStore(), "health:probe", 1_000_000, 60_000);
+  const failedNow = lastStoreError !== null && lastStoreError.at !== before;
+  return { provider, store: effective, ok: !failedNow, lastError: lastStoreError };
 }

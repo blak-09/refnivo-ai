@@ -3,6 +3,7 @@ import { getBootState } from "@/lib/config/boot-state";
 import { describeDatabaseTarget } from "@/lib/config/database-url";
 import { checkDatabase, checkSchema } from "@/lib/db/health";
 import { describeStorage } from "@/lib/storage/availability";
+import { probeRateLimitStore } from "@/lib/utils/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -38,6 +39,8 @@ export async function GET() {
         ...(boot.warnings.length ? { warnings: boot.warnings } : {}),
         // Where uploads go (provider, project host, bucket) — no keys.
         storage: describeStorage(process.env),
+        // Which limiter store is actually answering (fail-open hides provider errors from users).
+        rateLimit: await probeRateLimitStore(),
         latencyMs: db.latencyMs,
         time: new Date().toISOString(),
       }
