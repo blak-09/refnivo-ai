@@ -461,7 +461,7 @@ export function CampaignWizard(props: Props) {
               <Field label="Minimum order value (₹)" htmlFor="minimumPurchaseAmount" error={errors.minimumPurchaseAmount} hint="Leave empty for no minimum.">
                 <Input id="minimumPurchaseAmount" type="number" inputMode="decimal" min={0} value={state.minimumPurchaseAmount} onChange={(e) => set("minimumPurchaseAmount", e.target.value)} placeholder="999" aria-invalid={!!errors.minimumPurchaseAmount} />
               </Field>
-              <Field label="Attribution window (days)" htmlFor="attributionWindowDays" error={errors.attributionWindowDays} required hint="How long after a link click an order still counts. Default 30.">
+              <Field label="Attribution window (days)" htmlFor="attributionWindowDays" error={errors.attributionWindowDays} required hint="Used by automatic store integrations (coming soon). Orders you record manually are attributed by the referral code, not by click date.">
                 <Input id="attributionWindowDays" type="number" inputMode="numeric" min={1} max={90} value={state.attributionWindowDays} onChange={(e) => set("attributionWindowDays", e.target.value)} aria-invalid={!!errors.attributionWindowDays} />
               </Field>
               <Field label="Maximum reward per order (₹)" htmlFor="maxRewardPerCustomer" error={errors.maxRewardPerCustomer} hint="Caps the reward earned on a single order (useful with percentage rewards). Leave empty for no cap.">

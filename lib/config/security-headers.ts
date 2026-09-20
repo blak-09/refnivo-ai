@@ -29,6 +29,9 @@ export function contentSecurityPolicy(production: boolean): string {
   return directives.join("; ");
 }
 
+/** Dashboards, auth pages and APIs must never be indexed (they render shells / redirects for anonymous crawlers). */
+export const NOINDEX_HEADER = { key: "X-Robots-Tag", value: "noindex, nofollow" };
+
 export function securityHeaders(production = process.env.NODE_ENV === "production"): Header[] {
   const headers: Header[] = [
     { key: "X-Content-Type-Options", value: "nosniff" },

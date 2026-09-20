@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { canViewAudienceNumbers } from "@/lib/auth/viewer";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { BadgeCheckIcon, MapPinIcon, MessageCircleIcon } from "lucide-react";
@@ -26,6 +27,7 @@ export async function generateMetadata({ params }: { params: Promise<{ username:
 }
 
 export default async function CreatorProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const showNumbers = await canViewAudienceNumbers();
   const { username } = await params;
   const creator = await getPublicCreator(username);
   if (!creator) notFound();
@@ -78,8 +80,12 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
         </CardContent>
       </Card>
 
-      {/* Audience numbers */}
-      <CreatorStatTiles profile={creator} />
+      {/* Audience numbers — brands and admins only (self-reported; never shown to customers). */}
+      {showNumbers ? (
+        <CreatorStatTiles profile={creator} />
+      ) : (
+        <p className="rounded-xl border border-dashed bg-muted/30 px-4 py-3 text-sm text-muted-foreground">Audience figures are shared with brands reviewing applications.</p>
+      )}
 
       {/* Tags */}
       <CreatorTagChips tags={[creator.category, creator.audienceCategory, creator.audienceLocation]} />

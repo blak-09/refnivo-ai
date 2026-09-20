@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { canViewAudienceNumbers } from "@/lib/auth/viewer";
 import type { Metadata } from "next";
 import { BadgeCheckIcon, MapPinIcon, SearchIcon, UsersIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function CreatorsPage({ searchParams }: { searchParams: Promise<{ q?: string; category?: string }> }) {
+  const showNumbers = await canViewAudienceNumbers();
   const sp = await searchParams;
   const creators = await listPublicCreators({ q: sp.q || undefined, category: sp.category || undefined });
 
@@ -75,16 +77,16 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
                 </div>
                 {c.bio ? <p className="line-clamp-2 text-sm text-muted-foreground">{c.bio}</p> : null}
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  {c.instagramFollowers ? <span>{compact(c.instagramFollowers)} IG followers</span> : null}
-                  {c.youtubeSubscribers ? <span>{compact(c.youtubeSubscribers)} YT subs</span> : null}
-                  {c.engagementRate ? <span>{c.engagementRate}% engagement</span> : null}
+                  {showNumbers && c.instagramFollowers ? <span>{compact(c.instagramFollowers)} IG followers</span> : null}
+                  {showNumbers && c.youtubeSubscribers ? <span>{compact(c.youtubeSubscribers)} YT subs</span> : null}
+                  {showNumbers && c.engagementRate ? <span>{c.engagementRate}% engagement</span> : null}
                   {c.location ? (
                     <span className="inline-flex items-center gap-1">
                       <MapPinIcon className="size-3" /> {c.location}
                     </span>
                   ) : null}
                 </div>
-                {c.instagramFollowers || c.youtubeSubscribers || c.engagementRate ? <SelfReported /> : null}
+                {showNumbers && (c.instagramFollowers || c.youtubeSubscribers || c.engagementRate) ? <SelfReported /> : null}
                 <Button variant="outline" size="sm" className="w-full" nativeButton={false} render={<Link href={`/creators/${c.username}`} />}>
                   View profile
                 </Button>

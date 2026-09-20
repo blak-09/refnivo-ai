@@ -282,6 +282,36 @@ export async function reviewPayout(
   });
 }
 
+/**
+ * Ledger rows that were settled (PAID / REDEEMED) and later REVERSED by a refund.
+ * Money already left the platform; there is no automatic clawback — this list is
+ * the admin's recovery worklist (deduct from the partner's next payout, or ask
+ * the brand to absorb it).
+ */
+export async function listSettledThenReversed(take = 100) {
+  const referralSelect = { conversion: { select: { orderReference: true, reversalReason: true } }, campaign: { select: { name: true, brand: { select: { name: true } } } } } as const;
+  const payoutSelect = { payoutRequest: { select: { id: true, payoutReference: true, processedAt: true } } } as const;
+  const [commissions, rewards] = await Promise.all([
+    prisma.commission.findMany({
+      where: { status: "REVERSED", payoutItem: { payoutRequest: { status: "PAID" } } },
+      orderBy: { updatedAt: "desc" },
+      take,
+      select: { id: true, amount: true, currency: true, updatedAt: true, creator: { select: { id: true, name: true, email: true } }, referral: { select: referralSelect }, payoutItem: { select: payoutSelect } },
+    }),
+    prisma.reward.findMany({
+      where: { status: "REVERSED", payoutItem: { payoutRequest: { status: "PAID" } } },
+      orderBy: { updatedAt: "desc" },
+      take,
+      select: { id: true, amount: true, currency: true, updatedAt: true, recipient: { select: { id: true, name: true, email: true } }, referral: { select: referralSelect }, payoutItem: { select: payoutSelect } },
+    }),
+  ]);
+  const rows = [
+    ...commissions.map((c) => ({ kind: "COMMISSION" as const, id: c.id, amount: c.amount, currency: c.currency, reversedAt: c.updatedAt, partner: c.creator, referral: c.referral, payout: c.payoutItem?.payoutRequest ?? null })),
+    ...rewards.map((r) => ({ kind: "REWARD" as const, id: r.id, amount: r.amount, currency: r.currency, reversedAt: r.updatedAt, partner: r.recipient, referral: r.referral, payout: r.payoutItem?.payoutRequest ?? null })),
+  ];
+  return rows.sort((a, b) => b.reversedAt.getTime() - a.reversedAt.getTime());
+}
+
 export async function listPayoutRequests(status?: PayoutStatus | "OPEN" | "ALL") {
   const where: Prisma.PayoutRequestWhereInput =
     !status || status === "OPEN" ? { status: { in: OPEN_STATUSES } } : status === "ALL" ? {} : { status };

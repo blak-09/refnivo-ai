@@ -8,7 +8,7 @@ import { EmptyState, PageHeader, StatusBadge } from "@/components/dashboard/prim
 import { PayoutReview } from "@/components/admin/admin-actions";
 import { requireRole } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
-import { listPayoutRequests } from "@/lib/services/payouts";
+import { listPayoutRequests, listSettledThenReversed } from "@/lib/services/payouts";
 import { formatDate } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
   await requireRole("ADMIN");
   const { status } = await searchParams;
   const filter = FILTERS.some((f) => f.value === status) ? (status as PayoutStatus | "OPEN" | "ALL") : "OPEN";
-  const rows = await listPayoutRequests(filter);
+  const [rows, clawbacks] = await Promise.all([listPayoutRequests(filter), listSettledThenReversed()]);
 
   return (
     <div className="space-y-6">
@@ -99,6 +99,51 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
           </Table>
         </div>
       )}
+
+      {clawbacks.length ? (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-base font-semibold">Settled, then reversed</h2>
+            <p className="text-sm text-muted-foreground">
+              These entries were paid out and later reversed by a refund. Money already left the platform, so recover it manually: deduct it
+              from the partner&apos;s next settlement or agree with the brand to absorb it.
+            </p>
+          </div>
+          <div className="overflow-x-auto rounded-xl border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Partner</TableHead>
+                  <TableHead>Order</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Paid via</TableHead>
+                  <TableHead>Reversed</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {clawbacks.map((c) => (
+                  <TableRow key={`${c.kind}-${c.id}`}>
+                    <TableCell>
+                      {c.partner.name}
+                      <span className="block text-xs text-muted-foreground">{c.partner.email}</span>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      <span className="font-mono">{c.referral.conversion?.orderReference ?? "—"}</span>
+                      <span className="block text-muted-foreground">
+                        {c.referral.campaign.brand.name} · {c.referral.campaign.name}
+                      </span>
+                      {c.referral.conversion?.reversalReason ? <span className="block text-muted-foreground">Reason: {c.referral.conversion.reversalReason}</span> : null}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{formatMoney(c.amount, c.currency)}</TableCell>
+                    <TableCell className="font-mono text-[10px] text-muted-foreground">{c.payout?.payoutReference ?? "—"}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{c.reversedAt.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

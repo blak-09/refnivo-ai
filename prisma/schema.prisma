@@ -304,7 +304,8 @@ model Brand {
   conversions Conversion[]
   aiInsights  AIInsight[]
 
-  @@index([ownerId])
+  /// v1: one brand per owner (enforced here, not only in the action).
+  @@unique([ownerId])
   @@index([industry])
   @@index([status])
   @@map("brands")

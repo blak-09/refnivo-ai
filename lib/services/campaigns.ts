@@ -109,27 +109,43 @@ export async function updateCampaign(brandId: string, brandName: string, userId:
       if (existing.status !== "DRAFT") throw new CampaignError("The product cannot be changed after a campaign is published.");
       await assertProductBelongsToBrand(tx, brandId, values.productId);
     }
+    if (existing.publishedAt && existing.campaignType !== data.campaignType) {
+      throw new CampaignError("The campaign type cannot be changed after publishing — partners already joined under the current rules. End this campaign and create a new one instead.");
+    }
 
     // The slug is part of every shared /campaigns/<slug> URL: it may only change while the campaign is still a draft.
     const slug =
       existing.name === values.name || existing.publishedAt ? existing.slug : await uniqueSlug(`${brandName} ${values.name}`, slugExists(tx, campaignId));
     const campaign = await tx.campaign.update({ where: { id: campaignId }, data: { slug, ...data } });
+    const rewardChanged = existing.customerRewardValue !== campaign.customerRewardValue || existing.rewardType !== campaign.rewardType;
+    const commissionChanged =
+      existing.creatorCommissionValue !== campaign.creatorCommissionValue || existing.creatorCommissionType !== campaign.creatorCommissionType;
     await recordAudit(
-      {
-        userId,
-        action: "CAMPAIGN_UPDATED",
-        entityType: "Campaign",
-        entityId: campaignId,
-        metadata: {
-          brandId,
-          rewardChanged: existing.customerRewardValue !== campaign.customerRewardValue || existing.rewardType !== campaign.rewardType,
-          commissionChanged:
-            existing.creatorCommissionValue !== campaign.creatorCommissionValue ||
-            existing.creatorCommissionType !== campaign.creatorCommissionType,
-        },
-      },
+      { userId, action: "CAMPAIGN_UPDATED", entityType: "Campaign", entityId: campaignId, metadata: { brandId, rewardChanged, commissionChanged } },
       tx,
     );
+    // Partners with a live link are told when the economics change under them (pending ledger rows keep their frozen amounts).
+    if (existing.publishedAt && (rewardChanged || commissionChanged)) {
+      const partners = await tx.referralLink.findMany({ where: { campaignId, status: "ACTIVE" }, select: { ownerId: true, partnerType: true } });
+      for (const p of partners) {
+        const affected = p.partnerType === "CREATOR" ? commissionChanged : rewardChanged;
+        if (!affected) continue;
+        await notify(
+          {
+            userId: p.ownerId,
+            type: "CAMPAIGN_PUBLISHED",
+            idempotencyKey: `campaign-rules:${campaignId}:${campaign.updatedAt.getTime()}`,
+            title: `${p.partnerType === "CREATOR" ? "Commission" : "Reward"} updated: ${campaign.name}`,
+            body:
+              p.partnerType === "CREATOR"
+                ? "The brand changed the creator commission for this campaign. Orders already recorded keep the amount they were recorded with."
+                : "The brand changed the customer reward for this campaign. Orders already recorded keep the amount they were recorded with.",
+            href: p.partnerType === "CREATOR" ? "/dashboard/creator/campaigns" : "/dashboard/customer/referrals",
+          },
+          tx,
+        );
+      }
+    }
     return campaign;
   });
 }

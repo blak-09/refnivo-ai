@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { cleanupReplacedImages } from "@/lib/storage/cleanup";
 import { prisma } from "@/lib/db/prisma";
 import { toCreatorProfileData, type CreatorProfileValues } from "@/lib/validation/creator";
 import { recordAudit } from "./audit";
@@ -19,10 +20,11 @@ export async function upsertCreatorProfile(userId: string, values: CreatorProfil
   const data = toCreatorProfileData(values);
   try {
     return await prisma.$transaction(async (tx) => {
-      const existing = await tx.creatorProfile.findUnique({ where: { userId }, select: { id: true } });
+      const existing = await tx.creatorProfile.findUnique({ where: { userId }, select: { id: true, profileImageUrl: true } });
       const profile = existing
         ? await tx.creatorProfile.update({ where: { userId }, data })
         : await tx.creatorProfile.create({ data: { userId, ...data } });
+      if (existing) cleanupReplacedImages([{ previous: existing.profileImageUrl, next: profile.profileImageUrl }]);
       await recordAudit(
         { userId, action: existing ? "CREATOR_PROFILE_UPDATED" : "CREATOR_PROFILE_CREATED", entityType: "CreatorProfile", entityId: profile.id },
         tx,

@@ -1,4 +1,5 @@
 import { Prisma, type ProductStatus } from "@prisma/client";
+import { cleanupReplacedImages } from "@/lib/storage/cleanup";
 import { prisma } from "@/lib/db/prisma";
 import { toProductData, type ProductValues } from "@/lib/validation/product";
 import { recordAudit } from "./audit";
@@ -53,6 +54,7 @@ export async function updateProduct(brandId: string, brandName: string, userId: 
     try {
       const product = await tx.product.update({ where: { id: productId }, data: { slug, ...toProductData(values) } });
       await recordAudit({ userId, action: "PRODUCT_UPDATED", entityType: "Product", entityId: productId, metadata: { brandId } }, tx);
+      cleanupReplacedImages([{ previous: existing.imageUrl, next: product.imageUrl }]);
       return product;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {

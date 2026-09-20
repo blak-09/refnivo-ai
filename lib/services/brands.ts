@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { cleanupReplacedImages } from "@/lib/storage/cleanup";
 import { prisma } from "@/lib/db/prisma";
 import { slugify } from "@/lib/utils/slug";
 import { toSocialLinks, type BrandValues } from "@/lib/validation/brand";
@@ -36,8 +37,16 @@ export async function getBrandForOwner(ownerId: string) {
   return prisma.brand.findFirst({ where: { ownerId }, orderBy: { createdAt: "asc" } });
 }
 
+export class BrandExistsError extends Error {
+  constructor() {
+    super("You already have a brand profile.");
+    this.name = "BrandExistsError";
+  }
+}
+
 export async function createBrand(ownerId: string, values: BrandValues) {
   return prisma.$transaction(async (tx) => {
+    if (await tx.brand.findUnique({ where: { ownerId }, select: { id: true } })) throw new BrandExistsError();
     const slug = await uniqueSlug(values.name, async (s) => !!(await tx.brand.findUnique({ where: { slug: s }, select: { id: true } })));
     const brand = await tx.brand.create({ data: { ownerId, slug, ...toBrandData(values) } });
     await recordAudit(
@@ -50,12 +59,21 @@ export async function createBrand(ownerId: string, values: BrandValues) {
 
 /** Ownership is enforced in the WHERE clause — a non-owner update touches zero rows. */
 export async function updateBrand(brandId: string, ownerId: string, values: BrandValues) {
-  return prisma.$transaction(async (tx) => {
-    const { count } = await tx.brand.updateMany({ where: { id: brandId, ownerId }, data: toBrandData(values) });
-    if (count === 0) return null;
+  const data = toBrandData(values);
+  const updated = await prisma.$transaction(async (tx) => {
+    const before = await tx.brand.findFirst({ where: { id: brandId, ownerId }, select: { logoUrl: true, coverImageUrl: true } });
+    if (!before) return null;
+    await tx.brand.update({ where: { id: brandId }, data });
     await recordAudit({ userId: ownerId, action: "BRAND_UPDATED", entityType: "Brand", entityId: brandId }, tx);
-    return tx.brand.findUnique({ where: { id: brandId } });
+    const brand = await tx.brand.findUnique({ where: { id: brandId } });
+    return { brand, before };
   });
+  if (!updated) return null;
+  cleanupReplacedImages([
+    { previous: updated.before.logoUrl, next: updated.brand?.logoUrl },
+    { previous: updated.before.coverImageUrl, next: updated.brand?.coverImageUrl },
+  ]);
+  return updated.brand;
 }
 
 // ---------------------------------------------------------------------------

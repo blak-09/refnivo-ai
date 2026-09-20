@@ -80,7 +80,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <p className="font-medium">Recommended by {referrer.name}</p>
           <p className="text-muted-foreground">
-            {campaign.offerTitle ? `${campaign.offerTitle}. ` : ""}Buy through the button below so your order is attributed to them.
+            {campaign.offerTitle ? `${campaign.offerTitle}. ` : ""}Buy through the button below and quote referral code <span className="font-mono font-medium">{referrer.code}</span> with your order so the brand can attribute it to them.
           </p>
         </div>
       ) : null}

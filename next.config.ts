@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { securityHeaders } from "./lib/config/security-headers";
+import { NOINDEX_HEADER, securityHeaders } from "./lib/config/security-headers";
 import { storagePublicOrigin } from "./lib/storage/hosted-image";
 
 // Only images WE host go through the optimizer (see lib/storage/hosted-image.ts):
@@ -16,7 +16,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   images: { remotePatterns, formats: ["image/avif", "image/webp"] },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders() }];
+    return [
+      { source: "/(.*)", headers: securityHeaders() },
+      { source: "/(dashboard|auth|admin|api)", headers: [NOINDEX_HEADER] },
+      { source: "/(dashboard|auth|admin|api)/(.*)", headers: [NOINDEX_HEADER] },
+    ];
   },
 };
 

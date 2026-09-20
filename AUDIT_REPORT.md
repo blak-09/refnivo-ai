@@ -387,4 +387,21 @@ Checked locally at 375 px and desktop (the built-in browser blocks production as
 | STOR-01 (mitigation) | **Mitigated** — the real driver is still open | `uploadsAvailable()`; upload route answers 503 with a clear message; product form shows "Uploads unavailable" in production instead of failing |
 | Health | **Done** | `/api/health` lists production `warnings` (storage, rate limit, e-mail, cron) |
 
-Still open from the report: REF-01 (attribution decision), STOR-01 driver, EMAIL-01 / SEC-01 (configuration), CONV-01, CONV-02, CAMP-02, AUTH-02, AUTH-03, DB-01, REF-02, SEC-02/03/04, PRIV-01, PERF-02/03, UX-02, test gaps.
+**Batch 2 — remaining safe items (2026-09-20)**
+
+| ID | Status | What changed |
+|---|---|---|
+| REF-01 | **Copy fixed** (design still open) | wizard/summary say the window is for store integrations; referred visitors are told to quote their code |
+| CONV-01 | **Fixed** (test) | a REJECTED order reference can be recorded again; the old row is kept under `<ref>~rejected~<id>` |
+| CONV-02 | **Mitigated** | `/dashboard/admin/payouts` lists "Settled, then reversed" entries as a recovery worklist (no automatic clawback yet) |
+| CAMP-02 | **Fixed** (test) | campaign type locked after publish; commission/reward changes on a live campaign notify partners |
+| AUTH-02 | **Mitigated** | `X-Robots-Tag: noindex, nofollow` on `/dashboard`, `/auth`, `/admin`, `/api` |
+| AUTH-03 | **Fixed** | Google sign-up into an existing account of another role shows a banner explaining it |
+| DB-01 | **Fixed** (migration `20260920090000_brand_owner_unique`, test) | `brands.ownerId` unique; `createBrand` checks inside the transaction |
+| REF-02 | **Fixed** (test) | clicks also de-duplicated per IP + user agent per hour |
+| SEC-03 | **Fixed** (opt-in) | `CONTACT_HASH_SECRET` salts contact/IP hashes; falls back to `AUTH_SECRET` until set |
+| PRIV-01 | **Fixed** | self-reported audience numbers shown only to brand owners and admins |
+| STOR-01 | **Fixed** (batch "uploads everywhere") | Supabase Storage driver live; replaced/removed hosted images are deleted best-effort |
+| EMAIL-01 / SEC-01 / DEPLOY-01 | **Configured** | Resend + `CRON_SECRET` live; outbox dispatch moved to `after()` (Vercel froze fire-and-forget sends) |
+
+Still open: REF-01 real click→order attribution (needs store integration), automatic clawback (CONV-02), pagination (PERF-02), HTTP-level auth tests, `RATE_LIMIT_PROVIDER=upstash` configuration (SEC-01).

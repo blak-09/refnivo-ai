@@ -260,6 +260,9 @@ session is invalidated (`sessionVersion` bump) and the user is signed out to `/a
   `sessionVersion` changed (password change, admin revocation) is sent to `/auth/signed-out`, which clears the cookie
   and shows the reason on the login page (`?error=account-suspended`, `session-expired`, …). `proxy.ts` only sees the
   JWT, so it must never be asked to bounce such a cookie back to a dashboard.
+- **Contact hashing**: customer contacts and IPs are stored only as salted SHA-256. Set `CONTACT_HASH_SECRET` once, before
+  the first real order, and never rotate it (historical self-referral / new-customer comparisons depend on it); until it is
+  set, `AUTH_SECRET` is used — which means rotating `AUTH_SECRET` would silently break those comparisons.
 - **Signup approval**: `SIGNUP_APPROVAL=auto` (default) lets brands, creators and customers sign in right after
   registering. Set `manual` to hold every new account in `/dashboard/admin/registrations`, or a comma list such as
   `CREATOR,CUSTOMER` to auto-approve only those roles. An invalid value is a boot error (listed on `/api/health`).
@@ -287,6 +290,7 @@ session is invalidated (`sessionVersion` bump) and the user is signed out to `/a
 
 - [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; `PAYMENT_PROVIDER=NONE`, `PAYMENTS_ENABLED=false`
 - [ ] `SIGNUP_APPROVAL` chosen deliberately (`auto` = self-service launch, `manual` = gated)
+- [ ] `CONTACT_HASH_SECRET` set (dedicated, never rotated) so `AUTH_SECRET` can be rotated freely
 - [ ] Google sign-in (optional): migration `20260918120000_google_oauth` applied, then `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set with the production redirect URI registered (section 9)
 - [ ] `RATE_LIMIT_PROVIDER=upstash` + Upstash credentials set (or `RATE_LIMIT_ALLOW_MEMORY=1` accepted knowingly)
 - [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)

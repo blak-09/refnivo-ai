@@ -72,6 +72,16 @@ export async function recordOrder(brandId: string, actorId: string, input: Recor
       },
     });
 
+    // A previously REJECTED order with the same reference (typo, wrong code) may be recorded again:
+    // the old row is renamed, not deleted, so the audit trail keeps both attempts.
+    const clash = await tx.conversion.findUnique({
+      where: { brandId_orderReference: { brandId, orderReference: input.orderReference.trim() } },
+      select: { id: true, referral: { select: { status: true } } },
+    });
+    if (clash && clash.referral.status === "REJECTED") {
+      await tx.conversion.update({ where: { id: clash.id }, data: { orderReference: `${input.orderReference.trim()}~rejected~${clash.id.slice(-6)}` } });
+    }
+
     let conversion;
     try {
       conversion = await tx.conversion.create({

@@ -4,7 +4,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { LANDING_CACHE_TAG } from "@/lib/services/landing";
 import { redirect } from "next/navigation";
 import { assertRole, assertBrandOwner } from "@/lib/auth/guards";
-import { createBrand, getBrandForOwner, updateBrand } from "@/lib/services/brands";
+import { BrandExistsError, createBrand, getBrandForOwner, updateBrand } from "@/lib/services/brands";
 import { brandSchema } from "@/lib/validation/brand";
 import { fail, firstError, formValues, ok, safeErrorMessage, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 
@@ -29,6 +29,7 @@ export async function createBrandAction(_prev: ActionResult | null, formData: Fo
   try {
     await createBrand(user.id, parsed.data);
   } catch (err) {
+    if (err instanceof BrandExistsError) redirect("/dashboard/brand");
     console.error("[createBrand] failed", err instanceof Error ? err.message : err);
     return fail("Could not create the brand. Please try again.");
   }

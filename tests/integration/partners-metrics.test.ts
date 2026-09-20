@@ -7,7 +7,7 @@ import { recordClick, resolveReferralCode } from "@/lib/services/tracking";
 import { getBrandOverview, getCampaignBreakdown, getPartnerStats, getTopCreators } from "@/lib/services/metrics";
 import { buildInsight } from "@/lib/domain/insights";
 import { isReferralCodeFormat } from "@/lib/utils/codes";
-import { campaignValues, makeCreator, makeCustomer, makeOwnerWithBrand } from "../helpers";
+import { campaignValues, makeCreator, makeCustomer, makeOwnerWithBrand, uniq } from "../helpers";
 
 let a: Awaited<ReturnType<typeof makeOwnerWithBrand>>;
 let b: Awaited<ReturnType<typeof makeOwnerWithBrand>>;
@@ -199,5 +199,66 @@ describe("metrics", () => {
     expect(top[0].revenue).toBeGreaterThan(0);
     expect((await getBrandOverview(b.brand.id)).revenue).toBe(0);
     expect(await getTopCreators(b.brand.id)).toEqual([]);
+  });
+});
+
+describe("batch 2: re-record after rejection, live-campaign rule changes, one brand per owner, device dedupe", () => {
+  it("CONV-01: an order reference rejected once can be recorded again; the old row is kept under a suffixed reference", async () => {
+    const { createCampaign, transitionCampaign } = await import("@/lib/services/campaigns");
+    const { recordOrder, rejectConversion } = await import("@/lib/services/conversions");
+    const { joinCampaign } = await import("@/lib/services/partners");
+    const owner = await makeOwnerWithBrand(`Rerec ${uniq("b")}`);
+    const campaign = await createCampaign(owner.brand.id, owner.brand.name, owner.user.id, campaignValues(owner.product.id, { name: `Rerec ${uniq("c")}`, requiresApproval: false }));
+    await transitionCampaign(owner.brand.id, owner.user.id, campaign.id, "PUBLISH", { confirmed: true });
+    const creator = await makeCreator();
+    const { code } = await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaign.id);
+    const ref = uniq("ORD");
+    const first = await recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: ref, amountMinor: 50_000 });
+    await rejectConversion(owner.brand.id, owner.user.id, first.referral.id, "typo");
+    const second = await recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: ref, amountMinor: 55_000 });
+    expect(second.conversion.orderReference).toBe(ref);
+    const old = await prisma.conversion.findUniqueOrThrow({ where: { id: first.conversion.id } });
+    expect(old.orderReference.startsWith(`${ref}~rejected~`)).toBe(true);
+    // A PURCHASED (not rejected) duplicate is still refused.
+    await expect(recordOrder(owner.brand.id, owner.user.id, { code: code!, orderReference: ref, amountMinor: 1_000 })).rejects.toThrow(/already been recorded/);
+  });
+
+  it("CAMP-02: campaign type is locked after publishing; a commission change notifies creators with a live link", async () => {
+    const { createCampaign, transitionCampaign, updateCampaign, CampaignError } = await import("@/lib/services/campaigns");
+    const { joinCampaign } = await import("@/lib/services/partners");
+    const owner = await makeOwnerWithBrand(`Lock ${uniq("b")}`);
+    const campaign = await createCampaign(owner.brand.id, owner.brand.name, owner.user.id, campaignValues(owner.product.id, { name: `Lock ${uniq("c")}`, requiresApproval: false }));
+    await transitionCampaign(owner.brand.id, owner.user.id, campaign.id, "PUBLISH", { confirmed: true });
+    const creator = await makeCreator();
+    await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaign.id);
+    await expect(
+      updateCampaign(owner.brand.id, owner.brand.name, owner.user.id, campaign.id, campaignValues(owner.product.id, { name: campaign.name, campaignType: "CUSTOMER_REFERRAL" })),
+    ).rejects.toBeInstanceOf(CampaignError);
+    await updateCampaign(owner.brand.id, owner.brand.name, owner.user.id, campaign.id, campaignValues(owner.product.id, { name: campaign.name, creatorCommissionValue: 12 }));
+    expect(await prisma.notification.count({ where: { userId: creator.id, title: { startsWith: "Commission updated" } } })).toBe(1);
+  });
+
+  it("DB-01: a second brand for the same owner is refused", async () => {
+    const { createBrand, BrandExistsError } = await import("@/lib/services/brands");
+    const { brandSchema } = await import("@/lib/validation/brand");
+    const owner = await makeOwnerWithBrand(`One ${uniq("b")}`);
+    await expect(createBrand(owner.user.id, brandSchema.parse({ name: "Second", industry: "Consumer electronics" }))).rejects.toBeInstanceOf(BrandExistsError);
+  });
+
+  it("REF-02: the same IP + user agent on a link counts once per hour even when the visitor cookie changes", async () => {
+    const { createCampaign, transitionCampaign } = await import("@/lib/services/campaigns");
+    const { joinCampaign } = await import("@/lib/services/partners");
+    const { recordClick, resolveReferralCode } = await import("@/lib/services/tracking");
+    const owner = await makeOwnerWithBrand(`Click ${uniq("b")}`);
+    const campaign = await createCampaign(owner.brand.id, owner.brand.name, owner.user.id, campaignValues(owner.product.id, { name: `Click ${uniq("c")}`, requiresApproval: false }));
+    await transitionCampaign(owner.brand.id, owner.user.id, campaign.id, "PUBLISH", { confirmed: true });
+    const customer = await makeCustomer();
+    const { code } = await joinCampaign({ id: customer.id, name: customer.name, role: "CUSTOMER" }, campaign.id);
+    const resolved = await resolveReferralCode(code!);
+    if (!resolved.ok) throw new Error("expected live link");
+    const base = { linkId: resolved.link.id, campaignId: campaign.id, referrerId: customer.id, source: "LINK" as const, ip: "203.0.113.9", userAgent: "UA/1" };
+    expect((await recordClick({ ...base, visitorId: uniq("v") })).counted).toBe(true);
+    expect((await recordClick({ ...base, visitorId: uniq("v") })).counted).toBe(false); // new cookie, same device
+    expect((await recordClick({ ...base, visitorId: uniq("v"), ip: "203.0.113.10" })).counted).toBe(true); // different device
   });
 });

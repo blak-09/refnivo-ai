@@ -52,8 +52,9 @@ const callbacks: NextAuthConfig["callbacks"] = {
     if (!identity) return `/auth/login?error=${OAUTH_ERROR.emailUnverified}`;
 
     let resolution;
+    let requestedRole: Awaited<ReturnType<typeof consumeOAuthRoleCookie>> = null;
     try {
-      const requestedRole = await consumeOAuthRoleCookie();
+      requestedRole = await consumeOAuthRoleCookie();
       resolution = await resolveGoogleSignIn(identity, requestedRole);
     } catch (err) {
       logServerError("oauth.google", err);
@@ -68,6 +69,11 @@ const callbacks: NextAuthConfig["callbacks"] = {
       case "ok":
         if (resolution.isNew) {
           await notifyRegistration("approved", { id: resolution.user.id, name: resolution.user.name, email: resolution.user.email, role: resolution.user.role, registrationId: resolution.user.registrationId });
+        }
+        // Chose a role on the register page but the e-mail already had an account of another role:
+        // sign in to the existing account and say so (a session IS created — the redirect keeps it).
+        if (resolution.linked && requestedRole && requestedRole !== resolution.user.role) {
+          return `/dashboard?notice=linked-existing`;
         }
         return true;
       case "pending":

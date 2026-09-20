@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useSearchParams } from "next/navigation";
 import { ProductThumb } from "@/components/products/product-thumb";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -143,8 +144,24 @@ export function DashboardShell(props: ShellProps) {
             <span className="font-medium text-foreground">Demo data</span> — this account and its metrics were created by the seed script and do not represent real business performance.
           </div>
         ) : null}
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</main>
+        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+          <React.Suspense fallback={null}>
+            <LinkedExistingNotice />
+          </React.Suspense>
+          {children}
+        </main>
       </div>
     </div>
+  );
+}
+
+/** One-time banner after a Google sign-up landed in an existing account of a different role (?notice=linked-existing). */
+function LinkedExistingNotice() {
+  const params = useSearchParams();
+  if (params.get("notice") !== "linked-existing") return null;
+  return (
+    <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+      This e-mail already had a Refnivo account, so we signed you into it. Account types cannot be changed; to join as a different type, use another e-mail.
+    </p>
   );
 }
