@@ -16,7 +16,7 @@ import path from "node:path";
 
 const PORT = Number(process.env.LOCAL_PG_PORT ?? 5433);
 const DATA_DIR = path.resolve(process.cwd(), ".localdb", "data");
-const DB_NAMES = ["localgrowth", "localgrowth_test"];
+const DB_NAMES = ["localgrowth", "localgrowth_test", "localgrowth_e2e"];
 
 async function portInUse(port: number): Promise<boolean> {
   const net = await import("node:net");

@@ -82,6 +82,7 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | `PAYMENT_PROVIDER` / `PAYMENTS_ENABLED` | no | Must stay `NONE` / `false` — payouts are settled manually by an admin; the app refuses to start in production if payments are enabled. |
 | `NEXT_PUBLIC_SHOW_DEMO_LOGINS` | no | Demo quick sign-in buttons show only in non-production builds (never in production). Set `false` to hide them on a shared dev server. |
 | `TEST_DATABASE_URL` | no | Database for `npm test` integration tests (defaults to the local `localgrowth_test`). |
+| `E2E_DATABASE_URL` / `E2E_BASE_URL` | no | Database and (optionally) an already-running server for `npm run test:e2e` (defaults: local `localgrowth_e2e`, own server on :3100). |
 
 ## Scripts
 
@@ -93,6 +94,7 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | `npm run lint` | ESLint. |
 | `npm run typecheck` | `tsc --noEmit`. |
 | `npm test` | Vitest — unit tests + DB integration tests (needs `TEST_DATABASE_URL` reachable). |
+| `npm run test:e2e` | Playwright smoke tests through the real UI (brand → campaign → creator → referral → order → payout → admin settlement, plus auth guards). Starts its own dev server on :3100 against the disposable `localgrowth_e2e` database; `npm run test:e2e:ui` opens the inspector. CI runs them after the unit job. |
 | `npm run db:local` | Start the embedded local PostgreSQL. |
 | `npm run db:migrate` | `prisma migrate dev` — **localhost only** (refuses remote hosts and `NODE_ENV=production`). |
 | `npm run db:push:local` / `npm run db:reset:local` | `prisma db push` / `prisma migrate reset` — **localhost only**, same guard, no override flag. |
