@@ -145,6 +145,18 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
    log in again with the new password, then open `/dashboard/admin/registrations` and confirm approvals work.
 5. Rotate `AUTH_SECRET` if it was ever shared in chat/tickets — rotating invalidates all sessions (users simply log in again).
 
+### Custom domain
+
+When a domain is attached in Vercel, the app must be told it is the canonical origin — otherwise every post-login
+redirect, referral link, QR code and the Google callback still point at `*.vercel.app`:
+
+1. Vercel → Environment Variables → Production: `NEXTAUTH_URL=https://www.your-domain` and
+   `NEXT_PUBLIC_APP_URL=https://www.your-domain` (same value; include `www` if that is the host Vercel serves).
+2. Google Cloud → the OAuth client: add `https://www.your-domain` to *Authorized JavaScript origins* and
+   `https://www.your-domain/api/auth/callback/google` to *Authorized redirect URIs*.
+3. Redeploy. In production the proxy then 308-redirects the platform alias (`refnivo-ai.vercel.app`) to the canonical
+   host (`lib/config/canonical-host.ts`), so users never hold sessions on two origins. Preview deployments are unaffected.
+
 ### Admin cannot sign in?
 
 ```bash

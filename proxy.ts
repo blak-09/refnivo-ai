@@ -4,6 +4,7 @@ import { authConfig } from "@/lib/auth/config";
 import { roleForDashboardPath, roleHome } from "@/lib/auth/roles";
 import { rotationRedirect } from "@/lib/auth/session-version";
 import { isMisconfigured } from "@/lib/config/boot-state";
+import { canonicalRedirect } from "@/lib/config/canonical-host";
 
 const { auth } = NextAuth(authConfig);
 
@@ -65,6 +66,8 @@ const PROTECTED = /^\/(dashboard|auth)(\/|$)/;
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (pathname !== "/api/health" && (isMisconfigured() || !process.env.AUTH_SECRET?.trim())) return misconfiguredResponse();
+  const canonical = canonicalRedirect({ host: req.headers.get("host"), protocol: req.nextUrl.protocol, pathname, search: req.nextUrl.search });
+  if (canonical) return NextResponse.redirect(canonical, { status: 308 });
   // Session-aware handling only where it matters; everything else passes straight through.
   if (PROTECTED.test(pathname)) return authProxy(req as never, {} as never);
   return NextResponse.next();
