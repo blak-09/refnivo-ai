@@ -35,11 +35,13 @@ export async function register(page: Page, role: "BRAND_OWNER" | "CREATOR" | "CU
   await expect(page).toHaveURL(/\/(dashboard|auth\/onboarding)/, { timeout: 60_000 });
 }
 
-export async function login(page: Page, userEmail: string, password = PASSWORD) {
+export async function login(page: Page, userEmail: string, password = PASSWORD, opts: { expectSuccess?: boolean } = {}) {
   await page.goto("/auth/login");
   await page.getByLabel("Email").fill(userEmail);
   await page.getByLabel(/^Password\*?$/).fill(password);
   await page.getByRole("button", { name: "Log in" }).click();
+  // The server action redirects on success; wait for it so the next goto() does not race the session cookie.
+  if (opts.expectSuccess !== false) await page.waitForURL(/\/dashboard/, { timeout: 60_000 });
 }
 
 export async function logout(page: Page) {

@@ -5,7 +5,7 @@ import { confirmAction, createAdmin, db, email, login, register, uniq } from "./
  * The money path, end to end, through the real UI:
  *
  *   brand signs up → onboarding → product → campaign published
- *   → creator signs up → onboarding → joins → referral link + QR
+ *   → creator signs up → onboarding → applies → brand approves → referral link + QR
  *   → anonymous click on /r/CODE lands on the campaign page
  *   → brand records the order with the code → verifies it
  *   → creator sees the approved commission → requests payout
@@ -44,22 +44,24 @@ test("brand: signup → onboarding → product → published campaign", async ({
   await page.getByLabel("Price (₹)").fill("1999");
   await page.getByLabel("Purchase URL").fill("https://example.com/p/e2e-headphones");
   await page.getByRole("button", { name: "Add product", exact: true }).click();
-  await expect(page).toHaveURL(/\/dashboard\/brand\/products/, { timeout: 60_000 });
+  // Must leave the /products/new form (the save redirects to the list or the product page).
+  await expect(page).toHaveURL(/\/dashboard\/brand\/products(?!\/new)/, { timeout: 60_000 });
+  await expect(page.getByText("E2E Headphones").first()).toBeVisible();
 
   // Campaign wizard.
   await page.goto("/dashboard/brand/campaigns/new");
-  await page.getByRole("button", { name: /E2E Headphones/ }).first().click();
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button").filter({ hasText: "E2E Headphones" }).first().click();
+  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Campaign name").fill(`E2E Launch ${uniq("c")}`);
-  await page.getByRole("button", { name: "Next" }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
   // Fixed ₹600 commission so one verified order clears the default ₹500 payout minimum.
   await page.getByLabel("Commission type").selectOption("FIXED_AMOUNT");
   await page.getByLabel(/^Commission \(₹ per order\)/).fill("600");
   await page.getByLabel(/^Reward value \(₹\)|^Reward \(% of order\)/).fill("50");
-  await page.getByRole("button", { name: "Next" }).click();
-  await page.getByRole("button", { name: "Next" }).click(); // rules & budget: defaults
-  await page.getByRole("button", { name: "Next" }).click(); // duration: defaults (starts today)
-  await page.getByRole("button", { name: "Next" }).click(); // preview
+  await page.getByRole("button", { name: "Continue" }).click();
+  await page.getByRole("button", { name: "Continue" }).click(); // rules & budget: defaults
+  await page.getByRole("button", { name: "Continue" }).click(); // duration: defaults (starts today)
+  await page.getByRole("button", { name: "Continue" }).click(); // preview
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Publish campaign" }).click();
   await expect(page).toHaveURL(/\/dashboard\/brand\/campaigns\/[a-z0-9]+$/, { timeout: 60_000 });
@@ -71,7 +73,7 @@ test("brand: signup → onboarding → product → published campaign", async ({
   await page.context().close();
 });
 
-test("creator: signup → onboarding → join campaign → referral link and QR", async ({ browser }) => {
+test("creator: signup → onboarding → applies to the campaign", async ({ browser }) => {
   const page = await newPage(browser);
   await register(page, "CREATOR", creator);
   await expect(page).toHaveURL(/\/auth\/onboarding/);
@@ -81,13 +83,39 @@ test("creator: signup → onboarding → join campaign → referral link and QR"
   await page.getByRole("button", { name: "Create profile & continue" }).click();
   await expect(page).toHaveURL(/\/dashboard\/creator/, { timeout: 60_000 });
 
+  // The campaign was published with the default "creators need approval" rule.
   await page.goto(`/campaigns/${campaignSlug}`);
-  await page.getByRole("button", { name: /Join & generate my referral link|Apply to this campaign/ }).click();
-  const code = page.locator("code").filter({ hasText: /^[A-Z0-9]{1,12}-[A-Z0-9]{1,8}-[A-Z0-9]{4}$/ }).first();
-  await expect(code).toBeVisible({ timeout: 30_000 });
-  referralCode = (await code.textContent())!.trim();
-  await expect(page.getByRole("img", { name: /QR code/i })).toBeVisible();
+  await page.getByRole("button", { name: "Apply to this campaign" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Submit application" }).click();
+  await expect(page.getByText(/Application sent/).first()).toBeVisible({ timeout: 30_000 });
+
+  const app = await db().partnerApplication.findFirstOrThrow({ where: { user: { email: creator.email } } });
+  expect(app.status).toBe("PENDING");
   await page.context().close();
+});
+
+test("brand: approves the application; creator receives referral link and QR", async ({ browser }) => {
+  const page = await newPage(browser);
+  await login(page, brand.email);
+  await expect(page).toHaveURL(/\/dashboard\/brand/, { timeout: 60_000 });
+  await page.goto("/dashboard/brand/creators");
+  await expect(page.getByText(creator.name).first()).toBeVisible();
+  await page.getByRole("button", { name: "Approve" }).first().click();
+  await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0, { timeout: 30_000 });
+  await page.context().close();
+
+  const link = await db().referralLink.findFirstOrThrow({ where: { owner: { email: creator.email } } });
+  expect(link.status).toBe("ACTIVE");
+  referralCode = link.code;
+
+  const creatorPage = await newPage(browser);
+  await login(creatorPage, creator.email);
+  await creatorPage.goto("/dashboard/creator/links");
+  await expect(creatorPage.getByText(referralCode).first()).toBeVisible({ timeout: 30_000 });
+  await expect(creatorPage.getByRole("img", { name: /QR code/i }).first()).toBeVisible();
+  await creatorPage.context().close();
 });
 
 test("anonymous visitor: /r/CODE redirects to the campaign with the referrer shown", async ({ browser }) => {

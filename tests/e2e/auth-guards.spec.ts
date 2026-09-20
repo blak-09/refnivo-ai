@@ -30,7 +30,7 @@ test("wrong password is refused; the account status is not revealed", async ({ p
   const userEmail = email("pw");
   await register(page, "CUSTOMER", { name: "E2E PW", email: userEmail });
   await page.context().clearCookies();
-  await login(page, userEmail, "definitely-wrong");
+  await login(page, userEmail, "definitely-wrong", { expectSuccess: false });
   await expect(page.getByText("Invalid email or password.")).toBeVisible();
   await expect(page).toHaveURL(/\/auth\/login/);
 });
