@@ -96,6 +96,8 @@ describe("security headers", () => {
     expect(csp).toMatch(/img-src [^;]*https:/);
     expect(csp).toMatch(/img-src [^;]*data:/);
     expect(csp).toMatch(/connect-src 'self'(;|$)/);
+    // the launch video is the only embed: YouTube may be framed, nothing else
+    expect(csp).toMatch(/frame-src https:\/\/www\.youtube\.com https:\/\/www\.youtube-nocookie\.com(;|$)/);
     expect(csp).not.toMatch(/\*/);
   });
 

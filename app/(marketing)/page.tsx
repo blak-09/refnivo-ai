@@ -14,6 +14,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CampaignCard } from "@/components/marketplace/campaign-card";
 import { HeroSection } from "@/components/marketing/hero-section";
 import { TrustedBrands } from "@/components/marketing/trusted-brands";
+import { LaunchSection } from "@/components/marketing/launch-section";
 import { BenefitSection } from "@/components/marketing/benefit-section";
 import { CTAButton } from "@/components/marketing/cta-button";
 import { FloatingProfile } from "@/components/marketing/product-showcase";
@@ -43,6 +44,9 @@ export default async function LandingPage() {
       />
 
       <TrustedBrands brands={brands.slice(0, 8).map((b) => ({ name: b.name, slug: b.slug, logoUrl: b.logoUrl }))} />
+
+      {/* Product-launch video — directly under the brands strip */}
+      <LaunchSection />
 
       {/* Featured campaigns */}
       <section className="py-16 sm:py-20">

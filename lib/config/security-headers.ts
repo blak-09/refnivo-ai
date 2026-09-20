@@ -8,6 +8,8 @@
  *  - Product/brand/creator images are user-supplied URLs on arbitrary hosts and
  *    QR codes are data: URLs -> img-src allows https: and data:.
  *  - Auth.js and server actions are same-origin -> connect-src 'self'.
+ *  - The product-launch video on the home page is a YouTube embed
+ *    (components/marketing/launch-video.tsx) -> frame-src allows YouTube only.
  *  - In development, HMR needs eval + websockets, so CSP is relaxed there.
  */
 export type Header = { key: string; value: string };
@@ -19,6 +21,7 @@ export function contentSecurityPolicy(production: boolean): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
+    "frame-src https://www.youtube.com https://www.youtube-nocookie.com",
     production ? "connect-src 'self'" : "connect-src 'self' ws: wss:",
     "frame-ancestors 'none'",
     "base-uri 'self'",
