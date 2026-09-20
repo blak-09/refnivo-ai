@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { createUser, changePassword, NoPasswordError, WrongPasswordError } from "@/lib/services/users";
 import { resolveGoogleSignIn, userForGoogleAccount, type GoogleIdentity } from "@/lib/services/oauth";
 import { uniq } from "../helpers";
+import { requiredMigrationFromSource } from "../unit/required-migration.test";
 
 function identity(overrides: Partial<GoogleIdentity> = {}): GoogleIdentity {
   const id = uniq("sub");
@@ -134,7 +135,7 @@ describe("schema currency probe (/api/health)", () => {
   it("the migration the code requires is applied on a migrated database", async () => {
     const rows = await prisma.$queryRaw<{ n: number }[]>`
       SELECT COUNT(*)::int AS n FROM "_prisma_migrations"
-      WHERE "migration_name" = ${"20260918150000_user_deleted_at"} AND "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL`;
+      WHERE "migration_name" = ${requiredMigrationFromSource()} AND "finished_at" IS NOT NULL AND "rolled_back_at" IS NULL`;
     expect(Number(rows[0]?.n)).toBe(1);
   });
 });
