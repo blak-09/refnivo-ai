@@ -31,6 +31,7 @@ const groups = [
     title: "Company",
     links: [
       { href: "/about", label: "About" },
+      { href: "/team", label: "Team" },
       { href: "/contact", label: "Contact" },
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },
