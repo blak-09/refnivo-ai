@@ -10,6 +10,8 @@ import { prisma } from "@/lib/db/prisma";
 export type BrandOverview = {
   totalCampaigns: number;
   activeCampaigns: number;
+  /** ACTIVE *and* inside its date window — what the public actually sees. */
+  liveCampaigns: number;
   totalProducts: number;
   totalCreators: number;
   totalCustomers: number;
@@ -30,11 +32,12 @@ export type BrandOverview = {
   conversionRate: number | null;
 };
 
-export async function getBrandOverview(brandId: string): Promise<BrandOverview> {
+export async function getBrandOverview(brandId: string, now = new Date()): Promise<BrandOverview> {
   const inBrand = { campaign: { brandId } } as const;
   const [
     totalCampaigns,
     activeCampaigns,
+    liveCampaigns,
     totalProducts,
     totalCreators,
     totalCustomers,
@@ -52,6 +55,7 @@ export async function getBrandOverview(brandId: string): Promise<BrandOverview> 
   ] = await Promise.all([
     prisma.campaign.count({ where: { brandId, status: { not: "ARCHIVED" } } }),
     prisma.campaign.count({ where: { brandId, status: "ACTIVE" } }),
+    prisma.campaign.count({ where: { brandId, status: "ACTIVE", startDate: { lte: now }, OR: [{ endDate: null }, { endDate: { gte: now } }] } }),
     prisma.product.count({ where: { brandId, status: { not: "ARCHIVED" } } }),
     prisma.partnerApplication.count({ where: { ...inBrand, status: "APPROVED", partnerType: "CREATOR" } }),
     prisma.partnerApplication.count({ where: { ...inBrand, status: "APPROVED", partnerType: "CUSTOMER" } }),
@@ -76,6 +80,7 @@ export async function getBrandOverview(brandId: string): Promise<BrandOverview> 
   return {
     totalCampaigns,
     activeCampaigns,
+    liveCampaigns,
     totalProducts,
     totalCreators,
     totalCustomers,

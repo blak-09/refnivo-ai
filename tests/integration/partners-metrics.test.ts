@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/prisma";
-import { createCampaign, transitionCampaign } from "@/lib/services/campaigns";
+import { createCampaign, listMarketplaceCampaigns, transitionCampaign } from "@/lib/services/campaigns";
 import { decideApplication, joinCampaign, listPartnerApplications, PartnerError } from "@/lib/services/partners";
 import { ConversionError, recordOrder, rejectConversion, verifyConversion } from "@/lib/services/conversions";
 import { recordClick, resolveReferralCode } from "@/lib/services/tracking";
@@ -187,6 +187,28 @@ describe("metrics", () => {
     const insight = buildInsight(overview, await getCampaignBreakdown(fresh.brand.id));
     expect(insight.sufficient).toBe(false);
     expect(insight.text).toMatch(/not enough data/i);
+  });
+
+  it("counts an ACTIVE campaign past its end date as active but NOT live, matching what the public sees", async () => {
+    const owner = await makeOwnerWithBrand(`Expiry ${uniq("b")}`);
+    const campaign = await createCampaign(
+      owner.brand.id,
+      owner.brand.name,
+      owner.user.id,
+      campaignValues(owner.product.id, { name: `Expiry ${uniq("c")}` }),
+    );
+    await transitionCampaign(owner.brand.id, owner.user.id, campaign.id, "PUBLISH", { confirmed: true });
+
+    const live = await getBrandOverview(owner.brand.id);
+    expect(live).toMatchObject({ activeCampaigns: 1, liveCampaigns: 1 });
+
+    // The end date passes. Nothing rewrites `status`, so the row stays ACTIVE…
+    await prisma.campaign.update({ where: { id: campaign.id }, data: { endDate: new Date(Date.now() - 24 * 60 * 60 * 1000) } });
+    const expired = await getBrandOverview(owner.brand.id);
+    expect(expired.activeCampaigns).toBe(1);
+    // …but it is no longer live, which is what the dashboard now reports.
+    expect(expired.liveCampaigns).toBe(0);
+    expect(await listMarketplaceCampaigns({ q: campaign.name })).toEqual([]);
   });
 
   it("brand overview aggregates only verified orders and approved costs; other brands see nothing", async () => {

@@ -72,7 +72,16 @@ export default async function BrandOverviewPage({ searchParams }: { searchParams
         <KpiCard label="Verified conversions" value={overview.verifiedConversions} hint={`${overview.pendingVerification} awaiting verification`} icon={ShoppingCartIcon} />
         <KpiCard label="Link clicks" value={overview.totalClicks} hint={`${overview.qrScans} via QR`} icon={MousePointerClickIcon} />
         <KpiCard label="Conversion rate" value={overview.conversionRate === null ? "—" : `${(overview.conversionRate * 100).toFixed(1)}%`} hint="Verified orders ÷ clicks" icon={TrendingUpIcon} />
-        <KpiCard label="Active campaigns" value={overview.activeCampaigns} hint={`${overview.totalProducts} products listed`} icon={MegaphoneIcon} />
+        <KpiCard
+          label="Live campaigns"
+          value={overview.liveCampaigns}
+          hint={
+            overview.activeCampaigns > overview.liveCampaigns
+              ? `${overview.activeCampaigns - overview.liveCampaigns} active but outside their dates — hidden from the marketplace`
+              : `${overview.totalProducts} products listed`
+          }
+          icon={MegaphoneIcon}
+        />
         <KpiCard label="Partners" value={overview.totalCreators + overview.totalCustomers} hint={`${overview.totalCreators} creators · ${overview.totalCustomers} customers`} icon={UsersIcon} />
         <KpiCard
           label="Pending payouts"

@@ -9,6 +9,7 @@ import { describeCreatorCommission, describeCustomerReward, describeDuration } f
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
 import { listCampaigns } from "@/lib/services/campaigns";
+import { campaignVisibility } from "@/lib/domain/campaign-rules";
 import { CAMPAIGN_STATUS_LABEL } from "@/lib/utils/labels";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,10 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         />
       ) : (
         <div className="grid gap-3">
-          {campaigns.map((c) => (
+          {campaigns.map((c) => {
+            // An ACTIVE row whose dates have passed is hidden everywhere public; say so here.
+            const visibility = campaignVisibility(c);
+            return (
             <Card key={c.id} size="sm">
               <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 gap-3">
@@ -83,12 +87,20 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                       <Link href={`/dashboard/brand/campaigns/${c.id}`} className="text-sm font-semibold hover:underline">
                         {c.name}
                       </Link>
-                      <StatusBadge status={c.status} />
+                      <StatusBadge status={c.status} label={visibility.label ?? undefined} />
                     </div>
                     <p className="text-sm text-muted-foreground">{c.product.name}</p>
                     <p className="text-xs text-muted-foreground">
                       Creator: {describeCreatorCommission(c)} · Customer: {describeCustomerReward(c)} · {describeDuration(c)}
                     </p>
+                    {visibility.note ? (
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        {visibility.note}{" "}
+                        <Link href={`/dashboard/brand/campaigns/${c.id}`} className="font-medium underline underline-offset-2">
+                          Open campaign
+                        </Link>
+                      </p>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-4 text-xs text-muted-foreground sm:flex-col sm:items-end sm:gap-1">
@@ -98,7 +110,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

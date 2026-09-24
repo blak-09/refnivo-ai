@@ -50,6 +50,39 @@ export function isCampaignLive(c: Pick<CampaignLike, "status" | "startDate" | "e
 }
 
 /**
+ * What the brand should actually be told about a campaign.
+ *
+ * `status` alone is misleading: a campaign stays ACTIVE in the database after
+ * its end date passes (nothing runs a clock over the table), while every public
+ * surface hides it and no new order can be attributed to it. Showing a plain
+ * "Active" badge in that state reads as data loss — the brand sees the campaign
+ * in the dashboard but cannot find it on the site. Pure; unit tested.
+ */
+export type CampaignVisibility = {
+  live: boolean;
+  /** LIVE = publicly visible; SCHEDULED/EXPIRED = ACTIVE row that is not; OTHER = the status speaks for itself. */
+  state: "LIVE" | "SCHEDULED" | "EXPIRED" | "OTHER";
+  /** Badge label; null means "use the status label". */
+  label: string | null;
+  /** One line explaining why it is not visible, and what fixes it. */
+  note: string | null;
+};
+
+export function campaignVisibility(c: Pick<CampaignLike, "status" | "startDate" | "endDate">, now = new Date()): CampaignVisibility {
+  if (c.status !== "ACTIVE") return { live: false, state: "OTHER", label: null, note: null };
+  if (c.startDate > now) return { live: false, state: "SCHEDULED", label: "Scheduled", note: "Publicly visible from its start date." };
+  if (c.endDate && c.endDate < now) {
+    return {
+      live: false,
+      state: "EXPIRED",
+      label: "Ended",
+      note: "Past its end date, so it is hidden from the marketplace and cannot take new orders. Edit the campaign to extend the end date.",
+    };
+  }
+  return { live: true, state: "LIVE", label: "Live", note: null };
+}
+
+/**
  * Validation that must pass before a campaign can go ACTIVE. Returns a list of
  * human-readable problems; an empty list means it can be published.
  */
