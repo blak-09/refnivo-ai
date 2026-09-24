@@ -76,6 +76,7 @@ Demo accounts are labelled **Demo data** in the dashboard. Brands, products and 
 | `NEXTAUTH_URL` | production | Canonical https URL for Auth.js (required by the production start-up check; `AUTH_URL` accepted). Leave empty locally so tunnels work. |
 | `NEXT_PUBLIC_APP_URL` | yes | Public origin used to build referral links (`/r/CODE`), QR codes and e-mail links. |
 | `EMAIL_PROVIDER` | no | `console` (default, logs only) or `resend` (needs `RESEND_API_KEY` + `EMAIL_FROM`). Password reset by e-mail is only offered when configured. |
+| `CONTACT_INBOX_EMAIL` | no | Where `/contact` form submissions are delivered. Defaults to the published address in `lib/config/contact.ts`. |
 | `RATE_LIMIT_PROVIDER` | production | `memory` (default, per instance) or `upstash` (`UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`) for a shared limiter. |
 | `PAYOUT_MINIMUM_AMOUNT` | no | Minimum payout / redemption request in minor units (default `50000` = ₹500). |
 | `STORAGE_PROVIDER` | no | Image storage driver — `local` (default; writes to `public/uploads`). The `lib/storage` abstraction lets you add an R2/S3/Cloudinary/Supabase driver without touching callers. |

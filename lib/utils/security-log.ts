@@ -49,6 +49,7 @@ export function redact(value: Loggable, key = ""): Loggable {
 export type SecurityEventName =
   | "RATE_LIMITED"
   | "ORDER_CLAIM_HONEYPOT"
+  | "CONTACT_HONEYPOT"
   | "RATE_LIMIT_STORE_ERROR"
   | "LOGIN_FAILED"
   | "SESSION_REVOKED"
