@@ -103,6 +103,35 @@ enum ReferralLinkStatus {
  * guessing at the referer.
  */
 /// Platforms a creator can link to their Refnivo profile.
+/// Review state of a brand's listing for an affiliate program it already runs.
+enum AffiliateProgramStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  REJECTED
+  PAUSED
+  CLOSED
+}
+
+enum AffiliateCommissionType {
+  PERCENTAGE
+  FIXED
+  /// Rate depends on the product or category.
+  VARIES
+}
+
+/// How the external programme admits creators - decided by the brand, not by Refnivo.
+enum AffiliateApprovalType {
+  AUTOMATIC
+  APPLICATION
+  INVITE_ONLY
+}
+
+enum AffiliateLinkStatus {
+  ACTIVE
+  DISABLED
+}
+
 enum SocialPlatform {
   INSTAGRAM
   YOUTUBE
@@ -337,9 +366,9 @@ model User {
   creatorProfile      CreatorProfile?
   partnerApplications PartnerApplication[]
   referralLinks       ReferralLink[]
-  referralsMade       Referral[]           @relation("ReferralReferrer")
-  referralsReceived   Referral[]           @relation("ReferralReferred")
-  conversionsVerified Conversion[]         @relation("ConversionVerifier")
+  referralsMade       Referral[]             @relation("ReferralReferrer")
+  referralsReceived   Referral[]             @relation("ReferralReferred")
+  conversionsVerified Conversion[]           @relation("ConversionVerifier")
   rewards             Reward[]
   commissions         Commission[]
   payoutRequests      PayoutRequest[]
@@ -348,11 +377,13 @@ model User {
   passwordResetTokens PasswordResetToken[]
   emailOutbox         EmailOutbox[]
   oauthAccounts       OAuthAccount[]
-  orderClaims         OrderClaim[]         @relation("OrderClaimCustomer")
-  decidedOrderClaims  OrderClaim[]         @relation("OrderClaimDecider")
+  orderClaims         OrderClaim[]           @relation("OrderClaimCustomer")
+  decidedOrderClaims  OrderClaim[]           @relation("OrderClaimDecider")
   payments            PaymentTransaction[]
-  connections         Connection[]         @relation("CreatorConnections")
+  connections         Connection[]           @relation("CreatorConnections")
   socialAccounts      SocialAccount[]
+  affiliateLinks      CreatorAffiliateLink[] @relation("CreatorAffiliateLinks")
+  reviewedPrograms    AffiliateProgram[]     @relation("AffiliateProgramReviewer")
 
   @@index([role])
   @@index([status])
@@ -400,15 +431,16 @@ model Brand {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  products     Product[]
-  campaigns    Campaign[]
-  conversions  Conversion[]
-  aiInsights   AIInsight[]
-  orderClaims  OrderClaim[]
-  payments     PaymentTransaction[]
-  subscription BrandSubscription?
-  connections  Connection[]
+  owner             User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products          Product[]
+  campaigns         Campaign[]
+  conversions       Conversion[]
+  aiInsights        AIInsight[]
+  orderClaims       OrderClaim[]
+  payments          PaymentTransaction[]
+  subscription      BrandSubscription?
+  connections       Connection[]
+  affiliatePrograms AffiliateProgram[]
 
   /// v1: one brand per owner (enforced here, not only in the action).
   @@unique([ownerId])
@@ -780,6 +812,152 @@ model Commission {
  * Disconnecting sets DISCONNECTED and clears the tokens; the row (and every
  * campaign, referral and commission the creator earned) is kept.
  */
+/**
+ * An affiliate programme a brand ALREADY runs somewhere else, listed on Refnivo
+ * so creators can find it.
+ * Refnivo is a discovery and tracking layer here, nothing more: approval,
+ * commission calculation and payment all stay with the external programme. That
+ * is why this model has no commission amount, no reward rules and no payout
+ * fields - only a *description* of terms the brand states, plus the official
+ * URLs a creator needs. Nothing in it creates a liability for Refnivo.
+ * `verifiedAt` is set by an admin who actually opened the URLs and checked the
+ * programme exists; it is never implied by the listing being published.
+ */
+model AffiliateProgram {
+  id                    String                  @id @default(cuid())
+  brandId               String
+  name                  String
+  slug                  String                  @unique
+  description           String?
+  category              String?
+  /// The brand's own site, the programme page, and where a creator signs up.
+  websiteUrl            String?
+  programUrl            String?
+  signupUrl             String
+  logoUrl               String?
+  /// What the brand says it pays. Displayed as the brand's claim, never as a Refnivo promise.
+  commissionType        AffiliateCommissionType @default(VARIES)
+  commissionDescription String?
+  /// Attribution window the external network advertises, in days.
+  cookieDurationDays    Int?
+  /// Affiliate network running it (Impact, Amazon Associates, in-house...).
+  networkName           String?
+  approvalType          AffiliateApprovalType   @default(APPLICATION)
+  status                AffiliateProgramStatus  @default(DRAFT)
+  /// Optional requirements the brand states for creators.
+  minFollowers          Int?
+  supportedPlatforms    SocialPlatform[]        @default([])
+  geography             String?
+  requirements          String?
+  /**
+   * Query parameter the network accepts for a sub id, e.g. "subId" or "aff_sub".
+   * Left empty unless the brand confirms the network supports one - a parameter
+   * the network does not understand is at best ignored and at worst breaks the link.
+   */
+  subIdParam            String?
+  submittedAt           DateTime?
+  reviewedAt            DateTime?
+  reviewedById          String?
+  reviewNote            String?
+  /// Set only when an admin has actually checked the brand and the URLs.
+  verifiedAt            DateTime?
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  brand      Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  reviewedBy User?                  @relation("AffiliateProgramReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  links      CreatorAffiliateLink[]
+  clicks     AffiliateClick[]
+
+  @@index([status, updatedAt])
+  @@index([brandId, status])
+  @@index([category, status])
+  @@map("affiliate_programs")
+}
+
+/**
+ * A creator's own affiliate URL for an external programme, plus the Refnivo
+ * tracking codes that point at it.
+ * The creator obtains the URL from the external network after being approved
+ * THERE; Refnivo stores it so it can count clicks before forwarding. One row per
+ * creator per programme; the per-platform codes hang off it.
+ */
+model CreatorAffiliateLink {
+  id                  String              @id @default(cuid())
+  creatorId           String
+  affiliateProgramId  String
+  /// The destination the external network gave the creator.
+  targetUrl           String
+  status              AffiliateLinkStatus @default(ACTIVE)
+  /// The creator's id inside the external network, when they know it (for reconciliation later).
+  externalAffiliateId String?
+  note                String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  creator User                    @relation("CreatorAffiliateLinks", fields: [creatorId], references: [id], onDelete: Cascade)
+  program AffiliateProgram        @relation(fields: [affiliateProgramId], references: [id], onDelete: Cascade)
+  codes   AffiliateTrackingCode[]
+  clicks  AffiliateClick[]
+
+  @@unique([creatorId, affiliateProgramId])
+  @@index([affiliateProgramId])
+  @@map("creator_affiliate_links")
+}
+
+/**
+ * One shareable Refnivo code per platform, all forwarding to the same external
+ * affiliate URL. Separate codes are the only way to know which platform a click
+ * came from - the referer is not trustworthy.
+ */
+model AffiliateTrackingCode {
+  id                     String              @id @default(cuid())
+  creatorAffiliateLinkId String
+  /// Shares the code namespace with campaign referral links, so /r/CODE resolves either.
+  code                   String              @unique
+  source                 LinkSource          @default(GENERAL)
+  status                 AffiliateLinkStatus @default(ACTIVE)
+  createdAt              DateTime            @default(now())
+
+  link   CreatorAffiliateLink @relation(fields: [creatorAffiliateLinkId], references: [id], onDelete: Cascade)
+  clicks AffiliateClick[]
+
+  @@unique([creatorAffiliateLinkId, source])
+  @@map("affiliate_tracking_codes")
+}
+
+/**
+ * A click Refnivo actually observed before forwarding to the external network.
+ * This is the ONLY thing Refnivo can honestly report for an external programme:
+ * whether the visitor went on to buy is known to the network, not to us. There
+ * is deliberately no conversion or revenue column here.
+ */
+model AffiliateClick {
+  id                     String     @id @default(cuid())
+  trackingCodeId         String
+  creatorAffiliateLinkId String
+  affiliateProgramId     String
+  creatorId              String
+  source                 LinkSource
+  /// Anonymous visitor id (cookie) and a salted IP hash - never a raw address.
+  anonymousVisitorId     String?
+  ipHash                 String?
+  userAgent              String?
+  referer                String?
+  /// Sub id we appended to the outbound URL, when the network supports one.
+  subId                  String?
+  createdAt              DateTime   @default(now())
+
+  trackingCode AffiliateTrackingCode @relation(fields: [trackingCodeId], references: [id], onDelete: Cascade)
+  link         CreatorAffiliateLink  @relation(fields: [creatorAffiliateLinkId], references: [id], onDelete: Cascade)
+  program      AffiliateProgram      @relation(fields: [affiliateProgramId], references: [id], onDelete: Cascade)
+
+  @@index([creatorAffiliateLinkId, createdAt])
+  @@index([affiliateProgramId, createdAt])
+  @@index([creatorId, createdAt])
+  @@map("affiliate_clicks")
+}
+
 model SocialAccount {
   id                String              @id @default(cuid())
   userId            String
