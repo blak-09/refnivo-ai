@@ -101,7 +101,7 @@ export async function reviewAffiliateProgramAction(input: unknown): Promise<Acti
 
 // ─── creator ─────────────────────────────────────────────────────────────────
 
-export async function saveAffiliateLinkAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult<{ code: string }>> {
+export async function saveAffiliateLinkAction(_prev: ActionResult<{ code: string }> | null, formData: FormData): Promise<ActionResult<{ code: string }>> {
   let user;
   try {
     user = await assertCreator();

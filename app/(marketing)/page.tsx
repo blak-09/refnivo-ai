@@ -15,6 +15,7 @@ import { CampaignCard } from "@/components/marketplace/campaign-card";
 import { HeroSection } from "@/components/marketing/hero-section";
 import { TrustedBrands } from "@/components/marketing/trusted-brands";
 import { LaunchSection } from "@/components/marketing/launch-section";
+import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import { BenefitSection } from "@/components/marketing/benefit-section";
 import { CTAButton } from "@/components/marketing/cta-button";
 import { FloatingProfile } from "@/components/marketing/product-showcase";
@@ -47,6 +48,41 @@ export default async function LandingPage() {
 
       {/* Product-launch video — directly under the brands strip */}
       <LaunchSection />
+
+      {/* Two ways to earn: Refnivo campaigns and brands' existing affiliate programmes */}
+      <section aria-labelledby="two-ways-heading" className="pb-4">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-indigo-600">Connect. Promote. Track. Earn.</p>
+            <h2 id="two-ways-heading" className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+              Two ways to earn with brands
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              Discover brand campaigns and existing affiliate programs, connect your social presence, share trackable links, and measure how your promotions perform.
+            </p>
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl border bg-card p-5">
+              <ProgramTypeBadge type="REFNIVO" />
+              <h3 className="mt-3 font-semibold">Refnivo campaigns</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Run on Refnivo end to end: join, share your link, and Refnivo tracks confirmed orders and your commission.</p>
+              <CTAButton href="/campaigns" size="default" variant="outline" className="mt-4">
+                Browse campaigns
+              </CTAButton>
+            </div>
+            <div className="rounded-2xl border bg-card p-5">
+              <ProgramTypeBadge type="EXTERNAL" />
+              <h3 className="mt-3 font-semibold">Discover affiliate programs</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Already have a favourite brand? Find its affiliate program, join on the brand&apos;s own platform, and track your clicks with Refnivo links.
+              </p>
+              <CTAButton href="/affiliate-programs" size="default" variant="outline" className="mt-4">
+                Explore affiliate programs
+              </CTAButton>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Featured campaigns */}
       <section className="py-16 sm:py-20">
