@@ -10,12 +10,12 @@ import { APPROVAL_LABEL, COMMISSION_TYPE_LABEL, ProgramTypeBadge, VerifiedProgra
 import { getCurrentUser } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { creatorLinkForProgram } from "@/lib/services/affiliate-links";
-import { getPublishedProgram } from "@/lib/services/affiliate-programs";
+import { getPublishedProgram, programBrandName } from "@/lib/services/affiliate-programs";
 import { PLATFORM_LABEL } from "@/lib/social";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const program = await getPublishedProgram((await params).slug);
-  return program ? { title: `${program.name} · ${program.brand.name}`, description: program.description?.slice(0, 160) ?? undefined } : { title: "Affiliate programme" };
+  return program ? { title: `${program.name} · ${programBrandName(program)}`, description: program.description?.slice(0, 160) ?? undefined } : { title: "Affiliate programme" };
 }
 
 /**
@@ -40,12 +40,20 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
     }
   } else if (user) viewer = "other";
 
+  const brandName = programBrandName(program);
+  // Curated: Refnivo listed it from public information; the brand has no account here.
+  const curated = !program.brand;
+
+  // Only what the programme actually states. Anything unstated is left out, never guessed.
   const facts: [string, string | null][] = [
-    ["Commission", program.commissionDescription ?? COMMISSION_TYPE_LABEL[program.commissionType]],
-    ["Commission type", COMMISSION_TYPE_LABEL[program.commissionType]],
+    ["Program type", "External affiliate program"],
+    // Only approved listings reach this page.
+    ["Status", "Active"],
+    ["Commission", program.commissionDescription ?? (program.commissionType ? COMMISSION_TYPE_LABEL[program.commissionType] : "Not published — see the programme page")],
+    ["Commission type", program.commissionType ? COMMISSION_TYPE_LABEL[program.commissionType] : null],
     ["Cookie / attribution", program.cookieDurationDays ? `${program.cookieDurationDays} days` : null],
     ["Affiliate network", program.networkName],
-    ["Joining", APPROVAL_LABEL[program.approvalType]],
+    ["Joining", program.approvalType ? APPROVAL_LABEL[program.approvalType] : null],
     ["Minimum followers", program.minFollowers ? program.minFollowers.toLocaleString("en-IN") : null],
     ["Region", program.geography],
   ];
@@ -63,7 +71,7 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
       ) : null}
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start">
-        <BrandLogo src={program.logoUrl ?? program.brand.logoUrl} name={program.brand.name} className="size-20 rounded-2xl text-xl" sizes="80px" />
+        <BrandLogo src={program.logoUrl ?? program.brand?.logoUrl} name={brandName} className="size-20 rounded-2xl text-xl" sizes="80px" />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <ProgramTypeBadge type="EXTERNAL" />
@@ -71,12 +79,12 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
           </div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{program.name}</h1>
           <p className="text-sm text-muted-foreground">
-            {program.brand.slug ? (
+            {program.brand?.slug ? (
               <Link href={`/brands/${program.brand.slug}`} className="font-medium text-foreground hover:underline">
-                {program.brand.name}
+                {brandName}
               </Link>
             ) : (
-              program.brand.name
+              <span className="font-medium text-foreground">{brandName}</span>
             )}
             {program.category ? ` · ${program.category}` : ""}
           </p>
@@ -99,6 +107,12 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
                   Refnivo helps you discover and manage your affiliate promotion. Approval, affiliate payments and programme terms are handled by the external
                   affiliate program{program.networkName ? ` (${program.networkName})` : ""}, not by Refnivo.
                 </p>
+                {curated ? (
+                  <p className="mt-2 text-muted-foreground">
+                    <span className="font-medium text-foreground">Listed by Refnivo.</span> {brandName} has not joined Refnivo and does not manage this listing. The
+                    details come from the programme&apos;s public page{program.networkName ? ` on ${program.networkName}` : ""}.
+                  </p>
+                ) : null}
               </div>
             </CardContent>
           </Card>
@@ -112,7 +126,9 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
 
           <section>
             <h2 className="text-lg font-semibold">Programme details</h2>
-            <p className="mt-1 text-xs text-muted-foreground">As stated by {program.brand.name}.</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {curated ? `From the programme's public listing — not provided by ${brandName}.` : `As stated by ${brandName}.`}
+            </p>
             <dl className="mt-3 divide-y rounded-xl border bg-card text-sm">
               {facts
                 .filter(([, v]) => v)
@@ -149,20 +165,20 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Promote {program.brand.name}</CardTitle>
+              <CardTitle className="text-base">Promote {brandName}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <AffiliateJoinPanel
                 programId={program.id}
                 programName={program.name}
-                brandName={program.brand.name}
+                brandName={brandName}
                 signupUrl={program.signupUrl}
                 viewer={viewer}
                 savedCode={savedCode}
               />
               {program.programUrl ? (
                 <a href={program.programUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
-                  Programme terms on the brand&apos;s site <ExternalLinkIcon className="size-3" aria-hidden />
+                  Programme page <ExternalLinkIcon className="size-3" aria-hidden />
                 </a>
               ) : null}
             </CardContent>

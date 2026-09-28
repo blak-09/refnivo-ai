@@ -14,6 +14,10 @@ import {
   withSubId,
 } from "@/lib/services/affiliate-links";
 import {
+  adminCreateAffiliateProgram,
+  adminDeleteAffiliateProgram,
+  adminSetAffiliateProgramState,
+  adminUpdateAffiliateProgram,
   AffiliateProgramError,
   createAffiliateProgram,
   getPublishedProgram,
@@ -23,7 +27,8 @@ import {
   updateAffiliateProgram,
 } from "@/lib/services/affiliate-programs";
 import { resolveReferralCode } from "@/lib/services/tracking";
-import { affiliateProgramSchema } from "@/lib/validation/affiliate";
+import { adminAffiliateProgramSchema, affiliateProgramSchema } from "@/lib/validation/affiliate";
+import { EXAMPLE_AFFILIATE_PROGRAMS, seedExampleAffiliatePrograms } from "../../prisma/seed-data/affiliate-programs";
 import { makeCreator, makeOwnerWithBrand, uniq } from "../helpers";
 
 /**
@@ -205,5 +210,128 @@ describe("creator links and tracking", () => {
     await removeAffiliateLink(creator.id, link.id);
     expect(await prisma.affiliateClick.count({ where: { creatorAffiliateLinkId: link.id } })).toBe(1);
     expect((await prisma.creatorAffiliateLink.findUniqueOrThrow({ where: { id: link.id } })).status).toBe("DISABLED");
+  });
+});
+
+/**
+ * Curated listings: a programme Refnivo lists from public information before the
+ * brand has an account (e.g. the boAt example). No brandId, only a brand name.
+ */
+const adminValues = (over: Record<string, unknown> = {}) =>
+  adminAffiliateProgramSchema.parse({ name: `Curated ${uniq("c")}`, brandName: `Brand ${uniq("n")}`, signupUrl: "https://network.example.com/offers/brand", ...over });
+
+describe("curated listings (brand not on Refnivo)", () => {
+  it("enters the review queue, then publishes under the brand name with nothing invented", async () => {
+    const reviewer = await admin();
+    const program = await adminCreateAffiliateProgram(reviewer.id, adminValues({ brandName: "Curatedco", networkName: "Admitad" }));
+    expect(program.status).toBe("PENDING_REVIEW");
+    expect(program.brandId).toBeNull();
+    expect(program.verifiedAt).toBeNull();
+    // Unstated terms stay unstated — no default commission type or joining rule.
+    expect(program.commissionType).toBeNull();
+    expect(program.approvalType).toBeNull();
+    expect(await getPublishedProgram(program.slug)).toBeNull();
+
+    await reviewAffiliateProgram(reviewer.id, program.id, { decision: "APPROVE", verified: false });
+    const published = await getPublishedProgram(program.slug);
+    expect(published?.brand).toBeNull();
+    expect(published?.brandName).toBe("Curatedco");
+    expect(published?.verifiedAt).toBeNull();
+    expect((await listPublishedPrograms({ q: "Curatedco" })).map((p) => p.id)).toContain(program.id);
+  });
+
+  it("requires a brand one way or the other — in validation and in the database", async () => {
+    expect(adminAffiliateProgramSchema.safeParse({ name: "No brand", signupUrl: "https://x.example.com" }).success).toBe(false);
+    const owner = await makeOwnerWithBrand(`Aff ${uniq("b")}`);
+    const program = await createAffiliateProgram(owner.brand.id, owner.user.id, values(), { submit: false });
+    await expect(prisma.affiliateProgram.update({ where: { id: program.id }, data: { brandId: null, brandName: null } })).rejects.toThrow();
+  });
+
+  it("lets a creator save a link and get a working tracking code", async () => {
+    const reviewer = await admin();
+    const program = await adminCreateAffiliateProgram(reviewer.id, adminValues({ brandName: "Boatish" }));
+    await reviewAffiliateProgram(reviewer.id, program.id, { decision: "APPROVE" });
+    const creator = await creatorWithProfile();
+    const link = await saveAffiliateLink({ creatorId: creator.id, programId: program.id, targetUrl: "https://network.example.com/aff/curated" });
+    expect(link.program.brand).toBeNull();
+    expect(link.codes[0].code).toMatch(/BOATISH/);
+    expect((await resolveAffiliateCode(link.codes[0].code))?.ok).toBe(true);
+    const yt = await addAffiliateCode({ creatorId: creator.id, linkId: link.id, source: "YOUTUBE" });
+    expect(yt.code).toMatch(/-YT$/);
+  });
+
+  it("admin edits keep the status, and a changed URL removes the Verified mark", async () => {
+    const reviewer = await admin();
+    const program = await adminCreateAffiliateProgram(reviewer.id, adminValues());
+    await reviewAffiliateProgram(reviewer.id, program.id, { decision: "APPROVE", verified: true });
+
+    const base = { name: program.name, brandName: program.brandName, signupUrl: program.signupUrl };
+    const described = await adminUpdateAffiliateProgram(reviewer.id, program.id, adminValues({ ...base, description: "Now with a description" }));
+    expect(described.status).toBe("APPROVED");
+    expect(described.verifiedAt).not.toBeNull();
+
+    const moved = await adminUpdateAffiliateProgram(reviewer.id, program.id, adminValues({ ...base, signupUrl: "https://elsewhere.example.com/join" }));
+    expect(moved.status).toBe("APPROVED");
+    expect(moved.verifiedAt).toBeNull();
+  });
+
+  it("admin can attach a curated listing to a brand that joins later", async () => {
+    const reviewer = await admin();
+    const program = await adminCreateAffiliateProgram(reviewer.id, adminValues());
+    const owner = await makeOwnerWithBrand(`Aff ${uniq("b")}`);
+    const attached = await adminUpdateAffiliateProgram(reviewer.id, program.id, adminValues({ name: program.name, signupUrl: program.signupUrl, brandId: owner.brand.id }));
+    expect(attached.brandId).toBe(owner.brand.id);
+    expect(attached.brandName).toBeNull();
+  });
+
+  it("deletes only while unused; once creators have links, closing keeps their history", async () => {
+    const reviewer = await admin();
+    const unused = await adminCreateAffiliateProgram(reviewer.id, adminValues());
+    await adminDeleteAffiliateProgram(reviewer.id, unused.id);
+    expect(await prisma.affiliateProgram.findUnique({ where: { id: unused.id } })).toBeNull();
+
+    const used = await adminCreateAffiliateProgram(reviewer.id, adminValues());
+    await reviewAffiliateProgram(reviewer.id, used.id, { decision: "APPROVE" });
+    const creator = await creatorWithProfile();
+    const link = await saveAffiliateLink({ creatorId: creator.id, programId: used.id, targetUrl: "https://network.example.com/aff/used" });
+    await expect(adminDeleteAffiliateProgram(reviewer.id, used.id)).rejects.toBeInstanceOf(AffiliateProgramError);
+
+    await adminSetAffiliateProgramState(reviewer.id, used.id, "CLOSE");
+    expect(await getPublishedProgram(used.slug)).toBeNull();
+    expect((await resolveAffiliateCode(link.codes[0].code))?.ok).toBe(false);
+    expect(await prisma.creatorAffiliateLink.count({ where: { id: link.id } })).toBe(1);
+
+    const reopened = await adminSetAffiliateProgramState(reviewer.id, used.id, "REOPEN");
+    expect(reopened.status).toBe("PENDING_REVIEW");
+  });
+
+  it("hides a suspended brand's listing, while curated listings need no brand account", async () => {
+    const { owner, program } = await publishedProgram();
+    await prisma.brand.update({ where: { id: owner.brand.id }, data: { status: "SUSPENDED" } });
+    expect(await getPublishedProgram(program.slug)).toBeNull();
+  });
+});
+
+describe("example seed listings", () => {
+  it("inserts the boAt example once, unpublished and unverified, with only sourced facts", async () => {
+    await prisma.$transaction((tx) => seedExampleAffiliatePrograms(tx));
+    const again = await prisma.$transaction((tx) => seedExampleAffiliatePrograms(tx));
+    expect(again.created).toEqual([]);
+
+    const boat = await prisma.affiliateProgram.findUniqueOrThrow({ where: { slug: "boat-affiliate-program" } });
+    expect(boat.brandId).toBeNull();
+    expect(boat.brandName).toBe("boAt");
+    expect(boat.status).toBe("PENDING_REVIEW");
+    expect(boat.verifiedAt).toBeNull();
+    for (const field of ["commissionType", "commissionDescription", "cookieDurationDays", "approvalType", "subIdParam"] as const) expect(boat[field]).toBeNull();
+    expect(boat.signupUrl).toMatch(/^https:\/\//);
+  });
+
+  it("every example cites its sources and is a curated listing", () => {
+    for (const example of EXAMPLE_AFFILIATE_PROGRAMS) {
+      expect(example.sources.urls.length).toBeGreaterThan(0);
+      expect(example.sources.checkedOn).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(example.brandName.length).toBeGreaterThan(1);
+    }
   });
 });

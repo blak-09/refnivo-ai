@@ -1,14 +1,16 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { AffiliateProgramStatus } from "@prisma/client";
-import { StoreIcon } from "lucide-react";
+import { PlusIcon, StoreIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { VerifiedProgramMark } from "@/components/affiliate/program-badge";
 import { AffiliateReviewActions } from "@/components/affiliate/review-actions";
+import { AdminListingActions } from "@/components/affiliate/admin-listing-actions";
 import { requireRole } from "@/lib/auth/guards";
-import { listProgramsForReview } from "@/lib/services/affiliate-programs";
+import { listProgramsForReview, programBrandName } from "@/lib/services/affiliate-programs";
 import { formatDateTime } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +38,11 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
       <PageHeader
         title="Affiliate programs"
         description="External programmes brands already run. Nothing is public until approved here. Open both URLs before approving; only tick “verified” for what you actually checked."
+        actions={
+          <Button nativeButton={false} render={<Link href="/dashboard/admin/affiliate-programs/new" />}>
+            <PlusIcon className="size-4" aria-hidden /> Add affiliate program
+          </Button>
+        }
       />
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
         {FILTERS.map((f) => (
@@ -85,15 +92,20 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
                         </span>
                       </TableCell>
                       <TableCell className="text-xs">
-                        {r.brand.slug ? (
-                          <Link href={`/brands/${r.brand.slug}`} className="font-medium hover:underline">
-                            {r.brand.name}
-                          </Link>
+                        {r.brand ? (
+                          <>
+                            <Link href={`/brands/${r.brand.slug}`} className="font-medium hover:underline">
+                              {r.brand.name}
+                            </Link>
+                            <span className="block text-muted-foreground">{r.brand.owner.email}</span>
+                            <span className="block text-muted-foreground">Brand: {r.brand.verificationStatus.toLowerCase()}</span>
+                          </>
                         ) : (
-                          r.brand.name
+                          <>
+                            <span className="font-medium">{programBrandName(r)}</span>
+                            <span className="block text-muted-foreground">Listed by Refnivo — not on Refnivo</span>
+                          </>
                         )}
-                        <span className="block text-muted-foreground">{r.brand.owner.email}</span>
-                        <span className="block text-muted-foreground">Brand: {r.brand.verificationStatus.toLowerCase()}</span>
                       </TableCell>
                       <TableCell className="max-w-[220px] text-xs">
                         <a href={r.signupUrl} target="_blank" rel="noreferrer noopener" className="block truncate text-primary hover:underline">
@@ -106,7 +118,7 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
                         ) : null}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {r.commissionDescription ?? r.commissionType.toLowerCase()}
+                        {r.commissionDescription ?? r.commissionType?.toLowerCase() ?? "Commission not stated"}
                         <span className="block text-muted-foreground">
                           {r.networkName ?? "No network stated"}
                           {r.subIdParam ? ` · sub-id: ${r.subIdParam}` : ""}
@@ -118,8 +130,9 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
                           <VerifiedProgramMark verifiedAt={r.verifiedAt} />
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
-                        <AffiliateReviewActions id={r.id} status={r.status} signupUrl={r.signupUrl} programUrl={r.programUrl} />
+                      <TableCell className="space-y-2 text-right">
+                        <AffiliateReviewActions id={r.id} status={r.status} signupUrl={r.signupUrl} programUrl={r.programUrl} curated={!r.brand} />
+                        <AdminListingActions id={r.id} status={r.status} creatorLinks={r._count.links} />
                       </TableCell>
                     </TableRow>
                   ))}

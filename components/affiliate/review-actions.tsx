@@ -13,7 +13,20 @@ import { Textarea } from "@/components/ui/textarea";
  * Admin review. Approving asks the reviewer to confirm what they checked; only a
  * confirmed check sets the listing's "Verified by Refnivo" mark.
  */
-export function AffiliateReviewActions({ id, status, signupUrl, programUrl }: { id: string; status: string; signupUrl: string; programUrl: string | null }) {
+export function AffiliateReviewActions({
+  id,
+  status,
+  signupUrl,
+  programUrl,
+  curated = false,
+}: {
+  id: string;
+  status: string;
+  signupUrl: string;
+  programUrl: string | null;
+  /** Listed by Refnivo for a brand with no account: the checks are about the programme itself. */
+  curated?: boolean;
+}) {
   const router = useRouter();
   const [dialog, setDialog] = React.useState<"APPROVE" | "REJECT" | null>(null);
   const [note, setNote] = React.useState("");
@@ -69,7 +82,7 @@ export function AffiliateReviewActions({ id, status, signupUrl, programUrl }: { 
             <DialogDescription>Tick only what you actually checked. All four set the “Verified by Refnivo” mark; otherwise it is published unverified.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            {check("brand", "The brand is legitimate and matches the account")}
+            {check("brand", curated ? "This is the brand's real programme, run by the brand or its authorised affiliate network" : "The brand is legitimate and matches the account")}
             {check(
               "signup",
               <>
@@ -92,9 +105,15 @@ export function AffiliateReviewActions({ id, status, signupUrl, programUrl }: { 
                   </>,
                 )
               : null}
-            {check("terms", "The commission description is not misleading")}
+            {check("terms", curated ? "Every stated term appears on the programme's public page (nothing guessed)" : "The commission description is not misleading")}
           </div>
-          <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note to the brand (optional)" aria-label="Note to the brand" />
+          <Textarea
+            rows={2}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={curated ? "Internal note (optional)" : "Note to the brand (optional)"}
+            aria-label={curated ? "Internal note" : "Note to the brand"}
+          />
           <DialogFooter>
             <Button variant="ghost" onClick={() => setDialog(null)} disabled={pending}>
               Cancel

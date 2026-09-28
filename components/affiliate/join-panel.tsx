@@ -16,7 +16,7 @@ type Viewer = "anonymous" | "creator" | "other" | "creator-without-profile";
 /**
  * The creator side of joining an EXTERNAL programme.
  *
- *  1. "Join affiliate program" opens the brand's official signup page in a new
+ *  1. "Join affiliate program" opens the programme's official signup page (the brand's site or its affiliate network) in a new
  *     tab — approval happens there, not on Refnivo.
  *  2. Back here, the creator says whether they joined. If so, they paste the
  *     affiliate link the network gave them and Refnivo issues a tracking link.
@@ -65,7 +65,7 @@ export function AffiliateJoinPanel({
     <Button
       className="w-full justify-center"
       nativeButton={false}
-      render={<a href={signupUrl} target="_blank" rel="noreferrer noopener" aria-label={`Join ${programName} on ${brandName}'s site (opens in a new tab)`} />}
+      render={<a href={signupUrl} target="_blank" rel="noreferrer noopener" aria-label={`Join ${programName} on the programme's official signup page (opens in a new tab)`} />}
       onClick={() => setStep("asked")}
     >
       Join affiliate program <ExternalLinkIcon className="size-4" aria-hidden />

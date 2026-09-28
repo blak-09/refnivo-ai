@@ -824,10 +824,14 @@ model Commission {
  * programme exists; it is never implied by the listing being published.
  */
 model AffiliateProgram {
-  id                    String                  @id @default(cuid())
-  brandId               String
+  id                    String                   @id @default(cuid())
+  /// The brand's Refnivo account, when it has one. Null for a listing Refnivo
+  /// curated from public information (the brand has not joined Refnivo).
+  brandId               String?
+  /// Display name for a curated listing. A CHECK constraint requires brandId or brandName.
+  brandName             String?
   name                  String
-  slug                  String                  @unique
+  slug                  String                   @unique
   description           String?
   category              String?
   /// The brand's own site, the programme page, and where a creator signs up.
@@ -835,18 +839,20 @@ model AffiliateProgram {
   programUrl            String?
   signupUrl             String
   logoUrl               String?
-  /// What the brand says it pays. Displayed as the brand's claim, never as a Refnivo promise.
-  commissionType        AffiliateCommissionType @default(VARIES)
+  /// What the programme says it pays. Displayed as the programme's claim, never as a
+  /// Refnivo promise. Null = not stated publicly (never guessed).
+  commissionType        AffiliateCommissionType?
   commissionDescription String?
   /// Attribution window the external network advertises, in days.
   cookieDurationDays    Int?
   /// Affiliate network running it (Impact, Amazon Associates, in-house...).
   networkName           String?
-  approvalType          AffiliateApprovalType   @default(APPLICATION)
-  status                AffiliateProgramStatus  @default(DRAFT)
+  /// Null = the programme does not say how creators are admitted.
+  approvalType          AffiliateApprovalType?
+  status                AffiliateProgramStatus   @default(DRAFT)
   /// Optional requirements the brand states for creators.
   minFollowers          Int?
-  supportedPlatforms    SocialPlatform[]        @default([])
+  supportedPlatforms    SocialPlatform[]         @default([])
   geography             String?
   requirements          String?
   /**
@@ -861,10 +867,10 @@ model AffiliateProgram {
   reviewNote            String?
   /// Set only when an admin has actually checked the brand and the URLs.
   verifiedAt            DateTime?
-  createdAt             DateTime                @default(now())
-  updatedAt             DateTime                @updatedAt
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
 
-  brand      Brand                  @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brand      Brand?                 @relation(fields: [brandId], references: [id], onDelete: Cascade)
   reviewedBy User?                  @relation("AffiliateProgramReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
   links      CreatorAffiliateLink[]
   clicks     AffiliateClick[]

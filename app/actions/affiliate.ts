@@ -5,8 +5,18 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { assertBrandOwner, assertCreator, assertRole } from "@/lib/auth/guards";
 import { addAffiliateCode, AffiliateLinkError, removeAffiliateLink, saveAffiliateLink } from "@/lib/services/affiliate-links";
-import { AffiliateProgramError, createAffiliateProgram, reviewAffiliateProgram, setAffiliateProgramState, updateAffiliateProgram } from "@/lib/services/affiliate-programs";
-import { affiliateCodeSchema, affiliateLinkSchema, affiliateProgramSchema } from "@/lib/validation/affiliate";
+import {
+  adminCreateAffiliateProgram,
+  adminDeleteAffiliateProgram,
+  adminSetAffiliateProgramState,
+  adminUpdateAffiliateProgram,
+  AffiliateProgramError,
+  createAffiliateProgram,
+  reviewAffiliateProgram,
+  setAffiliateProgramState,
+  updateAffiliateProgram,
+} from "@/lib/services/affiliate-programs";
+import { adminAffiliateProgramSchema, affiliateCodeSchema, affiliateLinkSchema, affiliateProgramSchema } from "@/lib/validation/affiliate";
 import { fail, firstError, formValues, ok, safeErrorMessage, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 import { rateLimit } from "@/lib/utils/rate-limit";
 
@@ -96,6 +106,55 @@ export async function reviewAffiliateProgramAction(input: unknown): Promise<Acti
   } catch (err) {
     if (err instanceof AffiliateProgramError) return fail(err.message);
     return fail("Could not record the decision.");
+  }
+}
+
+/**
+ * Admin adds or edits a listing — including one for a brand that has no Refnivo
+ * account yet. New listings land in the review queue; nothing publishes here.
+ */
+export async function adminSaveAffiliateProgramAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
+  let admin;
+  try {
+    admin = await assertRole("ADMIN");
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = adminAffiliateProgramSchema.safeParse(programInput(formData));
+  if (!parsed.success) {
+    const fieldErrors = zodFieldErrors(parsed.error);
+    return fail(firstError(fieldErrors), fieldErrors, formValues(formData));
+  }
+  const id = String(formData.get("id") ?? "");
+  try {
+    if (id) await adminUpdateAffiliateProgram(admin.id, id, parsed.data);
+    else await adminCreateAffiliateProgram(admin.id, parsed.data);
+  } catch (err) {
+    if (err instanceof AffiliateProgramError) return fail(err.message, undefined, formValues(formData));
+    console.error("[affiliate] admin save program failed", err instanceof Error ? err.message : err);
+    return fail("Could not save the listing. Please try again.", undefined, formValues(formData));
+  }
+  revalidateAll();
+  redirect(`/dashboard/admin/affiliate-programs?status=${id ? "ALL" : "PENDING_REVIEW"}`);
+}
+
+export async function adminAffiliateProgramStateAction(input: unknown): Promise<ActionResult> {
+  let admin;
+  try {
+    admin = await assertRole("ADMIN");
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = z.object({ id: z.string().min(1).max(40), action: z.enum(["CLOSE", "REOPEN", "DELETE"]) }).safeParse(input);
+  if (!parsed.success) return fail("Invalid request.");
+  try {
+    if (parsed.data.action === "DELETE") await adminDeleteAffiliateProgram(admin.id, parsed.data.id);
+    else await adminSetAffiliateProgramState(admin.id, parsed.data.id, parsed.data.action);
+    revalidateAll();
+    return ok(undefined);
+  } catch (err) {
+    if (err instanceof AffiliateProgramError) return fail(err.message);
+    return fail("Could not update the listing.");
   }
 }
 

@@ -64,7 +64,7 @@ export const affiliateLinkSelect = {
   externalAffiliateId: true,
   note: true,
   createdAt: true,
-  program: { select: { id: true, name: true, slug: true, status: true, logoUrl: true, networkName: true, commissionDescription: true, brand: { select: { name: true, logoUrl: true } } } },
+  program: { select: { id: true, name: true, slug: true, status: true, logoUrl: true, networkName: true, commissionDescription: true, brandName: true, brand: { select: { name: true, logoUrl: true } } } },
   codes: { select: { id: true, code: true, source: true, status: true, _count: { select: { clicks: true } } }, orderBy: { source: "asc" as const } },
   _count: { select: { clicks: true } },
 } satisfies Prisma.CreatorAffiliateLinkSelect;
@@ -100,8 +100,8 @@ export async function saveAffiliateLink(input: { creatorId: string; programId: s
   const target = assertSafeTarget(input.targetUrl);
   return transaction(async (tx) => {
     const program = await tx.affiliateProgram.findFirst({
-      where: { id: input.programId, status: "APPROVED", brand: { status: "ACTIVE" } },
-      select: { id: true, name: true, brand: { select: { name: true } } },
+      where: { id: input.programId, status: "APPROVED", OR: [{ brandId: null }, { brand: { status: "ACTIVE" } }] },
+      select: { id: true, name: true, brandName: true, brand: { select: { name: true } } },
     });
     if (!program) throw new AffiliateLinkError("That programme is not open on Refnivo right now.");
     const creator = await tx.user.findUnique({ where: { id: input.creatorId }, select: { name: true, creatorProfile: { select: { username: true, displayName: true } } } });
@@ -115,7 +115,7 @@ export async function saveAffiliateLink(input: { creatorId: string; programId: s
     const general = await tx.affiliateTrackingCode.findUnique({ where: { creatorAffiliateLinkId_source: { creatorAffiliateLinkId: link.id, source: "GENERAL" } } });
     if (!general) {
       const handle = creator.creatorProfile.username ?? creator.creatorProfile.displayName ?? creator.name;
-      await tx.affiliateTrackingCode.create({ data: { creatorAffiliateLinkId: link.id, source: "GENERAL", code: await freeCode(tx, handle, program.brand.name, "GENERAL") } });
+      await tx.affiliateTrackingCode.create({ data: { creatorAffiliateLinkId: link.id, source: "GENERAL", code: await freeCode(tx, handle, program.brand?.name ?? program.brandName ?? program.name, "GENERAL") } });
     }
     await recordAudit({ userId: input.creatorId, action: "AFFILIATE_LINK_SAVED", entityType: "CreatorAffiliateLink", entityId: link.id, metadata: { programId: program.id } }, tx);
     return tx.creatorAffiliateLink.findUniqueOrThrow({ where: { id: link.id }, select: affiliateLinkSelect });
@@ -127,7 +127,7 @@ export async function addAffiliateCode(input: { creatorId: string; linkId: strin
   return transaction(async (tx) => {
     const link = await tx.creatorAffiliateLink.findFirst({
       where: { id: input.linkId, creatorId: input.creatorId },
-      include: { program: { select: { status: true, brand: { select: { name: true } } } }, creator: { select: { name: true, creatorProfile: { select: { username: true, displayName: true } } } } },
+      include: { program: { select: { status: true, name: true, brandName: true, brand: { select: { name: true } } } }, creator: { select: { name: true, creatorProfile: { select: { username: true, displayName: true } } } } },
     });
     if (!link) throw new AffiliateLinkError("Link not found.");
     if (link.status !== "ACTIVE" || link.program.status !== "APPROVED") throw new AffiliateLinkError("This programme is not open on Refnivo right now.");
@@ -135,7 +135,7 @@ export async function addAffiliateCode(input: { creatorId: string; linkId: strin
     const existing = await tx.affiliateTrackingCode.findUnique({ where: { creatorAffiliateLinkId_source: { creatorAffiliateLinkId: link.id, source: input.source } } });
     if (existing) return existing;
     const handle = link.creator.creatorProfile?.username ?? link.creator.creatorProfile?.displayName ?? link.creator.name;
-    return tx.affiliateTrackingCode.create({ data: { creatorAffiliateLinkId: link.id, source: input.source, code: await freeCode(tx, handle, link.program.brand.name, input.source) } });
+    return tx.affiliateTrackingCode.create({ data: { creatorAffiliateLinkId: link.id, source: input.source, code: await freeCode(tx, handle, link.program.brand?.name ?? link.program.brandName ?? link.program.name, input.source) } });
   });
 }
 
@@ -161,7 +161,8 @@ export async function resolveAffiliateCode(rawCode: string) {
     include: { link: { include: { program: { select: { id: true, slug: true, status: true, subIdParam: true, brand: { select: { status: true } } } } } } },
   });
   if (!row) return null;
-  const usable = row.status === "ACTIVE" && row.link.status === "ACTIVE" && row.link.program.status === "APPROVED" && row.link.program.brand.status === "ACTIVE";
+  const usable =
+    row.status === "ACTIVE" && row.link.status === "ACTIVE" && row.link.program.status === "APPROVED" && (!row.link.program.brand || row.link.program.brand.status === "ACTIVE");
   return usable ? { ok: true as const, row } : { ok: false as const, programSlug: row.link.program.slug };
 }
 

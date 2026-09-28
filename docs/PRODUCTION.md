@@ -148,6 +148,13 @@ None of these flows has been exercised against a live platform app — they are 
 OAuth 2.0 contract and covered by unit tests for state signing, PKCE, scopes and metric availability. Connect one
 platform in a staging deployment first.
 
+## 4d. External affiliate programme listings
+
+- Admin → **Affiliate programs** → *Add affiliate program* lists a programme a brand runs publicly (its own signup page or its authorised affiliate network's). Fill in only what the programme publishes; leave the rest empty ("not stated").
+- Every listing — brand-submitted, admin-added or seeded — publishes only through **Approve**. Tick the checklist only for what you actually checked; that alone sets "Verified by Refnivo".
+- Example listings (`prisma/seed-data/affiliate-programs.ts`) reach production through the reviewed SQL script, inserted as `PENDING_REVIEW`. Local: `npm run db:seed:affiliate-examples`.
+- To remove a listing: **Close** (links stop forwarding, click history kept) or **Delete** (only while no creator has saved a link).
+
 ## 5. Connection pooling
 
 Serverless functions open many short-lived connections. Use the provider's pooler URL for `DATABASE_URL`

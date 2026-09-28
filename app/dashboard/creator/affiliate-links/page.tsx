@@ -9,6 +9,7 @@ import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import { AffiliateLinkControls } from "@/components/affiliate/affiliate-link-controls";
 import { requireCreator } from "@/lib/auth/guards";
 import { creatorAffiliateStats, listCreatorAffiliateLinks } from "@/lib/services/affiliate-links";
+import { programBrandName } from "@/lib/services/affiliate-programs";
 import { SOURCE_LABEL } from "@/lib/services/channel-links";
 import { referralQrDataUrl, referralUrl, shareTargets } from "@/lib/services/links";
 
@@ -80,7 +81,7 @@ export default async function CreatorAffiliateLinksPage() {
           <Card key={link.id}>
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
-                <CardTitle className="text-base">{link.program.brand.name}</CardTitle>
+                <CardTitle className="text-base">{programBrandName(link.program)}</CardTitle>
                 <ProgramTypeBadge type="EXTERNAL" />
                 {link.program.status !== "APPROVED" ? <StatusBadge status="PAUSED" label="Paused by the brand" /> : null}
               </div>
@@ -105,8 +106,8 @@ export default async function CreatorAffiliateLinksPage() {
                         code={c.code.code}
                         url={c.url}
                         qrDataUrl={c.qr}
-                        share={shareTargets(c.url, `${link.program.brand.name} — ${link.program.name}`)}
-                        shareText={`${link.program.brand.name} — ${link.program.name}`}
+                        share={shareTargets(c.url, `${programBrandName(link.program)} — ${link.program.name}`)}
+                        shareText={`${programBrandName(link.program)} — ${link.program.name}`}
                         compact
                       />
                     </div>

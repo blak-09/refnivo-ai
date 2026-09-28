@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import type { AffiliateProgram } from "@prisma/client";
-import { saveAffiliateProgramAction } from "@/app/actions/affiliate";
+import { adminSaveAffiliateProgramAction, saveAffiliateProgramAction } from "@/app/actions/affiliate";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,15 +25,27 @@ const PLATFORMS = [
  * Deliberately absent: any Refnivo commission, reward, budget or payout field.
  * Those belong to Refnivo campaigns. Here the brand only DESCRIBES its external
  * programme's terms and gives the official URLs; only the name and signup URL
- * are required, because many programmes publish nothing else.
+ * are required, because many programmes publish nothing else — and anything left
+ * empty is shown as "not stated", never filled with a default.
+ *
+ * `mode="admin"` adds the brand (a Refnivo account, or just a name for a
+ * programme listed from public information) and saves through the admin action.
  */
-export function AffiliateProgramForm({ program }: { program?: AffiliateProgram | null }) {
-  const [state, action] = useActionState(saveAffiliateProgramAction, null);
+export function AffiliateProgramForm({
+  program,
+  mode = "brand",
+  brands = [],
+}: {
+  program?: AffiliateProgram | null;
+  mode?: "brand" | "admin";
+  brands?: { id: string; name: string }[];
+}) {
+  const [state, action] = useActionState(mode === "admin" ? adminSaveAffiliateProgramAction : saveAffiliateProgramAction, null);
   const errors = state && !state.ok ? (state.fieldErrors ?? {}) : {};
   const values = state && !state.ok ? (state.values ?? {}) : {};
   const attempt = useFormAttempt(state);
   const v = (key: keyof AffiliateProgram & string) => values[key] ?? (program?.[key] == null ? "" : String(program[key]));
-  const live = program?.status === "APPROVED";
+  const live = mode === "brand" && program?.status === "APPROVED";
 
   return (
     <form key={attempt} action={action} className="space-y-8" noValidate>
@@ -43,6 +55,36 @@ export function AffiliateProgramForm({ program }: { program?: AffiliateProgram |
         <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
           This listing is live. Saving changes takes it off the marketplace until Refnivo reviews it again.
         </p>
+      ) : null}
+      {mode === "admin" && program?.verifiedAt ? (
+        <p className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+          This listing is marked verified. Changing a URL or the brand removes the mark until it is checked again.
+        </p>
+      ) : null}
+
+      {mode === "admin" ? (
+        <fieldset className="space-y-4">
+          <legend className="text-base font-semibold">Brand</legend>
+          <p className="text-sm text-muted-foreground">
+            Attach the listing to the brand&apos;s Refnivo account if it has one. Otherwise enter the brand&apos;s name: the listing is then shown as &quot;Listed by
+            Refnivo&quot; and states that the brand has not joined.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Brand on Refnivo" htmlFor="brandId" error={errors.brandId}>
+              <NativeSelect id="brandId" name="brandId" defaultValue={v("brandId")}>
+                <option value="">Not on Refnivo</option>
+                {brands.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.name}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+            <Field label="Brand name" htmlFor="brandName" error={errors.brandName} hint="Only used when the brand is not on Refnivo.">
+              <Input id="brandName" name="brandName" defaultValue={v("brandName")} placeholder="e.g. boAt" />
+            </Field>
+          </div>
+        </fieldset>
       ) : null}
 
       <fieldset className="space-y-4">
@@ -64,7 +106,7 @@ export function AffiliateProgramForm({ program }: { program?: AffiliateProgram |
           <Field label="Description" htmlFor="description" error={errors.description} className="sm:col-span-2">
             <Textarea id="description" name="description" rows={4} defaultValue={v("description")} placeholder="What creators promote and who the programme suits." />
           </Field>
-          <Field label="Affiliate signup URL" htmlFor="signupUrl" error={errors.signupUrl} required hint="Where a creator applies or signs up. Refnivo sends creators straight here." className="sm:col-span-2">
+          <Field label="Affiliate signup URL" htmlFor="signupUrl" error={errors.signupUrl} required hint="The official signup page — the brand's own, or its authorised affiliate network's. Refnivo sends creators straight here." className="sm:col-span-2">
             <Input id="signupUrl" name="signupUrl" type="url" defaultValue={v("signupUrl")} placeholder="https://…" required aria-invalid={!!errors.signupUrl} />
           </Field>
           <Field label="Programme page URL" htmlFor="programUrl" error={errors.programUrl} hint="Terms or overview page, if you have one.">
@@ -81,10 +123,15 @@ export function AffiliateProgramForm({ program }: { program?: AffiliateProgram |
 
       <fieldset className="space-y-4">
         <legend className="text-base font-semibold">Affiliate terms</legend>
-        <p className="text-sm text-muted-foreground">Describe your external programme as it actually is. Refnivo shows this as your statement — it does not pay or guarantee it.</p>
+        <p className="text-sm text-muted-foreground">
+          {mode === "admin"
+            ? "Fill in only what the programme publishes. Leave the rest empty or “Not stated” — creators then see that it is not published."
+            : "Describe your external programme as it actually is. Refnivo shows this as your statement — it does not pay or guarantee it."}
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Commission type" htmlFor="commissionType" error={errors.commissionType} required>
-            <NativeSelect id="commissionType" name="commissionType" defaultValue={v("commissionType") || "VARIES"}>
+          <Field label="Commission type" htmlFor="commissionType" error={errors.commissionType}>
+            <NativeSelect id="commissionType" name="commissionType" defaultValue={v("commissionType")}>
+              <option value="">Not stated</option>
               <option value="PERCENTAGE">Percentage</option>
               <option value="FIXED">Fixed amount</option>
               <option value="VARIES">Varies by product</option>
@@ -99,8 +146,9 @@ export function AffiliateProgramForm({ program }: { program?: AffiliateProgram |
           <Field label="Affiliate network" htmlFor="networkName" error={errors.networkName} hint="Impact, Amazon Associates, Admitad, in-house…">
             <Input id="networkName" name="networkName" defaultValue={v("networkName")} />
           </Field>
-          <Field label="How creators are admitted" htmlFor="approvalType" error={errors.approvalType} required>
-            <NativeSelect id="approvalType" name="approvalType" defaultValue={v("approvalType") || "APPLICATION"}>
+          <Field label="How creators are admitted" htmlFor="approvalType" error={errors.approvalType}>
+            <NativeSelect id="approvalType" name="approvalType" defaultValue={v("approvalType")}>
+              <option value="">Not stated</option>
               <option value="AUTOMATIC">Automatic approval</option>
               <option value="APPLICATION">Application required</option>
               <option value="INVITE_ONLY">Invite only</option>
@@ -144,12 +192,18 @@ export function AffiliateProgramForm({ program }: { program?: AffiliateProgram |
       </fieldset>
 
       <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
-        <Button type="submit" name="intent" value="draft" variant="outline">
-          Save draft
-        </Button>
-        <Button type="submit" name="intent" value="submit">
-          Submit for review
-        </Button>
+        {mode === "admin" ? (
+          <Button type="submit">{program ? "Save changes" : "Add to review queue"}</Button>
+        ) : (
+          <>
+            <Button type="submit" name="intent" value="draft" variant="outline">
+              Save draft
+            </Button>
+            <Button type="submit" name="intent" value="submit">
+              Submit for review
+            </Button>
+          </>
+        )}
       </div>
     </form>
   );

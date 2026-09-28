@@ -18,6 +18,7 @@
     "db:reset:local": "tsx scripts/db-local-only.ts reset",
     "db:deploy": "tsx scripts/db-deploy.ts",
     "db:seed": "prisma db seed",
+    "db:seed:affiliate-examples": "tsx scripts/seed-affiliate-examples.ts",
     "db:studio": "prisma studio",
     "db:target": "tsx scripts/db-target.ts",
     "postinstall": "prisma generate",

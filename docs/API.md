@@ -103,6 +103,23 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 | `updateAccountAction(prev, formData)` | name, phone |
 | `changePasswordAction(prev, formData)` | requires current password |
 
+## External affiliate programmes (`app/actions/affiliate.ts`)
+
+Listings for affiliate programmes brands already run elsewhere (badge: **External affiliate program**). Refnivo records clicks only; sales, commission and payment stay with the programme.
+
+| Action | Who | What |
+| --- | --- | --- |
+| `saveAffiliateProgramAction` | BRAND | Create / edit own listing; `intent=submit` sends to review. Editing a published listing sends it back to review. |
+| `affiliateProgramStateAction` | BRAND | `PAUSE` / `RESUME` (→ review) / `CLOSE` own listing. |
+| `reviewAffiliateProgramAction` | ADMIN | `APPROVE` (optionally `verified` after the checklist) / `REJECT` (note required) / `PAUSE`. |
+| `adminSaveAffiliateProgramAction` | ADMIN | Add or edit any listing. A listing may belong to a brand account **or** carry only `brandName` ("Listed by Refnivo" — brand not on Refnivo). New listings enter the review queue; edits keep the status; a changed URL or brand clears `verifiedAt`. |
+| `adminAffiliateProgramStateAction` | ADMIN | `CLOSE` (off the marketplace, history kept) / `REOPEN` (→ review) / `DELETE` (only while no creator has a link). |
+| `saveAffiliateLinkAction`, `addAffiliateCodeAction`, `removeAffiliateLinkAction` | CREATOR | Save own external affiliate URL, add per-platform `/r/CODE` tracking codes, disable (clicks kept). |
+
+Unpublished terms (commission type, joining rules, cookie, sub-id) are stored as `NULL` and shown as "not stated" — never defaulted.
+
+Example listings live in `prisma/seed-data/affiliate-programs.ts` (sourced facts only, with the URLs checked). `npm run db:seed:affiliate-examples` inserts missing ones locally as `PENDING_REVIEW`; it never overwrites existing rows.
+
 ## Routes
 
 ```

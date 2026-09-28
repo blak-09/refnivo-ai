@@ -40,6 +40,8 @@ Legend: ✅ done · 🔜 next · ⬜ pending
 - ✅ Database-backed notifications for every role (unread badge, mark read / all), per-user e-mail opt-out, e-mail abstraction (console / Resend)
 - ✅ Password reset by e-mail (hashed single-use tokens, session revocation), forced password rotation for the bootstrap admin, session versioning
 - ✅ Production hardening: start-up env validation, guarded DB scripts, admin bootstrap, distributed rate limiting (Upstash), magic-byte upload validation, redacting security logs, CI workflow
+- ✅ External affiliate marketplace (Phase 1): brand listings with admin review, admin-curated listings for brands not on Refnivo, creator join flow, per-platform `/r/CODE` tracking links (clicks only), boAt example seed (pending review)
+- ⬜ External affiliate Phase 2: postback / report import for conversions and commission
 - ⬜ AI campaign generator / creator matching / content assistant / insights (not started; `AI_*` env reserved)
 - ⬜ E-mail verification at signup (accounts are admin-approved instead)
 - ⬜ Store webhooks (Shopify / WooCommerce) — orders stay manual

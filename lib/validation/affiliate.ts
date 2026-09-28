@@ -44,11 +44,12 @@ export const affiliateProgramSchema = z.object({
   programUrl: optionalUrl,
   signupUrl: httpUrl,
   logoUrl: optionalImageRef,
-  commissionType: z.enum(["PERCENTAGE", "FIXED", "VARIES"]),
+  /** Empty = not stated. Never defaulted: a default would claim terms nobody gave. */
+  commissionType: z.enum(["PERCENTAGE", "FIXED", "VARIES"]).optional().or(z.literal("")),
   commissionDescription: z.string().trim().max(300).optional().or(z.literal("")),
   cookieDurationDays: optionalInt(1, 365),
   networkName: z.string().trim().max(80).optional().or(z.literal("")),
-  approvalType: z.enum(["AUTOMATIC", "APPLICATION", "INVITE_ONLY"]),
+  approvalType: z.enum(["AUTOMATIC", "APPLICATION", "INVITE_ONLY"]).optional().or(z.literal("")),
   minFollowers: optionalInt(0, 100_000_000),
   supportedPlatforms: z.array(z.enum(SOCIAL_PLATFORM_VALUES)).max(5).default([]),
   geography: z.string().trim().max(120).optional().or(z.literal("")),
@@ -65,6 +66,20 @@ export const affiliateProgramSchema = z.object({
 
 export type AffiliateProgramValues = z.output<typeof affiliateProgramSchema>;
 export type AffiliateProgramInput = z.input<typeof affiliateProgramSchema>;
+
+/**
+ * Admin-maintained listing. Either attach it to a brand's Refnivo account, or —
+ * for a programme Refnivo lists from public information before the brand joins —
+ * give the brand's name.
+ */
+export const adminAffiliateProgramSchema = affiliateProgramSchema
+  .extend({
+    brandId: z.string().trim().max(40).optional().or(z.literal("")),
+    brandName: z.string().trim().max(120).optional().or(z.literal("")),
+  })
+  .refine((v) => !!v.brandId || (v.brandName?.length ?? 0) >= 2, { path: ["brandName"], message: "Choose a Refnivo brand or enter the brand's name" });
+
+export type AdminAffiliateProgramValues = z.output<typeof adminAffiliateProgramSchema>;
 
 export const affiliateLinkSchema = z.object({
   programId: z.string().min(1).max(40),
