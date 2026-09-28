@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ConnectButton } from "@/components/connections/connect-button";
+import { connectStateForBrand } from "@/lib/services/connect-state";
 import { BadgeCheckIcon, ExternalLinkIcon, GlobeIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +27,8 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ s
   const brand = await getPublicBrand(slug);
   if (!brand) notFound();
   const social = (brand.socialLinks ?? {}) as BrandSocialLinks;
+  // Only rendered for a signed-in creator who could actually connect.
+  const { state: connectState } = await connectStateForBrand(brand.id);
 
   return (
     <div>
@@ -41,6 +45,9 @@ export default async function BrandProfilePage({ params }: { params: Promise<{ s
               </Badge>
             </div>
             {brand.tagline ? <p className="text-muted-foreground">{brand.tagline}</p> : null}
+            <div className="pt-2">
+              <ConnectButton target={{ kind: "BRAND", brandId: brand.id }} name={brand.name} state={connectState} size="sm" />
+            </div>
           </div>
         </div>
 

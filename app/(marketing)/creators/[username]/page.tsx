@@ -2,6 +2,8 @@ import Link from "next/link";
 import { canViewAudienceNumbers } from "@/lib/auth/viewer";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { ConnectButton } from "@/components/connections/connect-button";
+import { connectStateForCreator } from "@/lib/services/connect-state";
 import { BadgeCheckIcon, MapPinIcon, MessageCircleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +33,8 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   const { username } = await params;
   const creator = await getPublicCreator(username);
   if (!creator) notFound();
+  // Only rendered for a signed-in brand owner who could actually connect.
+  const { state: connectState } = await connectStateForCreator(creator.user.id);
 
   const socials = creatorSocialLinks(creator);
   const primarySocial = socials[0] ?? null;
@@ -54,6 +58,9 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
               {verified ? <BadgeCheckIcon className="size-5 fill-indigo-600 text-white" aria-label="Verified creator" /> : null}
             </div>
             <p className="text-sm text-muted-foreground">@{creator.username}</p>
+            <div className="pt-1">
+              <ConnectButton target={{ kind: "CREATOR", creatorId: creator.user.id }} name={creator.displayName} state={connectState} size="sm" />
+            </div>
             {tagline ? <p className="text-sm font-medium text-foreground">{tagline}</p> : null}
             {creator.location ? (
               <p className="inline-flex items-center gap-1 text-sm text-muted-foreground">

@@ -1,4 +1,5 @@
 import {
+  HandshakeIcon,
   CreditCardIcon,
   ActivityIcon,
   BadgeCheckIcon,
@@ -35,6 +36,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/brand/campaigns", label: "Campaigns", icon: MegaphoneIcon },
     { href: "/creators", label: "Discover Creators", icon: CompassIcon },
     { href: "/dashboard/brand/creators", label: "Applications", icon: UsersIcon },
+    { href: "/dashboard/brand/connections", label: "Connections", icon: HandshakeIcon },
     { href: "/dashboard/brand/orders", label: "Orders & Conversions", icon: ShoppingCartIcon },
     { href: "/dashboard/brand/payouts", label: "Commissions & Rewards", icon: WalletIcon },
     { href: "/dashboard/brand/analytics", label: "Analytics", icon: BarChart3Icon },
@@ -46,7 +48,9 @@ export const NAV: Record<NavKey, NavItem[]> = {
   creator: [
     { href: "/dashboard/creator", label: "Overview", icon: LayoutDashboardIcon, exact: true },
     { href: "/campaigns", label: "Discover Campaigns", icon: CompassIcon },
+    { href: "/brands", label: "Discover Brands", icon: StoreIcon },
     { href: "/dashboard/creator/campaigns", label: "My Applications", icon: MegaphoneIcon },
+    { href: "/dashboard/creator/connections", label: "Connections", icon: HandshakeIcon },
     { href: "/dashboard/creator/links", label: "Referral Links & QR", icon: LinkIcon },
     { href: "/dashboard/creator/conversions", label: "Conversions", icon: ReceiptIcon },
     { href: "/dashboard/creator/earnings", label: "Earnings", icon: WalletIcon },
@@ -68,6 +72,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/admin/users", label: "Users", icon: UserCircleIcon },
     { href: "/dashboard/admin/verification", label: "Verification", icon: BadgeCheckIcon },
     { href: "/dashboard/admin/campaigns", label: "Campaigns", icon: MegaphoneIcon },
+    { href: "/dashboard/admin/connections", label: "Connections", icon: HandshakeIcon },
     { href: "/dashboard/admin/conversions", label: "Conversions", icon: ReceiptIcon },
     { href: "/dashboard/admin/payouts", label: "Payouts", icon: WalletIcon },
     { href: "/dashboard/admin/payments", label: "Payments", icon: CreditCardIcon },

@@ -156,6 +156,20 @@ enum CommissionStatus {
 }
 
 /// Lifecycle of an inbound payment (a brand paying Refnivo for a plan).
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  /// Either side stopped the relationship; no new requests are accepted.
+  BLOCKED
+}
+
+/// Which side opened the connection.
+enum ConnectionInitiator {
+  BRAND
+  CREATOR
+}
+
 enum PaymentStatus {
   /// Local record created; the provider order may not exist yet.
   CREATED
@@ -218,6 +232,8 @@ enum NotificationType {
   CAMPAIGN_PAUSED
   ORDER_RECORDED
   ORDER_CLAIMED
+  CONNECTION_REQUESTED
+  CONNECTION_ACCEPTED
   CONVERSION_VERIFIED
   CONVERSION_REJECTED
   CONVERSION_REVERSED
@@ -302,6 +318,7 @@ model User {
   orderClaims         OrderClaim[]         @relation("OrderClaimCustomer")
   decidedOrderClaims  OrderClaim[]         @relation("OrderClaimDecider")
   payments            PaymentTransaction[]
+  connections         Connection[]         @relation("CreatorConnections")
 
   @@index([role])
   @@index([status])
@@ -357,6 +374,7 @@ model Brand {
   orderClaims  OrderClaim[]
   payments     PaymentTransaction[]
   subscription BrandSubscription?
+  connections  Connection[]
 
   /// v1: one brand per owner (enforced here, not only in the action).
   @@unique([ownerId])
@@ -707,6 +725,37 @@ model Commission {
  * stored - no card numbers, no CVV, no provider secrets; `method` is a coarse
  * label such as "upi" or "card" as reported by the provider.
  */
+/**
+ * A direct brand <-> creator relationship, independent of any campaign.
+ * One row per pair (unique on brandId+creatorId), so a request from either
+ * direction lands on the same relationship and cannot be duplicated by both
+ * sides asking at once. `initiator` records who asked, which is what decides
+ * whose inbox a PENDING row appears in.
+ */
+model Connection {
+  id           String              @id @default(cuid())
+  brandId      String
+  /// The creator's user id (creators are users with a CreatorProfile).
+  creatorId    String
+  initiator    ConnectionInitiator
+  status       ConnectionStatus    @default(PENDING)
+  /// Why the sender wants to connect; shown to the other side.
+  message      String?
+  /// Optional note from the responder when declining.
+  responseNote String?
+  respondedAt  DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  brand   Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  creator User  @relation("CreatorConnections", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([brandId, creatorId])
+  @@index([brandId, status, createdAt])
+  @@index([creatorId, status, createdAt])
+  @@map("connections")
+}
+
 model PaymentTransaction {
   id                String         @id @default(cuid())
   /// Human-readable reference shown to the payer and used in support ("RFN-XXXXXXXX").

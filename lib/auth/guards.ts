@@ -123,6 +123,14 @@ export async function assertBrandOwner(): Promise<{ user: SessionUser; brand: Br
   return { user, brand };
 }
 
+/** A signed-in creator with a published profile (throwing counterpart of requireCreator). */
+export async function assertCreator(): Promise<SessionUser> {
+  const user = await assertRole("CREATOR");
+  const profile = await creatorProfileFor(user.id);
+  if (!profile) throw new AuthorizationError("Create your creator profile first.");
+  return user;
+}
+
 /** Creators or customers — anyone who can join a campaign as a partner. */
 export async function assertPartner(): Promise<SessionUser> {
   const user = await assertUser();

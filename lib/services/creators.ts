@@ -48,6 +48,8 @@ export async function getPublicCreator(username: string) {
       createdAt: true,
       user: {
         select: {
+          // Needed by the Connect button on the public profile.
+          id: true,
           partnerApplications: {
             where: { status: "APPROVED", partnerType: "CREATOR" },
             orderBy: { createdAt: "desc" },
