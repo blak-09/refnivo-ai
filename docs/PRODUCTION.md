@@ -99,6 +99,26 @@ On Vercel, run migrations from CI or your machine **before** promoting the deplo
 The build script runs `prisma generate` explicitly (`prisma generate && next build`): Vercel restores cached `node_modules`
 and may skip `postinstall`, which would otherwise ship a Prisma client that predates the latest schema change.
 
+## 4b. Payments (brand plans)
+
+Payments are **off** unless every one of these is set, and the app refuses to boot if they are half-configured:
+
+```bash
+PAYMENTS_ENABLED=true
+PAYMENT_PROVIDER=RAZORPAY
+RAZORPAY_KEY_ID=rzp_live_xxx          # rzp_test_xxx outside production
+RAZORPAY_KEY_SECRET=xxx               # server only, never shipped to the browser
+RAZORPAY_WEBHOOK_SECRET=xxx           # the secret you typed into the Razorpay webhook form
+```
+
+Then in the Razorpay dashboard, add a webhook pointing at `https://<your-domain>/api/payments/webhook` with the events
+`payment.captured`, `payment.failed` and `refund.processed`. The endpoint verifies the signature over the raw body,
+records every event by id (so a replay grants nothing twice) and is the authoritative path: a payment is only ever
+marked PAID from a verified provider response, never from the browser.
+
+Plans and prices live in `lib/config/plans.ts` (server-side); the client only ever sends a plan key.
+A deployment running test keys in production is allowed but warned about at boot.
+
 ## 5. Connection pooling
 
 Serverless functions open many short-lived connections. Use the provider's pooler URL for `DATABASE_URL`

@@ -81,6 +81,9 @@ const PAYMENT_KEY_VARS = [
   "PAYTM_WEBSITE",
   "UPI_MANUAL_VPA",
   "PAYMENT_WEBHOOK_SECRET",
+  "RAZORPAY_KEY_ID",
+  "RAZORPAY_KEY_SECRET",
+  "RAZORPAY_WEBHOOK_SECRET",
   "PAYOUT_ACCOUNT_ENCRYPTION_KEY",
 ] as const;
 const DEV_ESCAPE_HATCHES = ["SEED_ALLOW_REMOTE", "ADMIN_ALLOW_LOCAL", "STORAGE_ALLOW_LOCAL", "RATE_LIMIT_ALLOW_MEMORY"] as const;
@@ -192,12 +195,26 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
     warnings.push("CRON_SECRET is not set: /api/cron/email-outbox is disabled, so failed e-mails are never retried.");
   }
 
-  // Payments are disabled in this release — refuse to start if anything tries to enable them.
-  if ((env.PAYMENTS_ENABLED ?? "").trim().toLowerCase() === "true") errors.push("PAYMENTS_ENABLED=true is not supported in this release.");
+  // Payments (brand plans). Off unless fully configured; a half-configured
+  // deployment must fail to boot rather than show a checkout that cannot work.
+  const paymentsOn = (env.PAYMENTS_ENABLED ?? "").trim().toLowerCase() === "true";
   const provider = ((env.PAYMENT_PROVIDER ?? "").trim() || "NONE").toUpperCase(); // blank == NONE
-  if (provider !== "NONE") errors.push("PAYMENT_PROVIDER must be NONE in this release.");
-  const keysPresent = PAYMENT_KEY_VARS.filter((name) => set(env[name]));
-  if (keysPresent.length) warnings.push(`Payment credentials are set but payments are disabled: ${keysPresent.join(", ")}.`);
+  if (paymentsOn) {
+    if (provider !== "RAZORPAY") {
+      errors.push(`PAYMENTS_ENABLED=true requires PAYMENT_PROVIDER=RAZORPAY (got "${provider}").`);
+    } else {
+      const missing = (["RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET", "RAZORPAY_WEBHOOK_SECRET"] as const).filter((name) => !set(env[name]));
+      if (missing.length) errors.push(`PAYMENT_PROVIDER=RAZORPAY requires ${missing.join(", ")}.`);
+      // Test keys on a production deployment would take real money nowhere.
+      if (set(env.RAZORPAY_KEY_ID) && !(env.RAZORPAY_KEY_ID as string).trim().startsWith("rzp_live")) {
+        warnings.push("RAZORPAY_KEY_ID is not a live key (rzp_live_…): this production deployment is running payments in test mode.");
+      }
+    }
+  } else {
+    if (provider !== "NONE") warnings.push(`PAYMENT_PROVIDER=${provider} is set but PAYMENTS_ENABLED is not true: checkout is disabled.`);
+    const keysPresent = PAYMENT_KEY_VARS.filter((name) => set(env[name]));
+    if (keysPresent.length) warnings.push(`Payment credentials are set but payments are disabled: ${keysPresent.join(", ")}.`);
+  }
 
   // Development escape hatches must not leak into production.
   for (const name of DEV_ESCAPE_HATCHES) {

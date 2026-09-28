@@ -98,6 +98,12 @@ describe("security headers", () => {
     expect(csp).toMatch(/connect-src 'self'(;|$)/);
     // the launch video is the only embed: YouTube may be framed, nothing else
     expect(csp).toMatch(/frame-src https:\/\/www\.youtube\.com https:\/\/www\.youtube-nocookie\.com(;|$)/);
+    // Razorpay is absent until payments are configured, then scoped to its own origins.
+    expect(csp).not.toContain("razorpay");
+    const withPayments = contentSecurityPolicy(true, true);
+    expect(withPayments).toMatch(/script-src [^;]*https:\/\/checkout\.razorpay\.com/);
+    expect(withPayments).toMatch(/frame-src [^;]*https:\/\/api\.razorpay\.com/);
+    expect(withPayments).not.toMatch(/\*/);
     expect(csp).not.toMatch(/\*/);
   });
 
@@ -167,10 +173,25 @@ describe("validateProductionEnv", () => {
     expect(validateProductionEnv({ ...valid, NEXTAUTH_URL: "" }).errors.join(" ")).toMatch(/NEXTAUTH_URL \(or AUTH_URL\) is not set/);
   });
 
-  it("refuses start-up when live payment flags are enabled", () => {
-    expect(validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true" }).errors.join(" ")).toMatch(/PAYMENTS_ENABLED=true is not supported/);
-    expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "PHONEPE" }).errors.join(" ")).toMatch(/PAYMENT_PROVIDER must be NONE/);
-    expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "" }).errors).toEqual([]); // blank == NONE
+  it("refuses to boot with payments half-configured, and accepts a complete Razorpay setup", () => {
+    const live = { RAZORPAY_KEY_ID: "rzp_live_abc", RAZORPAY_KEY_SECRET: "secret", RAZORPAY_WEBHOOK_SECRET: "whsec" };
+    // Enabled without a provider, or with an unsupported one.
+    expect(validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true" }).errors.join(" ")).toMatch(/requires PAYMENT_PROVIDER=RAZORPAY/);
+    expect(validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true", PAYMENT_PROVIDER: "PHONEPE" }).errors.join(" ")).toMatch(/requires PAYMENT_PROVIDER=RAZORPAY/);
+    // Enabled with the provider but missing credentials.
+    expect(validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true", PAYMENT_PROVIDER: "RAZORPAY" }).errors.join(" ")).toMatch(/RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET/);
+    expect(validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true", PAYMENT_PROVIDER: "RAZORPAY", ...live, RAZORPAY_WEBHOOK_SECRET: "" }).errors.join(" ")).toMatch(/RAZORPAY_WEBHOOK_SECRET/);
+    // Fully configured with live keys: no errors, no warnings about payments.
+    const ok = validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true", PAYMENT_PROVIDER: "RAZORPAY", ...live });
+    expect(ok.errors).toEqual([]);
+    expect(ok.warnings.join(" ")).not.toMatch(/test mode/);
+    // Test keys in production are allowed but called out.
+    expect(
+      validateProductionEnv({ ...valid, PAYMENTS_ENABLED: "true", PAYMENT_PROVIDER: "RAZORPAY", ...live, RAZORPAY_KEY_ID: "rzp_test_abc" }).warnings.join(" "),
+    ).toMatch(/test mode/);
+    // Payments off is the default and stays clean.
+    expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "" }).errors).toEqual([]);
+    expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "RAZORPAY" }).warnings.join(" ")).toMatch(/checkout is disabled/);
   });
 
   it("warns (does not fail) about payment keys present while payments are disabled, naming variables only", () => {

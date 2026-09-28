@@ -155,6 +155,37 @@ enum CommissionStatus {
   REVERSED
 }
 
+/// Lifecycle of an inbound payment (a brand paying Refnivo for a plan).
+enum PaymentStatus {
+  /// Local record created; the provider order may not exist yet.
+  CREATED
+  /// Handed to the provider; waiting for the payer.
+  PENDING
+  /// Payer finished checkout; awaiting server-side confirmation (verify call or webhook).
+  PROCESSING
+  /// Confirmed by the provider. The only status that grants anything.
+  PAID
+  FAILED
+  CANCELLED
+  /// Never completed within the checkout window.
+  EXPIRED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentPurpose {
+  /// A brand buying or renewing a subscription plan.
+  BRAND_PLAN
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  /// Period ended without a new payment.
+  EXPIRED
+  /// Cancelled; runs to the end of the paid period.
+  CANCELLED
+}
+
 enum PayoutStatus {
   REQUESTED
   UNDER_REVIEW
@@ -270,6 +301,7 @@ model User {
   oauthAccounts       OAuthAccount[]
   orderClaims         OrderClaim[]         @relation("OrderClaimCustomer")
   decidedOrderClaims  OrderClaim[]         @relation("OrderClaimDecider")
+  payments            PaymentTransaction[]
 
   @@index([role])
   @@index([status])
@@ -317,12 +349,14 @@ model Brand {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  products    Product[]
-  campaigns   Campaign[]
-  conversions Conversion[]
-  aiInsights  AIInsight[]
-  orderClaims OrderClaim[]
+  owner        User                 @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products     Product[]
+  campaigns    Campaign[]
+  conversions  Conversion[]
+  aiInsights   AIInsight[]
+  orderClaims  OrderClaim[]
+  payments     PaymentTransaction[]
+  subscription BrandSubscription?
 
   /// v1: one brand per owner (enforced here, not only in the action).
   @@unique([ownerId])
@@ -666,6 +700,100 @@ model Commission {
 
 /// A manual settlement request. Money never moves through the platform in this
 /// version: an admin settles off-platform and records the external reference.
+/**
+ * One inbound payment attempt. The provider is the source of truth: a row only
+ * reaches PAID after server-side verification (checkout signature + the payment
+ * fetched back from the provider) or a signed webhook. Nothing sensitive is
+ * stored - no card numbers, no CVV, no provider secrets; `method` is a coarse
+ * label such as "upi" or "card" as reported by the provider.
+ */
+model PaymentTransaction {
+  id                String         @id @default(cuid())
+  /// Human-readable reference shown to the payer and used in support ("RFN-XXXXXXXX").
+  reference         String         @unique
+  userId            String
+  /// Brand the payment is for (plans are per brand workspace).
+  brandId           String?
+  purpose           PaymentPurpose @default(BRAND_PLAN)
+  /// Plan key at purchase time (see lib/config/plans.ts). Never taken from the client.
+  planKey           String?
+  /// Minor units, resolved server-side from the plan and frozen here.
+  amount            Int
+  currency          String         @default("INR")
+  status            PaymentStatus  @default(CREATED)
+  provider          String
+  /// Provider order id (before checkout) and payment id (after the payer pays).
+  providerOrderId   String?        @unique
+  providerPaymentId String?        @unique
+  /// Coarse method label from the provider (upi / card / netbanking). Never credentials.
+  method            String?
+  /// Machine-readable code plus a short safe description; provider detail stays in the logs.
+  failureCode       String?
+  failureReason     String?
+  refundedAmount    Int            @default(0)
+  /// Non-sensitive context (plan name, period, provider refund ids).
+  metadata          Json?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  paidAt            DateTime?
+  /// After this, an unpaid attempt is treated as EXPIRED.
+  expiresAt         DateTime?
+
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brand         Brand?              @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  events        PaymentEvent[]
+  subscriptions BrandSubscription[]
+
+  @@index([userId, createdAt])
+  @@index([brandId, createdAt])
+  @@index([status, createdAt])
+  @@map("payment_transactions")
+}
+
+/**
+ * Every provider webhook we accept, recorded before it is applied.
+ * `providerEventId` is unique, so replaying a webhook can never grant twice.
+ */
+model PaymentEvent {
+  id              String   @id @default(cuid())
+  provider        String
+  /// Provider event id, or a digest of the payload when the provider sends none.
+  providerEventId String   @unique
+  type            String
+  transactionId   String?
+  /// True once the event changed something; a duplicate is stored but not applied.
+  applied         Boolean  @default(false)
+  payload         Json?
+  createdAt       DateTime @default(now())
+
+  transaction PaymentTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId, createdAt])
+  @@map("payment_events")
+}
+
+/// A brand's plan. Granted only by a PAID transaction.
+model BrandSubscription {
+  id               String             @id @default(cuid())
+  brandId          String             @unique
+  planKey          String
+  status           SubscriptionStatus @default(ACTIVE)
+  startedAt        DateTime           @default(now())
+  /// End of the paid period; the plan lapses after this.
+  currentPeriodEnd DateTime
+  cancelledAt      DateTime?
+  /// Payment that last granted or renewed the plan.
+  transactionId    String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  brand       Brand               @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  transaction PaymentTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([status, currentPeriodEnd])
+  @@map("brand_subscriptions")
+}
+
 model PayoutRequest {
   id              String       @id @default(cuid())
   userId          String

@@ -1,4 +1,5 @@
 import {
+  CreditCardIcon,
   ActivityIcon,
   BadgeCheckIcon,
   BarChart3Icon,
@@ -38,6 +39,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/brand/payouts", label: "Commissions & Rewards", icon: WalletIcon },
     { href: "/dashboard/brand/analytics", label: "Analytics", icon: BarChart3Icon },
     { href: "/dashboard/brand/profile", label: "Brand Profile", icon: StoreIcon },
+    { href: "/dashboard/brand/billing", label: "Billing & Plan", icon: CreditCardIcon },
     { href: "/dashboard/brand/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/brand/settings", label: "Settings", icon: SettingsIcon },
   ],
@@ -68,6 +70,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/admin/campaigns", label: "Campaigns", icon: MegaphoneIcon },
     { href: "/dashboard/admin/conversions", label: "Conversions", icon: ReceiptIcon },
     { href: "/dashboard/admin/payouts", label: "Payouts", icon: WalletIcon },
+    { href: "/dashboard/admin/payments", label: "Payments", icon: CreditCardIcon },
     { href: "/dashboard/admin/audit", label: "Audit log", icon: ScrollTextIcon },
     { href: "/dashboard/admin/health", label: "System health", icon: ActivityIcon },
     { href: "/dashboard/admin/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
