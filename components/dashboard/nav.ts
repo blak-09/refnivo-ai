@@ -1,4 +1,5 @@
 import {
+  Share2Icon,
   HandshakeIcon,
   CreditCardIcon,
   ActivityIcon,
@@ -54,6 +55,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/dashboard/creator/links", label: "Referral Links & QR", icon: LinkIcon },
     { href: "/dashboard/creator/conversions", label: "Conversions", icon: ReceiptIcon },
     { href: "/dashboard/creator/earnings", label: "Earnings", icon: WalletIcon },
+    { href: "/dashboard/creator/social", label: "Social Accounts", icon: Share2Icon },
     { href: "/dashboard/creator/profile", label: "Profile", icon: UserCircleIcon },
     { href: "/dashboard/creator/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/creator/settings", label: "Settings", icon: SettingsIcon },

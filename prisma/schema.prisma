@@ -102,6 +102,24 @@ enum ReferralLinkStatus {
  * channel a sale came from: a click is never attributed to a platform by
  * guessing at the referer.
  */
+/// Platforms a creator can link to their Refnivo profile.
+enum SocialPlatform {
+  INSTAGRAM
+  YOUTUBE
+  FACEBOOK
+  LINKEDIN
+  X
+}
+
+enum SocialAccountStatus {
+  /// Tokens are valid as far as we know.
+  CONNECTED
+  /// The platform rejected our token: the creator must reconnect.
+  NEEDS_RECONNECT
+  /// The creator disconnected it. The row is kept so history keeps its context.
+  DISCONNECTED
+}
+
 enum LinkSource {
   GENERAL
   INSTAGRAM
@@ -334,6 +352,7 @@ model User {
   decidedOrderClaims  OrderClaim[]         @relation("OrderClaimDecider")
   payments            PaymentTransaction[]
   connections         Connection[]         @relation("CreatorConnections")
+  socialAccounts      SocialAccount[]
 
   @@index([role])
   @@index([status])
@@ -749,6 +768,53 @@ model Commission {
  * sides asking at once. `initiator` records who asked, which is what decides
  * whose inbox a PENDING row appears in.
  */
+/**
+ * A creator's linked social account.
+ * Connected through the platform's own OAuth flow - Refnivo never sees a social
+ * password. Tokens are encrypted at rest (lib/security/secret-box) and are only
+ * ever used for the scopes the creator granted.
+ * `followers` is nullable on purpose: several platforms do not expose a follower
+ * count to the scopes we request, and an unknown count must render as "not
+ * available through the platform API" rather than as a number we invented. It is
+ * always accompanied by `followersSyncedAt` so the profile can say how fresh it is.
+ * Disconnecting sets DISCONNECTED and clears the tokens; the row (and every
+ * campaign, referral and commission the creator earned) is kept.
+ */
+model SocialAccount {
+  id                String              @id @default(cuid())
+  userId            String
+  platform          SocialPlatform
+  /// The platform's own id for the account - stable across handle changes.
+  providerAccountId String
+  handle            String?
+  profileUrl        String?
+  avatarUrl         String?
+  /// Only when the platform's API actually returns it under the granted scopes.
+  followers         Int?
+  followersSyncedAt DateTime?
+  /// Encrypted (AES-256-GCM). Never logged, never sent to the browser.
+  accessToken       String?
+  refreshToken      String?
+  tokenExpiresAt    DateTime?
+  /// Exactly the scopes the creator granted, for the disclosure on the profile page.
+  scopes            String[]            @default([])
+  status            SocialAccountStatus @default(CONNECTED)
+  /// Set when the platform last refused our token, so the UI can explain the reconnect.
+  lastErrorAt       DateTime?
+  connectedAt       DateTime            @default(now())
+  lastSyncedAt      DateTime?
+  updatedAt         DateTime            @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// One account per platform per creator.
+  @@unique([userId, platform])
+  /// The same social account cannot be claimed by two Refnivo users.
+  @@unique([platform, providerAccountId])
+  @@index([userId, status])
+  @@map("social_accounts")
+}
+
 model Connection {
   id           String              @id @default(cuid())
   brandId      String

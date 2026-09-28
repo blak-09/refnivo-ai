@@ -119,6 +119,35 @@ marked PAID from a verified provider response, never from the browser.
 Plans and prices live in `lib/config/plans.ts` (server-side); the client only ever sends a plan key.
 A deployment running test keys in production is allowed but warned about at boot.
 
+## 4c. Social account connections (creator profiles)
+
+Each platform is a separate developer app and is enabled independently — configuring one says nothing about the
+others. Tokens are encrypted at rest, so the key is required before any platform can be turned on:
+
+```bash
+SOCIAL_TOKEN_ENCRYPTION_KEY=$(openssl rand -base64 32)
+```
+
+The callback URL must be registered with each platform **exactly**:
+`https://<your-domain>/api/social/<platform>/callback` (platform = `youtube`, `instagram`, `facebook`, `linkedin`, `x`).
+
+| Platform | Where to register | Scopes we request | Follower count |
+| --- | --- | --- | --- |
+| YouTube | Google Cloud console -> OAuth client (Web), enable **YouTube Data API v3** | `youtube.readonly` | Yes (null if the channel hides it) |
+| Instagram | Meta app with **Facebook Login for Business**; the creator needs an Instagram Business/Creator account linked to a Facebook Page. App review required for `instagram_basic`, `pages_show_list`, `pages_read_engagement` before non-testers can connect | `instagram_basic`, `pages_show_list`, `pages_read_engagement` | Yes |
+| Facebook | Same Meta app (`META_APP_ID` / `META_APP_SECRET`); links a **Page**, not a personal profile | `pages_show_list`, `pages_read_engagement` | Yes (Page followers) |
+| LinkedIn | LinkedIn developer app -> **Sign In with LinkedIn using OpenID Connect** | `openid`, `profile` | **No** — LinkedIn does not expose member follower counts; the profile says so instead of showing a number |
+| X | X developer portal -> OAuth 2.0 **confidential client** with PKCE | `tweet.read`, `users.read`, `offline.access` | Yes on paid tiers; the free tier's rate limits may leave it null |
+
+Meta also requires a privacy policy URL (`/privacy`) and a data-deletion contact during app review; both exist.
+
+A platform with only half its pair set (id without secret) logs a warning and stays disabled. Credentials without
+`SOCIAL_TOKEN_ENCRYPTION_KEY` are a boot **error**, so tokens can never be stored in the clear.
+
+None of these flows has been exercised against a live platform app — they are written to each platform's documented
+OAuth 2.0 contract and covered by unit tests for state signing, PKCE, scopes and metric availability. Connect one
+platform in a staging deployment first.
+
 ## 5. Connection pooling
 
 Serverless functions open many short-lived connections. Use the provider's pooler URL for `DATABASE_URL`

@@ -194,6 +194,22 @@ describe("validateProductionEnv", () => {
     expect(validateProductionEnv({ ...valid, PAYMENT_PROVIDER: "RAZORPAY" }).warnings.join(" ")).toMatch(/checkout is disabled/);
   });
 
+  it("keeps each social platform independent and refuses credentials without an encryption key", () => {
+    const key = { SOCIAL_TOKEN_ENCRYPTION_KEY: "a".repeat(44) };
+    // Nothing configured: no social warnings at all.
+    expect(validateProductionEnv(valid).warnings.join(" ")).not.toMatch(/social login/);
+    // Half a pair: that platform stays off, and says so.
+    const half = validateProductionEnv({ ...valid, ...key, YOUTUBE_CLIENT_ID: "id" });
+    expect(half.errors).toEqual([]);
+    expect(half.warnings.join(" ")).toMatch(/YouTube social login needs both/);
+    // Credentials without the encryption key must not boot.
+    expect(validateProductionEnv({ ...valid, META_APP_ID: "id", META_APP_SECRET: "secret" }).errors.join(" ")).toMatch(/SOCIAL_TOKEN_ENCRYPTION_KEY/);
+    // A complete platform is clean, and does not implicate the others.
+    const ok = validateProductionEnv({ ...valid, ...key, YOUTUBE_CLIENT_ID: "id", YOUTUBE_CLIENT_SECRET: "secret" });
+    expect(ok.errors).toEqual([]);
+    expect(ok.warnings.join(" ")).not.toMatch(/social login/);
+  });
+
   it("warns (does not fail) about payment keys present while payments are disabled, naming variables only", () => {
     const r = validateProductionEnv({ ...valid, PHONEPE_SALT_KEY: "live-salt-value-123" });
     expect(r.errors).toEqual([]);

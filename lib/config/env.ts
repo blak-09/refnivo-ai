@@ -216,6 +216,22 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
     if (keysPresent.length) warnings.push(`Payment credentials are set but payments are disabled: ${keysPresent.join(", ")}.`);
   }
 
+  // Social connections. Each platform is optional and independent; a half-set
+  // pair is a warning (that platform stays off) rather than a boot failure.
+  const socialPairs: [string, string, string][] = [
+    ["YouTube", "YOUTUBE_CLIENT_ID", "YOUTUBE_CLIENT_SECRET"],
+    ["Instagram/Facebook", "META_APP_ID", "META_APP_SECRET"],
+    ["LinkedIn", "LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET"],
+    ["X", "X_CLIENT_ID", "X_CLIENT_SECRET"],
+  ];
+  const anySocial = socialPairs.some(([, id, secret]) => set(env[id]) || set(env[secret]));
+  for (const [label, id, secret] of socialPairs) {
+    if (set(env[id]) !== set(env[secret])) warnings.push(`${label} social login needs both ${id} and ${secret}: it stays disabled.`);
+  }
+  if (anySocial && !set(env.SOCIAL_TOKEN_ENCRYPTION_KEY)) {
+    errors.push("Social platform credentials are set but SOCIAL_TOKEN_ENCRYPTION_KEY is missing: tokens would have nowhere safe to live.");
+  }
+
   // Development escape hatches must not leak into production.
   for (const name of DEV_ESCAPE_HATCHES) {
     if (set(env[name]) && name !== "STORAGE_ALLOW_LOCAL" && name !== "RATE_LIMIT_ALLOW_MEMORY") warnings.push(`${name} is set in production.`);

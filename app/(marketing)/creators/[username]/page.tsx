@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ConnectButton } from "@/components/connections/connect-button";
 import { connectStateForCreator } from "@/lib/services/connect-state";
+import { publicSocialAccounts } from "@/lib/services/social-accounts";
 import { BadgeCheckIcon, MapPinIcon, MessageCircleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,6 +36,9 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   if (!creator) notFound();
   // Only rendered for a signed-in brand owner who could actually connect.
   const { state: connectState } = await connectStateForCreator(creator.user.id);
+  // Accounts the creator linked through the platform's own OAuth — shown as verified,
+  // separately from the handles they typed in themselves.
+  const verifiedAccounts = await publicSocialAccounts(creator.user.id);
 
   const socials = creatorSocialLinks(creator);
   const primarySocial = socials[0] ?? null;
@@ -105,6 +109,34 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
           </CardHeader>
           <CardContent className="space-y-5">
             <p className="text-sm leading-relaxed text-foreground">{creator.bio ?? "This creator has not written a bio yet."}</p>
+            {verifiedAccounts.length ? (
+              <div className="space-y-2">
+                <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                  <BadgeCheckIcon className="size-4 text-indigo-600" aria-hidden /> Connected accounts
+                </p>
+                <ul className="grid gap-2 sm:grid-cols-2">
+                  {verifiedAccounts.map((a) => (
+                    <li key={a.platform} className="flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-sm">
+                      <span className="min-w-0">
+                        <span className="block font-medium">{a.label}</span>
+                        {a.profileUrl ? (
+                          <a href={a.profileUrl} target="_blank" rel="noreferrer noopener" className="block truncate text-xs text-primary hover:underline">
+                            {a.handle ?? a.profileUrl}
+                          </a>
+                        ) : (
+                          <span className="block truncate text-xs text-muted-foreground">{a.handle ?? "Linked"}</span>
+                        )}
+                      </span>
+                      {/* A number only when the platform actually reports one. */}
+                      {a.followers !== null ? (
+                        <span className="shrink-0 text-xs font-medium tabular-nums">{a.followers.toLocaleString("en-IN")}</span>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-foreground">Verified by signing in with each platform.</p>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <p className="text-sm font-semibold text-foreground">Social Links</p>
               <CreatorSocialLinks links={socials} />
