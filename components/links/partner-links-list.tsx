@@ -5,6 +5,7 @@ import { EmptyState, StatusBadge } from "@/components/dashboard/primitives";
 import { ReferralLinkCard } from "@/components/links/referral-link-card";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { prisma } from "@/lib/db/prisma";
+import { SOURCE_HINT, SOURCE_LABEL } from "@/lib/services/channel-links";
 import { referralQrDataUrl, referralUrl, shareTargets } from "@/lib/services/links";
 
 /**
@@ -19,6 +20,7 @@ export async function PartnerLinksList({ userId, emptyDescription }: { userId: s
       id: true,
       code: true,
       status: true,
+      source: true,
       campaign: {
         select: {
           name: true,
@@ -82,6 +84,11 @@ export async function PartnerLinksList({ userId, emptyDescription }: { userId: s
                 <p className="truncate text-xs font-normal text-muted-foreground">
                   {l.campaign.brand.name} · {l.campaign.name}
                 </p>
+                {l.source !== "GENERAL" ? (
+                  <p className="truncate text-xs font-medium text-indigo-600">
+                    {SOURCE_LABEL[l.source]} link — {SOURCE_HINT[l.source]}
+                  </p>
+                ) : null}
               </div>
               <StatusBadge status={l.status === "DISABLED" ? "REJECTED" : l.campaign.status} label={l.status === "DISABLED" ? "Disabled" : undefined} />
             </div>

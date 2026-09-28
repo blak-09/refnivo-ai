@@ -35,7 +35,7 @@ describe("joining campaigns", () => {
     expect(JSON.stringify(pending)).not.toContain(creator.email); // no contact details exposed
 
     await decideApplication(a.brand.id, a.user.id, app.id, "APPROVED");
-    const link = await prisma.referralLink.findUniqueOrThrow({ where: { campaignId_ownerId: { campaignId, ownerId: creator.id } } });
+    const link = await prisma.referralLink.findUniqueOrThrow({ where: { campaignId_ownerId_source: { campaignId, ownerId: creator.id, source: "GENERAL" } } });
     expect(link.code.startsWith("ARJUNTEST-PARTNERT-")).toBe(true);
     expect(isReferralCodeFormat(link.code)).toBe(true);
     await expect(decideApplication(a.brand.id, a.user.id, app.id, "REJECTED")).rejects.toBeInstanceOf(PartnerError);
@@ -85,7 +85,7 @@ describe("tracking, orders and ledger", () => {
     await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaignId);
     const app = await prisma.partnerApplication.findUniqueOrThrow({ where: { campaignId_userId: { campaignId, userId: creator.id } } });
     await decideApplication(a.brand.id, a.user.id, app.id, "APPROVED");
-    const link = await prisma.referralLink.findUniqueOrThrow({ where: { campaignId_ownerId: { campaignId, ownerId: creator.id } } });
+    const link = await prisma.referralLink.findUniqueOrThrow({ where: { campaignId_ownerId_source: { campaignId, ownerId: creator.id, source: "GENERAL" } } });
     return { creator, link };
   }
 

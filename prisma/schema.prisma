@@ -96,6 +96,21 @@ enum ReferralLinkStatus {
   DISABLED
 }
 
+/**
+ * Where a referral link is meant to be shared. A creator can hold one link per
+ * platform for the same campaign, which is the ONLY way Refnivo knows which
+ * channel a sale came from: a click is never attributed to a platform by
+ * guessing at the referer.
+ */
+enum LinkSource {
+  GENERAL
+  INSTAGRAM
+  YOUTUBE
+  FACEBOOK
+  LINKEDIN
+  X
+}
+
 enum ClickSource {
   LINK
   QR
@@ -529,6 +544,8 @@ model ReferralLink {
   ownerId        String
   partnerType    PartnerType
   code           String             @unique
+  /// Channel this link is for; GENERAL is the everyday link issued on joining.
+  source         LinkSource         @default(GENERAL)
   destinationUrl String?
   status         ReferralLinkStatus @default(ACTIVE)
   createdAt      DateTime           @default(now())
@@ -540,7 +557,7 @@ model ReferralLink {
   referrals   Referral[]
   orderClaims OrderClaim[]
 
-  @@unique([campaignId, ownerId])
+  @@unique([campaignId, ownerId, source])
   @@index([ownerId])
   @@index([campaignId])
   @@map("referral_links")

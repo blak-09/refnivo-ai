@@ -19,9 +19,19 @@ function token(input: string, max: number): string {
  *   <partner handle>-<brand>-<random>
  * The random suffix guarantees uniqueness even when two partners share a name.
  * Creator and customer links are distinguished by `ReferralLink.partnerType`.
+ *
+ * A channel-specific link carries a fourth segment — `ARJUN-BOAT-4K7Q-YT` — so
+ * the creator (and anyone reading the link in a bio) can see which platform it
+ * belongs to, and so a sale can be credited to that channel. The suffix is part
+ * of the code, not a query parameter, because query strings are frequently
+ * stripped when a link is pasted into a social profile.
  */
-export function generateReferralCode(partnerHandle: string, brandName: string): string {
-  return `${token(partnerHandle, 12)}-${token(brandName, 8)}-${random()}`;
+export const SOURCE_SUFFIX = { GENERAL: "", INSTAGRAM: "IG", YOUTUBE: "YT", FACEBOOK: "FB", LINKEDIN: "LI", X: "X" } as const;
+export type CodeSource = keyof typeof SOURCE_SUFFIX;
+
+export function generateReferralCode(partnerHandle: string, brandName: string, source: CodeSource = "GENERAL"): string {
+  const suffix = SOURCE_SUFFIX[source];
+  return `${token(partnerHandle, 12)}-${token(brandName, 8)}-${random()}${suffix ? `-${suffix}` : ""}`;
 }
 
 /**
@@ -33,7 +43,10 @@ export function generateCustomerReferralCode(): string {
 }
 
 export function isReferralCodeFormat(code: string): boolean {
-  return /^[A-Z0-9]{1,12}-[A-Z0-9]{1,8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}$/.test(code) || /^[CR]-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/.test(code);
+  return (
+    /^[A-Z0-9]{1,12}-[A-Z0-9]{1,8}-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{4}(-(IG|YT|FB|LI|X))?$/.test(code) ||
+    /^[CR]-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{8}$/.test(code)
+  );
 }
 
 export function normalizeReferralCode(input: string): string {

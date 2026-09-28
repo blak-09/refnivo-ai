@@ -8,18 +8,21 @@ import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
 import { getBrandOverview, getCampaignBreakdown, getPartnerTypeSplit, getReferralsOverTime, getTopCreators, getTopProducts } from "@/lib/services/metrics";
+import { brandSourcePerformance } from "@/lib/services/channel-links";
+import { SourcePerformanceTable } from "@/components/links/source-performance";
 
 export const metadata: Metadata = { title: "Analytics" };
 
 export default async function AnalyticsPage() {
   const { brand } = await requireBrand();
-  const [overview, breakdown, series, split, topCreators, topProducts] = await Promise.all([
+  const [overview, breakdown, series, split, topCreators, topProducts, sources] = await Promise.all([
     getBrandOverview(brand.id),
     getCampaignBreakdown(brand.id),
     getReferralsOverTime(brand.id, 30),
     getPartnerTypeSplit(brand.id),
     getTopCreators(brand.id, 10),
     getTopProducts(brand.id, 10),
+    brandSourcePerformance(brand.id),
   ]);
   const totalCost = overview.approvedRewardCost + overview.approvedCommissionCost;
 
@@ -43,6 +46,12 @@ export default async function AnalyticsPage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <SourcePerformanceTable
+          rows={sources}
+          title="Traffic sources"
+          description="Which channels your partners actually sell through. A sale counts for a channel only when it came through that channel's referral link."
+        />
+
         <Card>
           <CardHeader>
             <CardTitle>Referrals over time</CardTitle>

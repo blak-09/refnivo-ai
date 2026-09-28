@@ -190,7 +190,7 @@ export async function joinCampaign(
     const autoApprove = partnerType === "CUSTOMER" || !campaign.requiresApproval;
 
     if (existing?.status === "APPROVED" || (existing?.status === "PENDING" && !autoApprove)) {
-      const link = existing.status === "APPROVED" ? await tx.referralLink.findUnique({ where: { campaignId_ownerId: { campaignId, ownerId: user.id } } }) : null;
+      const link = existing.status === "APPROVED" ? await tx.referralLink.findUnique({ where: { campaignId_ownerId_source: { campaignId, ownerId: user.id, source: "GENERAL" } } }) : null;
       return { status: existing.status, code: link?.code ?? null };
     }
 
@@ -293,7 +293,7 @@ export async function ensureReferralLink(
   tx: Tx,
   input: { campaignId: string; ownerId: string; partnerType: PartnerType; handle: string; brandName: string },
 ) {
-  const existing = await tx.referralLink.findUnique({ where: { campaignId_ownerId: { campaignId: input.campaignId, ownerId: input.ownerId } } });
+  const existing = await tx.referralLink.findUnique({ where: { campaignId_ownerId_source: { campaignId: input.campaignId, ownerId: input.ownerId, source: "GENERAL" } } });
   if (existing) return existing;
 
   // Retry on the (unlikely) code collision.
@@ -310,7 +310,7 @@ export async function ensureReferralLink(
 export async function getPartnerStatus(userId: string, campaignId: string) {
   const [application, link] = await Promise.all([
     prisma.partnerApplication.findUnique({ where: { campaignId_userId: { campaignId, userId } }, select: { status: true } }),
-    prisma.referralLink.findUnique({ where: { campaignId_ownerId: { campaignId, ownerId: userId } }, select: { code: true, status: true } }),
+    prisma.referralLink.findUnique({ where: { campaignId_ownerId_source: { campaignId, ownerId: userId, source: "GENERAL" } }, select: { code: true, status: true } }),
   ]);
   return { applicationStatus: application?.status ?? null, code: link?.status === "ACTIVE" ? link.code : null };
 }
