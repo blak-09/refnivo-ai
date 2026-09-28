@@ -23,7 +23,7 @@
     "db:target": "tsx scripts/db-target.ts",
     "postinstall": "prisma generate",
     "tunnel": "cloudflared tunnel --url http://localhost:3000 --no-autoupdate",
-    "dev:all": "concurrently -n db,web -c blue,green \"tsx scripts/local-db.ts\" \"next dev\"",
+    "dev:all": "concurrently -n db,web -c blue,green \"tsx scripts/local-db.ts\" \"tsx scripts/wait-for-db.ts && next dev\"",
     "admin:create": "tsx scripts/create-admin.ts",
     "admin:check": "tsx scripts/admin-check.ts",
     "email:outbox": "tsx scripts/email-outbox.ts"
