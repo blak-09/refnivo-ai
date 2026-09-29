@@ -13,6 +13,15 @@ import { creatorLinkForProgram } from "@/lib/services/affiliate-links";
 import { getPublishedProgram, programBrandName } from "@/lib/services/affiliate-programs";
 import { PLATFORM_LABEL } from "@/lib/social";
 
+function hostOf(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const program = await getPublishedProgram((await params).slug);
   return program ? { title: `${program.name} · ${programBrandName(program)}`, description: program.description?.slice(0, 160) ?? undefined } : { title: "Affiliate programme" };
@@ -43,6 +52,8 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
   const brandName = programBrandName(program);
   // Curated: Refnivo listed it from public information; the brand has no account here.
   const curated = !program.brand;
+  // Where the curated facts were read: the programme page's own site (the brand's, or its network's).
+  const sourceHost = hostOf(program.programUrl ?? program.signupUrl);
 
   // Only what the programme actually states. Anything unstated is left out, never guessed.
   const facts: [string, string | null][] = [
@@ -110,7 +121,7 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
                 {curated ? (
                   <p className="mt-2 text-muted-foreground">
                     <span className="font-medium text-foreground">Listed by Refnivo.</span> {brandName} has not joined Refnivo and does not manage this listing. The
-                    details come from the programme&apos;s public page{program.networkName ? ` on ${program.networkName}` : ""}.
+                    details come from the programme&apos;s public page{sourceHost ? ` on ${sourceHost}` : ""}.
                   </p>
                 ) : null}
               </div>

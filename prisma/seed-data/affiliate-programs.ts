@@ -61,6 +61,41 @@ export const EXAMPLE_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = [
         "Admitad lists an active advertiser programme 'Boat Lifestyle [CPS] IN' (advertiser site www.boat-lifestyle.com, geography PAN India); commission and cookie are shown to logged-in publishers only. boat-lifestyle.com has no affiliate page of its own — its 'Refer & Earn' is a customer reward-points scheme, not an affiliate programme. boAt does not publicly name its networks, so the reviewer should confirm Admitad before publishing.",
     },
   },
+  {
+    slug: "r-for-rabbit-affiliate-program",
+    brandName: "R for Rabbit",
+    name: "R for Rabbit Affiliate Program",
+    category: "Baby Products",
+    description:
+      "Promote R for Rabbit's baby products through the brand's own affiliate programme, built for creators who talk to Indian parents. Affiliates get a partner dashboard with real-time tracking, deep links to products and collections, ready-made creatives, and a coupon code for their audience on request. Payouts are monthly.",
+    websiteUrl: "https://rforrabbit.com",
+    programUrl: "https://rforrabbit.com/pages/affiliate-program/",
+    signupUrl: "https://partner.rforrabbit.com/register.html",
+    networkName: "Trackier",
+    geography: "India",
+    commissionType: "PERCENTAGE",
+    commissionDescription: "10% flat on every sale",
+    cookieDurationDays: 30,
+    // The page describes registration but not how applicants are approved.
+    approvalType: null,
+    supportedPlatforms: ["INSTAGRAM", "YOUTUBE"],
+    requirements:
+      "Welcomes parenting bloggers, Instagram and YouTube creators, WhatsApp community admins, coupon and deal sites, and comparison or review sites.",
+    subIdParam: null,
+    // R for Rabbit's own og:image (rforrabbit.com), placed on a square; see public/brand-logos/r-for-rabbit.png.
+    logoUrl: "/brand-logos/r-for-rabbit.png",
+    minFollowers: null,
+    sources: {
+      checkedOn: "2026-09-29",
+      urls: [
+        "https://rforrabbit.com/pages/affiliate-program/",
+        "https://partner.rforrabbit.com/register.html",
+        "https://rforrabbit.com/cdn/shop/files/R_for_Rabbit_Website_logo_f10cf445-cc8c-42f3-9b3a-4b45261d6236.png",
+      ],
+      notes:
+        "First-party programme page states: flat 10% commission on every sale, 30-day cookie, Trackier-powered partner portal, monthly payouts, audience of Indian parents; lists the creator types above and the partner benefits. 'Join the Program' links to partner.rforrabbit.com/register.html (returns 200). Approval criteria are not stated. Contact: affiliate@rforrabbit.com.",
+    },
+  },
 ];
 
 type Db = PrismaClient | Prisma.TransactionClient;

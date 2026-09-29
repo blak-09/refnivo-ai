@@ -24,6 +24,7 @@ export const AFFILIATE_CATEGORIES = [
   "Home",
   "Education",
   "Finance",
+  "Baby Products",
   "Other",
 ] as const;
 
