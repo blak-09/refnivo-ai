@@ -26,6 +26,49 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
     },
   });
   const hasPassword = full.passwordHash !== null;
+
+  // Forced rotation: every dashboard page redirects here until the password is
+  // changed, so show ONLY that step. Next to the other cards it was easy to
+  // save "Account details" instead and stay locked out of the dashboard.
+  if (user.mustChangePassword && hasPassword) {
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        <PageHeader title="Set a new password" description="One step before you can use your dashboard." />
+        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+          <p className="font-medium">This account is using a temporary password.</p>
+          <p className="mt-1">
+            Enter that temporary password as <strong>Current password</strong> — the one you were given, or typed into the admin set-up script — then choose a
+            new one. You will be signed out and can log in with the new password; the dashboard then opens normally.
+          </p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Change password</CardTitle>
+            <CardDescription>{full.email}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChangePasswordForm primary />
+          </CardContent>
+        </Card>
+        <p className="text-center text-xs text-muted-foreground">
+          Don&apos;t know the temporary password?{" "}
+          {isEmailConfigured() ? (
+            <>
+              Use{" "}
+              <Link href="/auth/forgot-password" className="font-medium text-primary underline-offset-4 hover:underline">
+                Forgot password
+              </Link>{" "}
+              to get a reset link by e-mail, or ask
+            </>
+          ) : (
+            "Ask"
+          )}{" "}
+          whoever runs the server to reset it with <code>scripts/create-admin.ps1</code> (docs/PRODUCTION.md §7).
+        </p>
+      </div>
+    );
+  }
+
   const deletion = await previewAccountDeletion(user.id);
   // Separate query, tolerant of a deploy that lands before the google_oauth
   // migration: the page must never 500 over an informational line.

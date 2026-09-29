@@ -41,7 +41,7 @@ export function AccountDetailsForm({ user, uploadsEnabled = true }: { user: { na
   );
 }
 
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ primary = false }: { primary?: boolean }) {
   const [state, action] = useActionState(changePasswordAction, null);
   const errors = state && !state.ok ? state.fieldErrors ?? {} : {};
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -65,7 +65,7 @@ export function ChangePasswordForm() {
         <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" required aria-invalid={!!errors.confirmPassword} />
       </Field>
       <div className="flex justify-end">
-        <SubmitButton variant="outline">Change password</SubmitButton>
+        <SubmitButton variant={primary ? "default" : "outline"}>Change password</SubmitButton>
       </div>
     </form>
   );
