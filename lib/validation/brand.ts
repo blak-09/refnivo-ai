@@ -8,12 +8,19 @@ export const optionalUrl = z
   .optional()
   .or(z.literal(""));
 
-/** An image reference: an upload from our storage (`/uploads/…` or a full URL) or a legacy external URL. */
+/**
+ * An image reference: an upload from our storage (`/uploads/…` or a full URL), a
+ * logo shipped with the app (`/brand-logos/…`, see public/brand-logos), or a
+ * legacy external URL.
+ */
 export const optionalImageRef = z
   .string()
   .trim()
   .max(500)
-  .refine((val) => val === "" || val.startsWith("/uploads/") || val.startsWith("https://") || val.startsWith("http://"), "Enter a valid image")
+  .refine(
+    (val) => val === "" || val.startsWith("/uploads/") || /^\/brand-logos\/[a-z0-9-]+\.(png|webp|svg|jpg)$/.test(val) || val.startsWith("https://") || val.startsWith("http://"),
+    "Enter a valid image",
+  )
   .optional()
   .or(z.literal(""));
 

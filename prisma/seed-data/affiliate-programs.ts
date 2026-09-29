@@ -46,11 +46,17 @@ export const EXAMPLE_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = [
     supportedPlatforms: [],
     requirements: null,
     subIdParam: null,
-    logoUrl: null,
+    // boAt's own share image (og:image on boat-lifestyle.com), cropped square; see public/brand-logos/boat.png.
+    logoUrl: "/brand-logos/boat.png",
     minFollowers: null,
     sources: {
       checkedOn: "2026-09-28",
-      urls: ["https://www.admitad.com/en-in/store/offers/boat-lifestyle-cps-in/", "https://www.boat-lifestyle.com/pages/refer-and-earn"],
+      urls: [
+        "https://www.admitad.com/en-in/store/offers/boat-lifestyle-cps-in/",
+        "https://www.boat-lifestyle.com/pages/refer-and-earn",
+        // Logo: the og:image boAt publishes on its homepage (checked 2026-09-29).
+        "https://www.boat-lifestyle.com/cdn/shop/files/profile-1_2e1d2124-ba4c-43f0-bb83-0e6ee038ff30.png",
+      ],
       notes:
         "Admitad lists an active advertiser programme 'Boat Lifestyle [CPS] IN' (advertiser site www.boat-lifestyle.com, geography PAN India); commission and cookie are shown to logged-in publishers only. boat-lifestyle.com has no affiliate page of its own — its 'Refer & Earn' is a customer reward-points scheme, not an affiliate programme. boAt does not publicly name its networks, so the reviewer should confirm Admitad before publishing.",
     },
