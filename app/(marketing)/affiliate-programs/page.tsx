@@ -1,81 +1,104 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ExternalLinkIcon, SearchIcon, StoreIcon } from "lucide-react";
+import { InfoIcon, SearchIcon, StoreIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { EmptyState } from "@/components/dashboard/primitives";
-import { BrandLogo } from "@/components/products/product-thumb";
-import { APPROVAL_LABEL, ProgramTypeBadge, VerifiedProgramMark } from "@/components/affiliate/program-badge";
-import { listPublishedPrograms, programBrandName, programFacets } from "@/lib/services/affiliate-programs";
-import { AFFILIATE_CATEGORIES } from "@/lib/validation/affiliate";
+import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
+import { ProgramCard } from "@/components/affiliate/program-card";
+import { listPublishedPrograms, programFacets, PROGRAMS_PAGE_SIZE, type ProgramFilters } from "@/lib/services/affiliate-programs";
+import { PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "Discover Affiliate Programs",
-  description: "Find brands' existing affiliate programmes, join them on the brand's own platform, and track your promotion with Refnivo links.",
+  description: "Official affiliate, creator and ambassador programmes from D2C brands and e-commerce platforms — verified, with commission and eligibility as each programme states them.",
 };
 
-type Search = { q?: string; category?: string; network?: string; approval?: string; platform?: string };
+type Search = { q?: string; category?: string; type?: string; sort?: string; page?: string };
+
+const SORTS: [string, string][] = [
+  ["featured", "Featured"],
+  ["recent", "Recently verified"],
+  ["az", "A–Z"],
+  ["category", "Category"],
+];
 
 /**
  * Public marketplace of external affiliate programmes — only listings an admin
- * approved. Each card is explicit that the programme is run by the brand
- * elsewhere, and a commission appears only as the brand's own description.
+ * published. Refnivo lists and links to each official programme; it is not a
+ * partner of these brands unless a listing says so.
  */
 export default async function AffiliateProgramsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
-  const [programs, facets] = await Promise.all([listPublishedPrograms(sp), programFacets()]);
-  const hasFilters = !!(sp.q || sp.category || sp.network || sp.approval || sp.platform);
-  const categoryHref = (c?: string) => {
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  const filters: ProgramFilters = { q: sp.q, category: sp.category, type: sp.type, sort: sp.sort, page };
+  const [{ programs, total }, facets] = await Promise.all([listPublishedPrograms(filters), programFacets()]);
+  const hasFilters = !!(sp.q || sp.category || sp.type);
+
+  const href = (over: Partial<Search>) => {
     const p = new URLSearchParams();
-    if (sp.q) p.set("q", sp.q);
-    if (c) p.set("category", c);
+    const merged = { q: sp.q, category: sp.category, type: sp.type, sort: sp.sort, ...over };
+    for (const [k, v] of Object.entries(merged)) if (v) p.set(k, String(v));
     return `/affiliate-programs${p.toString() ? `?${p}` : ""}`;
   };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="max-w-2xl">
+      <div className="max-w-3xl">
         <ProgramTypeBadge type="EXTERNAL" />
         <h1 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">Discover affiliate programs</h1>
         <p className="mt-2 text-muted-foreground">
-          Find brands you can promote and earn from. You join each programme on the brand&apos;s own platform — Refnivo helps you find it, share trackable links and see
-          your clicks.
+          Official affiliate, creator and ambassador programmes from brands and online stores. Apply on each brand&apos;s own programme page, then share and track your
+          links with Refnivo.
+        </p>
+        <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+          <InfoIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          Refnivo lists these programmes so creators can find them. Unless a listing says otherwise, Refnivo is not partnered with the brand — approval, commission and
+          payment are handled by each programme.
         </p>
       </div>
 
-      <form className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto_auto_auto]" role="search">
-        <div className="relative">
+      {/* Remounted per query so the inputs pick up the new defaults after client navigation. */}
+      <form key={`${sp.q ?? ""}|${sp.category ?? ""}|${sp.type ?? ""}|${sp.sort ?? ""}`} className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]" role="search">
+        <div className="relative sm:col-span-2 lg:col-span-1">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input name="q" defaultValue={sp.q} placeholder="Search brands or programmes…" aria-label="Search" className="pl-9" />
-          {sp.category ? <input type="hidden" name="category" value={sp.category} /> : null}
+          <Input name="q" defaultValue={sp.q} placeholder="Search brand, category or program type…" aria-label="Search programmes" className="pl-9" />
         </div>
-        <NativeSelect name="network" defaultValue={sp.network ?? ""} aria-label="Affiliate network">
-          <option value="">Any network</option>
-          {facets.networks.map((n) => (
-            <option key={n} value={n}>
-              {n}
+        <NativeSelect name="category" defaultValue={sp.category ?? ""} aria-label="Category">
+          <option value="">All categories</option>
+          {facets.categories.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </NativeSelect>
-        <NativeSelect name="approval" defaultValue={sp.approval ?? ""} aria-label="Approval">
-          <option value="">Any approval</option>
-          <option value="AUTOMATIC">Automatic approval</option>
-          <option value="APPLICATION">Application required</option>
-          <option value="INVITE_ONLY">Invite only</option>
+        <NativeSelect name="type" defaultValue={sp.type ?? ""} aria-label="Program type">
+          <option value="">All program types</option>
+          {facets.types.map((t) => (
+            <option key={t} value={t}>
+              {PROGRAM_TYPE_LABEL[t]}
+            </option>
+          ))}
+        </NativeSelect>
+        <NativeSelect name="sort" defaultValue={sp.sort ?? "featured"} aria-label="Sort by">
+          {SORTS.map(([value, label]) => (
+            <option key={value} value={value}>
+              Sort: {label}
+            </option>
+          ))}
         </NativeSelect>
         <Button type="submit">Search</Button>
       </form>
 
-      <nav className="mt-4 flex flex-wrap gap-1.5" aria-label="Categories">
-        {[undefined, ...AFFILIATE_CATEGORIES].map((c) => (
+      <nav className="-mx-4 mt-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0" aria-label="Categories">
+        {[undefined, ...facets.categories].map((c) => (
           <Link
             key={c ?? "all"}
-            href={categoryHref(c)}
+            href={href({ category: c, page: undefined })}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+              "shrink-0 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-colors",
               (sp.category ?? undefined) === c ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted",
             )}
           >
@@ -84,76 +107,54 @@ export default async function AffiliateProgramsPage({ searchParams }: { searchPa
         ))}
       </nav>
 
+      <p className="mt-5 text-sm text-muted-foreground" aria-live="polite">
+        {total} {total === 1 ? "program" : "programs"}
+        {hasFilters ? " match" : " · all active"}
+        {hasFilters ? (
+          <>
+            {" · "}
+            <Link href="/affiliate-programs" className="font-medium text-primary hover:underline">
+              Clear filters
+            </Link>
+          </>
+        ) : null}
+      </p>
+
       {!programs.length ? (
-        <div className="mt-8">
+        <div className="mt-6">
           <EmptyState
             icon={StoreIcon}
             title={hasFilters ? "No programmes match" : "No affiliate programmes listed yet"}
-            description={
-              hasFilters ? "Try a different search or category." : "Brands are starting to list the affiliate programmes they already run. Check back soon — or browse Refnivo campaigns."
-            }
+            description={hasFilters ? "Try a different search, category or program type." : "Programmes appear here once they are verified. Browse Refnivo campaigns meanwhile."}
             action={
-              <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/campaigns" />}>
-                Browse Refnivo campaigns
+              <Button size="sm" variant="outline" nativeButton={false} render={<Link href={hasFilters ? "/affiliate-programs" : "/campaigns"} />}>
+                {hasFilters ? "Show all programmes" : "Browse Refnivo campaigns"}
               </Button>
             }
           />
         </div>
       ) : (
-        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {programs.map((p) => {
-            const brandName = programBrandName(p);
-            return (
-            <li key={p.id}>
-              <Card className="h-full rounded-2xl transition-shadow hover:shadow-md">
-                <CardContent className="flex h-full flex-col gap-3">
-                  <div className="flex items-start gap-3">
-                    <BrandLogo src={p.logoUrl ?? p.brand?.logoUrl} name={brandName} className="size-12 rounded-xl" sizes="48px" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold">{brandName}</p>
-                      <p className="truncate text-xs text-muted-foreground">{p.category ?? p.brand?.industry ?? "Affiliate programme"}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <ProgramTypeBadge type="EXTERNAL" />
-                    <VerifiedProgramMark verifiedAt={p.verifiedAt} />
-                  </div>
-                  <p className="text-sm font-medium">{p.name}</p>
-                  {p.description ? <p className="line-clamp-2 text-xs text-muted-foreground">{p.description}</p> : null}
-                  <dl className="grid flex-1 gap-1 text-xs">
-                    <div className="flex justify-between gap-3">
-                      <dt className="text-muted-foreground">Commission</dt>
-                      {/* The brand's own statement — never a Refnivo promise. */}
-                      <dd className="text-right font-medium">{p.commissionDescription ?? "Set by the programme"}</dd>
-                    </div>
-                    {p.approvalType ? (
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">Joining</dt>
-                        <dd className="text-right">{APPROVAL_LABEL[p.approvalType]}</dd>
-                      </div>
-                    ) : null}
-                    {p.networkName ? (
-                      <div className="flex justify-between gap-3">
-                        <dt className="text-muted-foreground">Network</dt>
-                        <dd className="text-right">{p.networkName}</dd>
-                      </div>
-                    ) : null}
-                  </dl>
-                  {!p.brand ? <p className="text-[11px] text-muted-foreground">Listed by Refnivo from public information · {brandName} is not a Refnivo partner</p> : null}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    <Button size="sm" variant="outline" className="flex-1 justify-center" nativeButton={false} render={<Link href={`/affiliate-programs/${p.slug}`} />}>
-                      View program
-                    </Button>
-                    <Button size="sm" className="flex-1 justify-center" nativeButton={false} render={<a href={p.signupUrl} target="_blank" rel="noreferrer noopener" aria-label={`Join ${p.name} on the programme's site (opens in a new tab)`} />}>
-                      Join affiliate program <ExternalLinkIcon className="size-3.5" aria-hidden />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
-            );
-          })}
-        </ul>
+        <>
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {programs.map((p) => (
+              <li key={p.id}>
+                <ProgramCard program={p} />
+              </li>
+            ))}
+          </ul>
+          {programs.length < total ? (
+            <div className="mt-8 flex flex-col items-center gap-2">
+              <Button variant="outline" nativeButton={false} render={<Link href={href({ page: String(page + 1) })} scroll={false} />}>
+                Load more
+              </Button>
+              <p className="text-xs text-muted-foreground">
+                Showing {programs.length} of {total}
+              </p>
+            </div>
+          ) : total > PROGRAMS_PAGE_SIZE ? (
+            <p className="mt-8 text-center text-xs text-muted-foreground">All {total} programmes shown</p>
+          ) : null}
+        </>
       )}
     </div>
   );

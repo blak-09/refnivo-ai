@@ -6,8 +6,10 @@ import { z } from "zod";
 import { assertBrandOwner, assertCreator, assertRole } from "@/lib/auth/guards";
 import { addAffiliateCode, AffiliateLinkError, removeAffiliateLink, saveAffiliateLink } from "@/lib/services/affiliate-links";
 import {
+  adminCheckProgramLink,
   adminCreateAffiliateProgram,
   adminDeleteAffiliateProgram,
+  adminSetFeatured,
   adminSetAffiliateProgramState,
   adminUpdateAffiliateProgram,
   AffiliateProgramError,
@@ -35,7 +37,13 @@ function revalidateAll() {
 /** Form fields arrive as strings; platforms arrive as repeated checkbox values. */
 function programInput(formData: FormData) {
   const raw = Object.fromEntries(formData);
-  return { ...raw, supportedPlatforms: formData.getAll("supportedPlatforms").map(String) };
+  const upload = String(raw.logoUpload ?? "").trim();
+  return {
+    ...raw,
+    ...(upload ? { logoUrl: upload } : {}),
+    supportedPlatforms: formData.getAll("supportedPlatforms").map(String),
+    bestFor: formData.getAll("bestFor").map(String),
+  };
 }
 
 // ─── brand ───────────────────────────────────────────────────────────────────
@@ -145,7 +153,7 @@ export async function adminAffiliateProgramStateAction(input: unknown): Promise<
   } catch (err) {
     return fail(safeErrorMessage(err));
   }
-  const parsed = z.object({ id: z.string().min(1).max(40), action: z.enum(["CLOSE", "REOPEN", "DELETE"]) }).safeParse(input);
+  const parsed = z.object({ id: z.string().min(1).max(40), action: z.enum(["ACTIVATE", "DEACTIVATE", "CLOSE", "REOPEN", "DELETE"]) }).safeParse(input);
   if (!parsed.success) return fail("Invalid request.");
   try {
     if (parsed.data.action === "DELETE") await adminDeleteAffiliateProgram(admin.id, parsed.data.id);
@@ -155,6 +163,45 @@ export async function adminAffiliateProgramStateAction(input: unknown): Promise<
   } catch (err) {
     if (err instanceof AffiliateProgramError) return fail(err.message);
     return fail("Could not update the listing.");
+  }
+}
+
+export async function adminFeatureProgramAction(input: unknown): Promise<ActionResult> {
+  let admin;
+  try {
+    admin = await assertRole("ADMIN");
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = z.object({ id: z.string().min(1).max(40), featured: z.boolean() }).safeParse(input);
+  if (!parsed.success) return fail("Invalid request.");
+  try {
+    await adminSetFeatured(admin.id, parsed.data.id, parsed.data.featured);
+    revalidateAll();
+    return ok(undefined);
+  } catch (err) {
+    if (err instanceof AffiliateProgramError) return fail(err.message);
+    return fail("Could not update the listing.");
+  }
+}
+
+/** Re-checks the official programme URL now; a broken URL removes the Verified mark. */
+export async function adminCheckProgramLinkAction(input: unknown): Promise<ActionResult<{ status: string; reachable: boolean; unverified: boolean }>> {
+  let admin;
+  try {
+    admin = await assertRole("ADMIN");
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = z.object({ id: z.string().min(1).max(40) }).safeParse(input);
+  if (!parsed.success) return fail("Invalid request.");
+  try {
+    const { result, unverified } = await adminCheckProgramLink(admin.id, parsed.data.id);
+    revalidateAll();
+    return ok({ status: result.status, reachable: result.reachable, unverified });
+  } catch (err) {
+    if (err instanceof AffiliateProgramError) return fail(err.message);
+    return fail("Could not check the link.");
   }
 }
 

@@ -1,9 +1,9 @@
 /**
- * Example external affiliate programme listings: `npm run db:seed:affiliate-examples`
+ * Verified external programme listings: `npm run db:seed:affiliate-examples`
  *
  * Inserts the entries in prisma/seed-data/affiliate-programs.ts that are not in
- * the database yet, as PENDING_REVIEW and unverified. Publish them from
- * Admin → Affiliate programs after checking. Local databases only — production
+ * the database yet — published and verified as of each entry's check date.
+ * Existing rows are never overwritten. Local databases only — production
  * receives the same rows through the reviewed SQL script (see docs/PRODUCTION.md).
  */
 import { PrismaClient } from "@prisma/client";
@@ -22,7 +22,7 @@ async function main() {
   try {
     const result = await prisma.$transaction((tx) => seedExampleAffiliatePrograms(tx));
     console.log(`[affiliate-examples] created: ${result.created.join(", ") || "none"} | already present: ${result.skipped.join(", ") || "none"}`);
-    if (result.created.length) console.log("[affiliate-examples] waiting in Admin → Affiliate programs → To review.");
+    if (result.created.length) console.log("[affiliate-examples] published as verified; manage them in Admin → Affiliate programs.");
   } finally {
     await prisma.$disconnect();
   }

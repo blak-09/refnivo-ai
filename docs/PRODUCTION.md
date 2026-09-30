@@ -151,7 +151,8 @@ platform in a staging deployment first.
 ## 4d. External affiliate programme listings
 
 - Admin → **Affiliate programs** → *Add affiliate program* lists a programme a brand runs publicly (its own signup page or its authorised affiliate network's). Fill in only what the programme publishes; leave the rest empty ("not stated").
-- Every listing — brand-submitted, admin-added or seeded — publishes only through **Approve**. Tick the checklist only for what you actually checked; that alone sets "Verified by Refnivo".
+- A listing goes live through **Approve** or **Activate**; **Deactivate** takes it off the marketplace (Inactive). "Verified by Refnivo" is set only by the approval checklist or the edit form's **Verified** tick — both re-check the official URL and refuse a broken one.
+- **Check link** on a row re-tests the official URL; a broken result removes the Verified mark (the listing stays active until you deactivate it). Logos can be uploaded from the edit form (admin-only `program-logo` upload) or set to a `/brand-logos/…` path.
 - Example listings (`prisma/seed-data/affiliate-programs.ts`) reach production through the reviewed SQL script, inserted as `PENDING_REVIEW`. Local: `npm run db:seed:affiliate-examples`.
 - To remove a listing: **Close** (links stop forwarding, click history kept) or **Delete** (only while no creator has saved a link).
 

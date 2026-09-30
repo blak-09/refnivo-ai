@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Field, FormError } from "@/components/forms/field";
 import { useFormAttempt } from "@/components/forms/use-form-attempt";
-import { AFFILIATE_CATEGORIES } from "@/lib/validation/affiliate";
+import { ImageUpload } from "@/components/uploads/image-upload";
+import { AFFILIATE_CATEGORIES, AFFILIATE_PROGRAM_TYPES, BEST_FOR_OPTIONS, PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
 
 const PLATFORMS = [
   ["INSTAGRAM", "Instagram"],
@@ -35,10 +36,13 @@ export function AffiliateProgramForm({
   program,
   mode = "brand",
   brands = [],
+  uploadsEnabled = false,
 }: {
   program?: AffiliateProgram | null;
   mode?: "brand" | "admin";
   brands?: { id: string; name: string }[];
+  /** Admin: whether image uploads are available on this deployment. */
+  uploadsEnabled?: boolean;
 }) {
   const [state, action] = useActionState(mode === "admin" ? adminSaveAffiliateProgramAction : saveAffiliateProgramAction, null);
   const errors = state && !state.ok ? (state.fieldErrors ?? {}) : {};
@@ -58,7 +62,7 @@ export function AffiliateProgramForm({
       ) : null}
       {mode === "admin" && program?.verifiedAt ? (
         <p className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          This listing is marked verified. Changing a URL or the brand removes the mark until it is checked again.
+          This listing is marked verified. Saving with “Verified” ticked re-checks the official program URL; a broken URL can&apos;t stay verified.
         </p>
       ) : null}
 
@@ -93,6 +97,15 @@ export function AffiliateProgramForm({
           <Field label="Programme name" htmlFor="name" error={errors.name} required>
             <Input id="name" name="name" defaultValue={v("name")} placeholder="e.g. boAt Affiliate Program" required aria-invalid={!!errors.name} />
           </Field>
+          <Field label="Program type" htmlFor="programType" error={errors.programType} required hint="How the programme itself describes it — a customer referral scheme is “Referral”.">
+            <NativeSelect id="programType" name="programType" defaultValue={v("programType") || "AFFILIATE"}>
+              {AFFILIATE_PROGRAM_TYPES.map((t) => (
+                <option key={t} value={t}>
+                  {PROGRAM_TYPE_LABEL[t]}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
           <Field label="Category" htmlFor="category" error={errors.category}>
             <NativeSelect id="category" name="category" defaultValue={v("category")}>
               <option value="">Choose a category</option>
@@ -102,6 +115,9 @@ export function AffiliateProgramForm({
                 </option>
               ))}
             </NativeSelect>
+          </Field>
+          <Field label="Subcategory" htmlFor="subcategory" error={errors.subcategory} hint="Optional, e.g. Audio & Wearables, Skincare.">
+            <Input id="subcategory" name="subcategory" defaultValue={v("subcategory")} />
           </Field>
           <Field label="Description" htmlFor="description" error={errors.description} className="sm:col-span-2">
             <Textarea id="description" name="description" rows={4} defaultValue={v("description")} placeholder="What creators promote and who the programme suits." />
@@ -115,9 +131,26 @@ export function AffiliateProgramForm({
           <Field label="Brand website" htmlFor="websiteUrl" error={errors.websiteUrl}>
             <Input id="websiteUrl" name="websiteUrl" type="url" defaultValue={v("websiteUrl")} placeholder="https://…" />
           </Field>
-          <Field label="Logo URL" htmlFor="logoUrl" error={errors.logoUrl} hint="Optional — your brand logo is used if empty.">
-            <Input id="logoUrl" name="logoUrl" defaultValue={v("logoUrl")} placeholder="https://…" />
-          </Field>
+          {mode === "admin" ? (
+            <div className="space-y-3 sm:col-span-2">
+              <ImageUpload
+                name="logoUpload"
+                endpoint="/api/uploads/program-logo"
+                initialUrl={null}
+                label="Upload logo"
+                aspect="aspect-square max-w-32"
+                disabled={!uploadsEnabled}
+                helpText="Square PNG or WebP of the official logo. Replaces the path below when uploaded."
+              />
+              <Field label="Logo path or URL" htmlFor="logoUrl" error={errors.logoUrl} hint="e.g. /brand-logos/boat.png, or an uploaded image URL.">
+                <Input id="logoUrl" name="logoUrl" defaultValue={v("logoUrl")} placeholder="/brand-logos/…" />
+              </Field>
+            </div>
+          ) : (
+            <Field label="Logo URL" htmlFor="logoUrl" error={errors.logoUrl} hint="Optional — your brand logo is used if empty.">
+              <Input id="logoUrl" name="logoUrl" defaultValue={v("logoUrl")} placeholder="https://…" />
+            </Field>
+          )}
         </div>
       </fieldset>
 
@@ -185,11 +218,53 @@ export function AffiliateProgramForm({
               ))}
             </div>
           </div>
-          <Field label="Other requirements" htmlFor="requirements" error={errors.requirements} className="sm:col-span-2">
+          <Field
+            label="Eligibility"
+            htmlFor="requirements"
+            error={errors.requirements}
+            className="sm:col-span-2"
+            hint="Only what the programme states (follower minimum, website required…). Empty shows “Open application / subject to program approval”."
+          >
             <Textarea id="requirements" name="requirements" rows={3} defaultValue={v("requirements")} />
           </Field>
+          <div className="space-y-2 sm:col-span-2">
+            <p className="text-sm font-medium">Best for</p>
+            <div className="flex flex-wrap gap-3">
+              {BEST_FOR_OPTIONS.map((b) => (
+                <label key={b} className="inline-flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="bestFor" value={b} defaultChecked={program?.bestFor.includes(b)} className="size-4 accent-primary" />
+                  {b}
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       </fieldset>
+
+      {mode === "admin" ? (
+        <fieldset className="space-y-4">
+          <legend className="text-base font-semibold">Verification & visibility</legend>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Source URL" htmlFor="sourceUrl" error={errors.sourceUrl} hint="The official page the facts above were checked against." className="sm:col-span-2">
+              <Input id="sourceUrl" name="sourceUrl" type="url" defaultValue={v("sourceUrl")} placeholder="https://…" />
+            </Field>
+            <label className="flex items-start gap-2 text-sm sm:col-span-2">
+              <input type="checkbox" name="verified" defaultChecked={!!program?.verifiedAt} className="mt-0.5 size-4 accent-primary" />
+              <span>
+                <span className="font-medium">Verified</span> — I checked the brand, the official programme page and every fact above. The official program URL is
+                re-checked on save; a broken URL is refused.
+              </span>
+            </label>
+            <Field label="Verification date" htmlFor="verifiedOn" error={errors.verifiedOn} hint="Defaults to today (or the existing date) when left empty.">
+              <Input id="verifiedOn" name="verifiedOn" type="date" defaultValue={program?.verifiedAt ? program.verifiedAt.toISOString().slice(0, 10) : ""} />
+            </Field>
+            <label className="flex items-center gap-2 self-end pb-2 text-sm">
+              <input type="checkbox" name="featured" defaultChecked={!!program?.featured} className="size-4 accent-primary" />
+              <span className="font-medium">Featured</span> <span className="text-muted-foreground">(pinned first — not a ranking)</span>
+            </label>
+          </div>
+        </fieldset>
+      ) : null}
 
       <div className="flex flex-col-reverse gap-2 border-t pt-4 sm:flex-row sm:justify-end">
         {mode === "admin" ? (

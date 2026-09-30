@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/dashboard/primitives";
 import { AffiliateProgramForm } from "@/components/affiliate/program-form";
 import { requireRole } from "@/lib/auth/guards";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import { getProgramForAdmin, listBrandsForListing } from "@/lib/services/affiliate-programs";
 
 export const metadata: Metadata = { title: "Edit affiliate program" };
@@ -15,7 +16,7 @@ export default async function AdminEditAffiliateProgramPage({ params }: { params
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <PageHeader title={`Edit ${program.name}`} description={`Status: ${program.status.replace("_", " ").toLowerCase()}. Saving keeps the status.`} />
-      <AffiliateProgramForm mode="admin" program={program} brands={brands} />
+      <AffiliateProgramForm mode="admin" program={program} brands={brands} uploadsEnabled={uploadsAvailable()} />
     </div>
   );
 }

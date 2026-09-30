@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/dashboard/primitives";
 import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import { AffiliateProgramForm } from "@/components/affiliate/program-form";
 import { requireRole } from "@/lib/auth/guards";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import { listBrandsForListing } from "@/lib/services/affiliate-programs";
 
 export const metadata: Metadata = { title: "Add affiliate program" };
@@ -18,7 +19,7 @@ export default async function AdminNewAffiliateProgramPage() {
         description="Use the programme's official signup page — the brand's own, or its authorised affiliate network's. Fill in only what the programme publishes. The listing goes to the review queue; publish it from there after checking."
       />
       <ProgramTypeBadge type="EXTERNAL" />
-      <AffiliateProgramForm mode="admin" brands={brands} />
+      <AffiliateProgramForm mode="admin" brands={brands} uploadsEnabled={uploadsAvailable()} />
     </div>
   );
 }

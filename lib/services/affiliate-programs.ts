@@ -1,7 +1,9 @@
-import type { AffiliateProgramStatus, Prisma } from "@prisma/client";
+import type { AffiliateProgramStatus, AffiliateProgramType, Prisma } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
 import { slugify } from "@/lib/utils/slug";
 import type { AdminAffiliateProgramValues, AffiliateProgramValues } from "@/lib/validation/affiliate";
+import { PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
+import { checkProgramUrl, type LinkChecker } from "./affiliate-link-check";
 import { recordAudit } from "./audit";
 import { adminUserIds, notify, notifyMany } from "./notify";
 
@@ -43,8 +45,11 @@ async function uniqueSlug(base: string, tx: Prisma.TransactionClient, excludeId?
 function toData(values: AffiliateProgramValues) {
   return {
     name: values.name,
+    programType: values.programType ?? "AFFILIATE",
     description: values.description || null,
     category: values.category || null,
+    subcategory: values.subcategory || null,
+    bestFor: values.bestFor ?? [],
     websiteUrl: values.websiteUrl || null,
     programUrl: values.programUrl || null,
     signupUrl: values.signupUrl,
@@ -62,9 +67,59 @@ function toData(values: AffiliateProgramValues) {
   };
 }
 
+/** Host without "www." — so https://www.x.com/a and http://x.com/b count as the same site. */
+function hostOf(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).hostname.toLowerCase().replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+}
+
+function normalisedUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    return `${u.hostname.toLowerCase().replace(/^www\./, "")}${u.pathname.replace(/\/+$/, "")}`.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Refuses a second listing for the same programme: the same official programme
+ * or signup URL, or — for a listing without a brand account — the same brand
+ * name or brand website. Closed listings are ignored so a programme can be
+ * relisted. A brand with several genuine programmes lists each under its own
+ * programme URL.
+ */
+async function assertNotDuplicate(
+  tx: Prisma.TransactionClient,
+  input: { brandId: string | null; brandName: string | null; websiteUrl: string | null; programUrl: string | null; signupUrl: string },
+  excludeId?: string,
+) {
+  const others = await tx.affiliateProgram.findMany({
+    where: { status: { not: "CLOSED" }, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+    select: { name: true, brandId: true, brandName: true, websiteUrl: true, programUrl: true, signupUrl: true },
+  });
+  const urls = new Set([normalisedUrl(input.programUrl), normalisedUrl(input.signupUrl)].filter(Boolean));
+  const name = input.brandName?.trim().toLowerCase() || null;
+  const site = hostOf(input.websiteUrl);
+  for (const o of others) {
+    const theirs = [normalisedUrl(o.programUrl), normalisedUrl(o.signupUrl)].filter(Boolean);
+    if (theirs.some((u) => urls.has(u))) throw new AffiliateProgramError(`“${o.name}” already lists this programme URL.`);
+    if (!input.brandId && !o.brandId) {
+      if (name && o.brandName?.trim().toLowerCase() === name) throw new AffiliateProgramError(`${o.brandName} is already listed (“${o.name}”). Edit that listing instead.`);
+      if (site && hostOf(o.websiteUrl) === site) throw new AffiliateProgramError(`A listing for ${site} already exists (“${o.name}”).`);
+    }
+  }
+}
+
 /** Creates a listing. `submit` sends it straight to review; otherwise it stays a draft. */
 export async function createAffiliateProgram(brandId: string, actorId: string, values: AffiliateProgramValues, opts: { submit: boolean }) {
   return transaction(async (tx) => {
+    await assertNotDuplicate(tx, { brandId, brandName: null, websiteUrl: values.websiteUrl || null, programUrl: values.programUrl || null, signupUrl: values.signupUrl });
     const program = await tx.affiliateProgram.create({
       data: {
         brandId,
@@ -146,7 +201,17 @@ export async function reviewAffiliateProgram(
   adminId: string,
   programId: string,
   input: { decision: "APPROVE" | "REJECT" | "PAUSE"; note?: string | null; verified?: boolean },
+  opts: { checkLink?: LinkChecker } = {},
 ) {
+  // Verifying means the official URL works right now: check before writing anything.
+  let link: { checkedAt: Date; status: string } | null = null;
+  if (input.decision === "APPROVE" && input.verified) {
+    const target = await prisma.affiliateProgram.findUnique({ where: { id: programId }, select: { signupUrl: true } });
+    if (!target) throw new AffiliateProgramError("Listing not found.");
+    const result = await (opts.checkLink ?? checkProgramUrl)(target.signupUrl);
+    if (!result.reachable) throw new AffiliateProgramError(`The official program URL is not working (${result.status}). Publish it unverified, or fix the URL first.`);
+    link = { checkedAt: result.checkedAt, status: result.status };
+  }
   return transaction(async (tx) => {
     const program = await tx.affiliateProgram.findUnique({ where: { id: programId }, include: { brand: { select: { ownerId: true } } } });
     if (!program) throw new AffiliateProgramError("Listing not found.");
@@ -163,6 +228,7 @@ export async function reviewAffiliateProgram(
         reviewedById: adminId,
         reviewNote: input.note?.trim() || null,
         verifiedAt: input.decision === "APPROVE" && input.verified ? now : input.decision === "APPROVE" ? null : program.verifiedAt,
+        ...(link ? { linkCheckedAt: link.checkedAt, linkStatus: link.status } : {}),
       },
     });
     // A curated listing has no brand account to tell.
@@ -199,44 +265,74 @@ async function brandFields(tx: Prisma.TransactionClient, values: AdminAffiliateP
 }
 
 /**
- * An admin adds a listing — typically a programme a brand runs publicly but has
- * not listed itself. It enters the normal review queue: publishing (and the
- * "Verified" mark) still goes through the approval checklist.
+ * Resolves the admin's "verified" tick into stored fields. A listing can only be
+ * marked verified while its official programme URL works: the URL is checked
+ * here and a broken one is refused (status protection).
  */
-export async function adminCreateAffiliateProgram(adminId: string, values: AdminAffiliateProgramValues) {
+async function verificationFields(values: AdminAffiliateProgramValues, previous: Date | null, checkLink: LinkChecker) {
+  if (!values.verified) return { verifiedAt: null };
+  const result = await checkLink(values.signupUrl);
+  if (!result.reachable) {
+    throw new AffiliateProgramError(`The official program URL is not working (${result.status}), so the listing can't be marked verified. Fix the URL or untick “Verified”.`);
+  }
+  const on = values.verifiedOn ? new Date(`${values.verifiedOn}T00:00:00.000Z`) : (previous ?? result.checkedAt);
+  if (on.getTime() > Date.now() + 24 * 3600_000) throw new AffiliateProgramError("The verification date can't be in the future.");
+  return { verifiedAt: on, linkCheckedAt: result.checkedAt, linkStatus: result.status };
+}
+
+/**
+ * An admin adds a listing — typically a programme a brand runs publicly but has
+ * not listed itself. It enters the review queue; the admin publishes it with
+ * Approve or Activate.
+ */
+export async function adminCreateAffiliateProgram(adminId: string, values: AdminAffiliateProgramValues, opts: { checkLink?: LinkChecker } = {}) {
+  const verification = await verificationFields(values, null, opts.checkLink ?? checkProgramUrl);
   return transaction(async (tx) => {
     const brand = await brandFields(tx, values);
+    await assertNotDuplicate(tx, { ...brand, websiteUrl: values.websiteUrl || null, programUrl: values.programUrl || null, signupUrl: values.signupUrl });
     const program = await tx.affiliateProgram.create({
-      data: { ...brand, slug: await uniqueSlug(values.name, tx), ...toData(values), status: "PENDING_REVIEW", submittedAt: new Date() },
+      data: {
+        ...brand,
+        slug: await uniqueSlug(values.name, tx),
+        ...toData(values),
+        featured: values.featured,
+        sourceUrl: values.sourceUrl || null,
+        ...verification,
+        status: "PENDING_REVIEW",
+        submittedAt: new Date(),
+      },
     });
-    await recordAudit({ userId: adminId, action: "AFFILIATE_PROGRAM_CREATED", entityType: "AffiliateProgram", entityId: program.id, metadata: { byAdmin: true, curated: !brand.brandId } }, tx);
+    await recordAudit(
+      { userId: adminId, action: "AFFILIATE_PROGRAM_CREATED", entityType: "AffiliateProgram", entityId: program.id, metadata: { byAdmin: true, curated: !brand.brandId, verified: !!verification.verifiedAt } },
+      tx,
+    );
     return program;
   });
 }
 
 /**
- * An admin edits any listing without changing its status. Changing a URL or the
- * brand removes the "Verified" mark: what was checked is no longer what is shown.
+ * An admin edits any listing without changing its status. "Verified" is set
+ * from the form, and keeping it re-checks the official URL, so an edited URL is
+ * never left marked verified without a working page behind it.
  */
-export async function adminUpdateAffiliateProgram(adminId: string, programId: string, values: AdminAffiliateProgramValues) {
+export async function adminUpdateAffiliateProgram(adminId: string, programId: string, values: AdminAffiliateProgramValues, opts: { checkLink?: LinkChecker } = {}) {
+  const current = await prisma.affiliateProgram.findUnique({ where: { id: programId }, select: { verifiedAt: true } });
+  if (!current) throw new AffiliateProgramError("Listing not found.");
+  const verification = await verificationFields(values, current.verifiedAt, opts.checkLink ?? checkProgramUrl);
   return transaction(async (tx) => {
     const existing = await tx.affiliateProgram.findUnique({ where: { id: programId } });
     if (!existing) throw new AffiliateProgramError("Listing not found.");
     const brand = await brandFields(tx, values);
-    const data = toData(values);
-    const checkedFieldsChanged =
-      data.signupUrl !== existing.signupUrl ||
-      data.programUrl !== existing.programUrl ||
-      data.websiteUrl !== existing.websiteUrl ||
-      brand.brandId !== existing.brandId ||
-      brand.brandName !== existing.brandName;
+    await assertNotDuplicate(tx, { ...brand, websiteUrl: values.websiteUrl || null, programUrl: values.programUrl || null, signupUrl: values.signupUrl }, existing.id);
     const program = await tx.affiliateProgram.update({
       where: { id: existing.id },
       data: {
         ...brand,
-        ...data,
+        ...toData(values),
+        featured: values.featured,
+        sourceUrl: values.sourceUrl || null,
+        ...verification,
         slug: values.name !== existing.name ? await uniqueSlug(values.name, tx, existing.id) : existing.slug,
-        verifiedAt: checkedFieldsChanged ? null : existing.verifiedAt,
       },
     });
     await recordAudit(
@@ -245,7 +341,7 @@ export async function adminUpdateAffiliateProgram(adminId: string, programId: st
         action: "AFFILIATE_PROGRAM_UPDATED",
         entityType: "AffiliateProgram",
         entityId: program.id,
-        metadata: { byAdmin: true, verificationCleared: checkedFieldsChanged && !!existing.verifiedAt },
+        metadata: { byAdmin: true, verified: !!verification.verifiedAt, verificationCleared: !!existing.verifiedAt && !verification.verifiedAt },
       },
       tx,
     );
@@ -253,17 +349,25 @@ export async function adminUpdateAffiliateProgram(adminId: string, programId: st
   });
 }
 
-/** Admin takes a listing off the marketplace (CLOSE) or puts it back in the review queue (REOPEN). */
-export async function adminSetAffiliateProgramState(adminId: string, programId: string, action: "CLOSE" | "REOPEN") {
+export type AdminStateAction = "ACTIVATE" | "DEACTIVATE" | "CLOSE" | "REOPEN";
+
+/**
+ * Admin lifecycle: ACTIVATE publishes (Active), DEACTIVATE pauses (Inactive),
+ * CLOSE takes it off the marketplace for good (history kept), REOPEN returns it
+ * to the review queue.
+ */
+export async function adminSetAffiliateProgramState(adminId: string, programId: string, action: AdminStateAction) {
   return transaction(async (tx) => {
     const existing = await tx.affiliateProgram.findUnique({ where: { id: programId } });
     if (!existing) throw new AffiliateProgramError("Listing not found.");
-    const allowed: AffiliateProgramStatus[] = action === "CLOSE" ? ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "PAUSED"] : ["DRAFT", "REJECTED", "PAUSED", "CLOSED"];
-    if (!allowed.includes(existing.status)) throw new AffiliateProgramError("That change is not possible from the listing's current state.");
-    const program = await tx.affiliateProgram.update({
-      where: { id: existing.id },
-      data: action === "CLOSE" ? { status: "CLOSED" } : { status: "PENDING_REVIEW", submittedAt: new Date() },
-    });
+    const rules: Record<AdminStateAction, { from: AffiliateProgramStatus[]; data: Prisma.AffiliateProgramUpdateInput }> = {
+      ACTIVATE: { from: ["DRAFT", "PENDING_REVIEW", "REJECTED", "PAUSED", "CLOSED"], data: { status: "APPROVED", reviewedAt: new Date(), reviewedBy: { connect: { id: adminId } } } },
+      DEACTIVATE: { from: ["APPROVED"], data: { status: "PAUSED" } },
+      CLOSE: { from: ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "PAUSED"], data: { status: "CLOSED" } },
+      REOPEN: { from: ["DRAFT", "REJECTED", "PAUSED", "CLOSED"], data: { status: "PENDING_REVIEW", submittedAt: new Date() } },
+    };
+    if (!rules[action].from.includes(existing.status)) throw new AffiliateProgramError("That change is not possible from the listing's current state.");
+    const program = await tx.affiliateProgram.update({ where: { id: existing.id }, data: rules[action].data });
     await recordAudit({ userId: adminId, action: `AFFILIATE_PROGRAM_ADMIN_${action}`, entityType: "AffiliateProgram", entityId: program.id }, tx);
     return program;
   });
@@ -283,6 +387,39 @@ export async function adminDeleteAffiliateProgram(adminId: string, programId: st
       { userId: adminId, action: "AFFILIATE_PROGRAM_DELETED", entityType: "AffiliateProgram", entityId: existing.id, metadata: { name: existing.name, slug: existing.slug } },
       tx,
     );
+  });
+}
+
+/** Pins a listing to the top of the marketplace (or unpins it). */
+export async function adminSetFeatured(adminId: string, programId: string, featured: boolean) {
+  return transaction(async (tx) => {
+    const program = await tx.affiliateProgram.update({ where: { id: programId }, data: { featured } }).catch(() => null);
+    if (!program) throw new AffiliateProgramError("Listing not found.");
+    await recordAudit({ userId: adminId, action: featured ? "AFFILIATE_PROGRAM_FEATURED" : "AFFILIATE_PROGRAM_UNFEATURED", entityType: "AffiliateProgram", entityId: program.id }, tx);
+    return program;
+  });
+}
+
+/**
+ * Re-checks the official programme URL now. A broken URL removes the "Verified"
+ * mark straight away (the listing stays as it is otherwise — the admin decides
+ * whether to deactivate it).
+ */
+export async function adminCheckProgramLink(adminId: string, programId: string, opts: { checkLink?: LinkChecker } = {}) {
+  const existing = await prisma.affiliateProgram.findUnique({ where: { id: programId }, select: { id: true, signupUrl: true, verifiedAt: true } });
+  if (!existing) throw new AffiliateProgramError("Listing not found.");
+  const result = await (opts.checkLink ?? checkProgramUrl)(existing.signupUrl);
+  const unverified = !result.reachable && !!existing.verifiedAt;
+  return transaction(async (tx) => {
+    const program = await tx.affiliateProgram.update({
+      where: { id: existing.id },
+      data: { linkCheckedAt: result.checkedAt, linkStatus: result.status, ...(unverified ? { verifiedAt: null } : {}) },
+    });
+    await recordAudit(
+      { userId: adminId, action: "AFFILIATE_PROGRAM_LINK_CHECKED", entityType: "AffiliateProgram", entityId: program.id, metadata: { status: result.status, verificationRemoved: unverified } },
+      tx,
+    );
+    return { program, result, unverified };
   });
 }
 
@@ -309,8 +446,13 @@ export const publicProgramSelect = {
   id: true,
   name: true,
   slug: true,
+  programType: true,
   description: true,
   category: true,
+  subcategory: true,
+  bestFor: true,
+  featured: true,
+  sourceUrl: true,
   websiteUrl: true,
   programUrl: true,
   signupUrl: true,
@@ -332,33 +474,80 @@ export const publicProgramSelect = {
 
 export type PublicAffiliateProgram = Prisma.AffiliateProgramGetPayload<{ select: typeof publicProgramSelect }>;
 
-export type ProgramFilters = { q?: string; category?: string; network?: string; approval?: string; platform?: string };
+export const PROGRAM_SORTS = ["featured", "recent", "az", "category"] as const;
+export type ProgramSort = (typeof PROGRAM_SORTS)[number];
 
-/** The creator marketplace: approved listings only, from active (or curated) brands. */
-export async function listPublishedPrograms(filters: ProgramFilters = {}, take = 60): Promise<PublicAffiliateProgram[]> {
+export type ProgramFilters = { q?: string; category?: string; type?: string; network?: string; sort?: string; page?: number };
+
+export const PROGRAMS_PAGE_SIZE = 24;
+
+/** Program types whose label matches a search, e.g. "creator" → CREATOR_AFFILIATE, CREATOR_COMMERCE. */
+function typesMatching(q: string) {
+  const needle = q.trim().toLowerCase();
+  return (Object.entries(PROGRAM_TYPE_LABEL) as [AffiliateProgramType, string][]).filter(([, label]) => label.toLowerCase().includes(needle)).map(([value]) => value);
+}
+
+/** Upper bound on listings sorted in memory (sorting needs case-insensitive brand names: "boAt", "eBay"). */
+const MAX_LISTED = 500;
+
+const byName = (a: PublicAffiliateProgram, b: PublicAffiliateProgram) =>
+  programBrandName(a).localeCompare(programBrandName(b), "en", { sensitivity: "base" }) || a.name.localeCompare(b.name, "en", { sensitivity: "base" });
+
+const COMPARE: Record<ProgramSort, (a: PublicAffiliateProgram, b: PublicAffiliateProgram) => number> = {
+  featured: (a, b) => Number(b.featured) - Number(a.featured) || byName(a, b),
+  recent: (a, b) => (b.verifiedAt?.getTime() ?? 0) - (a.verifiedAt?.getTime() ?? 0) || byName(a, b),
+  az: byName,
+  category: (a, b) => (a.category ?? "~").localeCompare(b.category ?? "~", "en", { sensitivity: "base" }) || byName(a, b),
+};
+
+/**
+ * The creator marketplace: approved listings only, from active (or curated)
+ * brands. Search covers brand, programme, category and programme type. Returns
+ * everything up to the requested page ("load more"), plus the total.
+ */
+export async function listPublishedPrograms(filters: ProgramFilters = {}, pageSize = PROGRAMS_PAGE_SIZE): Promise<{ programs: PublicAffiliateProgram[]; total: number }> {
+  const q = filters.q?.trim();
+  const type = (Object.keys(PROGRAM_TYPE_LABEL) as AffiliateProgramType[]).find((t) => t === filters.type);
   const where: Prisma.AffiliateProgramWhereInput = {
     status: "APPROVED",
-    AND: [OPEN_BRAND],
+    AND: [
+      OPEN_BRAND,
+      ...(q
+        ? [
+            {
+              OR: [
+                { name: { contains: q, mode: "insensitive" as const } },
+                { brand: { name: { contains: q, mode: "insensitive" as const } } },
+                { brandName: { contains: q, mode: "insensitive" as const } },
+                { category: { contains: q, mode: "insensitive" as const } },
+                { subcategory: { contains: q, mode: "insensitive" as const } },
+                { description: { contains: q, mode: "insensitive" as const } },
+                ...(typesMatching(q).length ? [{ programType: { in: typesMatching(q) } }] : []),
+              ],
+            },
+          ]
+        : []),
+    ],
     ...(filters.category ? { category: filters.category } : {}),
+    ...(type ? { programType: type } : {}),
     ...(filters.network ? { networkName: { equals: filters.network, mode: "insensitive" } } : {}),
-    ...(filters.approval && ["AUTOMATIC", "APPLICATION", "INVITE_ONLY"].includes(filters.approval) ? { approvalType: filters.approval as never } : {}),
-    ...(filters.platform ? { supportedPlatforms: { has: filters.platform as never } } : {}),
-    ...(filters.q
-      ? { OR: [{ name: { contains: filters.q, mode: "insensitive" } }, { description: { contains: filters.q, mode: "insensitive" } }, { brand: { name: { contains: filters.q, mode: "insensitive" } } }, { brandName: { contains: filters.q, mode: "insensitive" } }] }
-      : {}),
   };
-  return prisma.affiliateProgram.findMany({ where, orderBy: [{ verifiedAt: { sort: "desc", nulls: "last" } }, { updatedAt: "desc" }], take, select: publicProgramSelect });
+  const sort = (PROGRAM_SORTS as readonly string[]).includes(filters.sort ?? "") ? (filters.sort as ProgramSort) : "featured";
+  const page = Math.min(Math.max(1, Math.floor(filters.page ?? 1)), 20);
+  const rows = await prisma.affiliateProgram.findMany({ where, take: MAX_LISTED, select: publicProgramSelect });
+  rows.sort(COMPARE[sort]);
+  return { programs: rows.slice(0, page * pageSize), total: rows.length };
 }
 
 export async function getPublishedProgram(slug: string): Promise<PublicAffiliateProgram | null> {
   return prisma.affiliateProgram.findFirst({ where: { slug, status: "APPROVED", ...OPEN_BRAND }, select: publicProgramSelect });
 }
 
-/** Distinct values that actually exist, for the filter dropdowns. */
+/** Distinct values that actually exist among published listings, for the filters. */
 export async function programFacets() {
-  const rows = await prisma.affiliateProgram.findMany({ where: { status: "APPROVED" }, select: { category: true, networkName: true } });
-  const uniq = (xs: (string | null)[]) => [...new Set(xs.filter((x): x is string => !!x))].sort();
-  return { categories: uniq(rows.map((r) => r.category)), networks: uniq(rows.map((r) => r.networkName)) };
+  const rows = await prisma.affiliateProgram.findMany({ where: { status: "APPROVED", ...OPEN_BRAND }, select: { category: true, networkName: true, programType: true } });
+  const uniq = <T extends string>(xs: (T | null)[]) => [...new Set(xs.filter((x): x is T => !!x))].sort();
+  return { categories: uniq(rows.map((r) => r.category)), networks: uniq(rows.map((r) => r.networkName)), types: uniq(rows.map((r) => r.programType)) };
 }
 
 export async function listBrandPrograms(brandId: string) {

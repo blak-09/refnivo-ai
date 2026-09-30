@@ -13,20 +13,56 @@ const optionalInt = (min: number, max: number) =>
   z.preprocess((v) => (v === "" || v === null || v === undefined ? undefined : v), z.coerce.number().int().min(min).max(max).optional());
 
 export const AFFILIATE_CATEGORIES = [
+  "Electronics",
   "Fashion",
   "Beauty",
-  "Electronics",
   "Fitness",
-  "Food",
-  "Travel",
-  "Technology",
-  "Lifestyle",
+  "Sports",
   "Home",
+  "Food",
+  "Lifestyle",
+  "Personal Care",
+  "E-commerce",
+  "Travel",
+  "Baby Products",
+  "Technology",
   "Education",
   "Finance",
-  "Baby Products",
   "Other",
 ] as const;
+
+/** How a programme works. A customer referral scheme must never be shown as a creator affiliate programme. */
+export const AFFILIATE_PROGRAM_TYPES = ["AFFILIATE", "CREATOR_AFFILIATE", "REFERRAL", "INFLUENCER", "PARTNER", "AFFILIATE_NETWORK", "CREATOR_COMMERCE"] as const;
+export type AffiliateProgramTypeValue = (typeof AFFILIATE_PROGRAM_TYPES)[number];
+
+export const PROGRAM_TYPE_LABEL: Record<AffiliateProgramTypeValue, string> = {
+  AFFILIATE: "Affiliate",
+  CREATOR_AFFILIATE: "Creator Affiliate",
+  REFERRAL: "Referral",
+  INFLUENCER: "Influencer",
+  PARTNER: "Partner",
+  AFFILIATE_NETWORK: "Affiliate Network",
+  CREATOR_COMMERCE: "Creator Commerce",
+};
+
+/** Creator audiences, for discovery only — never a claim about the programme's own criteria. */
+export const BEST_FOR_OPTIONS = [
+  "Tech creators",
+  "Beauty creators",
+  "Fashion creators",
+  "Fitness creators",
+  "Lifestyle creators",
+  "Gaming creators",
+  "Home creators",
+  "Food creators",
+  "Travel creators",
+  "Parenting creators",
+  "Finance creators",
+  "General creators",
+] as const;
+
+/** Checkbox values arrive as "on" (or are absent). */
+const checkbox = z.preprocess((v) => v === true || v === "on" || v === "true", z.boolean());
 
 export const SOCIAL_PLATFORM_VALUES = ["INSTAGRAM", "YOUTUBE", "FACEBOOK", "LINKEDIN", "X"] as const;
 
@@ -39,8 +75,11 @@ export const SOCIAL_PLATFORM_VALUES = ["INSTAGRAM", "YOUTUBE", "FACEBOOK", "LINK
  */
 export const affiliateProgramSchema = z.object({
   name: z.string().trim().min(2, "Give the programme a name").max(120),
+  programType: z.enum(AFFILIATE_PROGRAM_TYPES).default("AFFILIATE"),
   description: z.string().trim().max(2000).optional().or(z.literal("")),
   category: z.enum(AFFILIATE_CATEGORIES).optional().or(z.literal("")),
+  subcategory: z.string().trim().max(60).optional().or(z.literal("")),
+  bestFor: z.array(z.enum(BEST_FOR_OPTIONS)).max(6).default([]),
   websiteUrl: optionalUrl,
   programUrl: optionalUrl,
   signupUrl: httpUrl,
@@ -77,6 +116,20 @@ export const adminAffiliateProgramSchema = affiliateProgramSchema
   .extend({
     brandId: z.string().trim().max(40).optional().or(z.literal("")),
     brandName: z.string().trim().max(120).optional().or(z.literal("")),
+    featured: checkbox.default(false),
+    /** The official page the listed facts were checked against. */
+    sourceUrl: optionalUrl,
+    /**
+     * Admin states the programme was verified, and on which date. The service
+     * re-checks the official URL before accepting it (see affiliate-link-check).
+     */
+    verified: checkbox.default(false),
+    verifiedOn: z
+      .string()
+      .trim()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the date format YYYY-MM-DD")
+      .optional()
+      .or(z.literal("")),
   })
   .refine((v) => !!v.brandId || (v.brandName?.length ?? 0) >= 2, { path: ["brandName"], message: "Choose a Refnivo brand or enter the brand's name" });
 

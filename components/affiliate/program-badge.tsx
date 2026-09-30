@@ -36,3 +36,31 @@ export function VerifiedProgramMark({ verifiedAt }: { verifiedAt: Date | null })
 
 export const APPROVAL_LABEL = { AUTOMATIC: "Automatic approval", APPLICATION: "Application required", INVITE_ONLY: "Invite only" } as const;
 export const COMMISSION_TYPE_LABEL = { PERCENTAGE: "Percentage", FIXED: "Fixed amount", VARIES: "Varies by product" } as const;
+
+/** "Active" is only ever shown for published (APPROVED) listings. */
+export function ActiveProgramPill({ className }: { className?: string }) {
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300", className)}>
+      <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden /> Active
+    </span>
+  );
+}
+
+export const NOT_DISCLOSED = "Not publicly disclosed";
+export const OPEN_ELIGIBILITY = "Open application / subject to program approval";
+
+/** Commission as the programme states it — never a Refnivo figure, never guessed. */
+export function commissionText(p: { commissionDescription: string | null; commissionType: keyof typeof COMMISSION_TYPE_LABEL | null }): string {
+  if (p.commissionDescription) return p.commissionDescription;
+  if (p.commissionType === "VARIES") return "Varies by category";
+  return NOT_DISCLOSED;
+}
+
+export function eligibilityText(p: { requirements: string | null }): string {
+  return p.requirements?.trim() || OPEN_ELIGIBILITY;
+}
+
+/** Wording for the join button: a direct application page vs. an informational one. */
+export function joinLabel(programType: string): string {
+  return programType === "REFERRAL" ? "View program" : "Join program";
+}

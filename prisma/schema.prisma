@@ -127,6 +127,18 @@ enum AffiliateApprovalType {
   INVITE_ONLY
 }
 
+/// How an external programme works — shown so a customer referral scheme is
+/// never presented as a creator affiliate programme.
+enum AffiliateProgramType {
+  AFFILIATE
+  CREATOR_AFFILIATE
+  REFERRAL
+  INFLUENCER
+  PARTNER
+  AFFILIATE_NETWORK
+  CREATOR_COMMERCE
+}
+
 enum AffiliateLinkStatus {
   ACTIVE
   DISABLED
@@ -832,8 +844,14 @@ model AffiliateProgram {
   brandName             String?
   name                  String
   slug                  String                   @unique
+  programType           AffiliateProgramType     @default(AFFILIATE)
   description           String?
   category              String?
+  subcategory           String?
+  /// Creator audiences the programme suits, e.g. "Tech creators". Discovery aid only.
+  bestFor               String[]                 @default([])
+  /// Pinned to the top of the marketplace by an admin. Not a quality ranking.
+  featured              Boolean                  @default(false)
   /// The brand's own site, the programme page, and where a creator signs up.
   websiteUrl            String?
   programUrl            String?
@@ -865,8 +883,14 @@ model AffiliateProgram {
   reviewedAt            DateTime?
   reviewedById          String?
   reviewNote            String?
-  /// Set only when an admin has actually checked the brand and the URLs.
+  /// Set only when an admin has actually checked the brand and the URLs. Shown
+  /// as "Program verified on …" together with sourceUrl.
   verifiedAt            DateTime?
+  /// The official page the listed facts were checked against.
+  sourceUrl             String?
+  /// Last automated check of the official programme URL ("ok 200", "broken 404", "unreachable").
+  linkCheckedAt         DateTime?
+  linkStatus            String?
   createdAt             DateTime                 @default(now())
   updatedAt             DateTime                 @updatedAt
 
@@ -878,6 +902,7 @@ model AffiliateProgram {
   @@index([status, updatedAt])
   @@index([brandId, status])
   @@index([category, status])
+  @@index([featured, status])
   @@map("affiliate_programs")
 }
 

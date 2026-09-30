@@ -113,12 +113,20 @@ Listings for affiliate programmes brands already run elsewhere (badge: **Externa
 | `affiliateProgramStateAction` | BRAND | `PAUSE` / `RESUME` (→ review) / `CLOSE` own listing. |
 | `reviewAffiliateProgramAction` | ADMIN | `APPROVE` (optionally `verified` after the checklist) / `REJECT` (note required) / `PAUSE`. |
 | `adminSaveAffiliateProgramAction` | ADMIN | Add or edit any listing. A listing may belong to a brand account **or** carry only `brandName` ("Listed by Refnivo" — brand not on Refnivo). New listings enter the review queue; edits keep the status; a changed URL or brand clears `verifiedAt`. |
-| `adminAffiliateProgramStateAction` | ADMIN | `CLOSE` (off the marketplace, history kept) / `REOPEN` (→ review) / `DELETE` (only while no creator has a link). |
+| `adminAffiliateProgramStateAction` | ADMIN | `ACTIVATE` (→ Active) / `DEACTIVATE` (→ Inactive) / `CLOSE` (off the marketplace, history kept) / `REOPEN` (→ review) / `DELETE` (only while no creator has a link). |
+| `adminFeatureProgramAction` | ADMIN | Pin / unpin a listing to the top of the marketplace (not a ranking). |
+| `adminCheckProgramLinkAction` | ADMIN | Re-checks the official programme URL now; a broken URL (404/410/5xx/unreachable) removes the Verified mark. |
 | `saveAffiliateLinkAction`, `addAffiliateCodeAction`, `removeAffiliateLinkAction` | CREATOR | Save own external affiliate URL, add per-platform `/r/CODE` tracking codes, disable (clicks kept). |
 
-Unpublished terms (commission type, joining rules, cookie, sub-id) are stored as `NULL` and shown as "not stated" — never defaulted.
+Unpublished terms (commission type, joining rules, cookie, sub-id) are stored as `NULL` and shown as "Not publicly disclosed" / "Open application / subject to program approval" — never defaulted.
 
-Example listings live in `prisma/seed-data/affiliate-programs.ts` (sourced facts only, with the URLs checked). `npm run db:seed:affiliate-examples` inserts missing ones locally as `PENDING_REVIEW`; it never overwrites existing rows.
+Listing metadata: `programType` (Affiliate, Creator Affiliate, Referral, Influencer, Partner, Affiliate Network, Creator Commerce — a customer referral scheme is never shown as a creator programme), `subcategory`, `bestFor`, `featured`, `sourceUrl`, `verifiedAt` (shown as "Program verified on …"), `linkCheckedAt`/`linkStatus`.
+
+**Status protection:** a listing can only be marked verified while its official programme URL works. Approving as verified, or saving an admin edit with "Verified" ticked, re-checks the URL (`lib/services/affiliate-link-check.ts`) and refuses a broken one; 401/403/429 count as reachable (the server answered but blocks bots). **Duplicates:** a second non-closed listing with the same programme/signup URL — or, without a brand account, the same brand name or website — is refused.
+
+Marketplace (`/affiliate-programs`): search across brand, programme, category and programme-type label; filters for category and programme type; sort Featured / Recently verified / A–Z / Category (case-insensitive, in memory, up to 500 listings); 24 per page with "Load more".
+
+The 50 verified programmes live in `prisma/seed-data/affiliate-programs.ts` (sourced facts only, each with the official URLs checked and a `checkedOn` date; logos in `public/brand-logos/`). `npm run db:seed:affiliate-examples` inserts missing ones locally as active and verified; it never overwrites existing rows.
 
 ## Routes
 

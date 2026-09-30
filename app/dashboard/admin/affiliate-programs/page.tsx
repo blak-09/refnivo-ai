@@ -11,20 +11,22 @@ import { AffiliateReviewActions } from "@/components/affiliate/review-actions";
 import { AdminListingActions } from "@/components/affiliate/admin-listing-actions";
 import { requireRole } from "@/lib/auth/guards";
 import { listProgramsForReview, programBrandName } from "@/lib/services/affiliate-programs";
-import { formatDateTime } from "@/lib/utils/dates";
+import { formatDate, formatDateTime } from "@/lib/utils/dates";
+import { PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Affiliate programs" };
 
 const FILTERS: { value: AffiliateProgramStatus | "ALL"; label: string }[] = [
   { value: "PENDING_REVIEW", label: "To review" },
-  { value: "APPROVED", label: "Published" },
+  { value: "APPROVED", label: "Active" },
   { value: "REJECTED", label: "Rejected" },
-  { value: "PAUSED", label: "Paused" },
+  { value: "PAUSED", label: "Inactive" },
   { value: "ALL", label: "All" },
 ];
 
 const TONE: Record<AffiliateProgramStatus, string> = { DRAFT: "DRAFT", PENDING_REVIEW: "PENDING_REVIEW", APPROVED: "ACTIVE", REJECTED: "REJECTED", PAUSED: "PAUSED", CLOSED: "ENDED" };
+const STATUS_LABEL: Record<AffiliateProgramStatus, string> = { DRAFT: "draft", PENDING_REVIEW: "to review", APPROVED: "active", REJECTED: "rejected", PAUSED: "inactive", CLOSED: "closed" };
 
 /** Admin review queue for external affiliate programme listings. */
 export default async function AdminAffiliateProgramsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
@@ -61,7 +63,7 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
       <Card>
         <CardHeader>
           <CardTitle>Listings</CardTitle>
-          <CardDescription>Oldest submission first.</CardDescription>
+          <CardDescription>Oldest submission first. “Activate” publishes a listing; “Check link” re-tests its official URL.</CardDescription>
         </CardHeader>
         <CardContent>
           {!rows.length ? (
@@ -84,9 +86,12 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
                     <TableRow key={r.id}>
                       <TableCell>
                         <span className="font-medium">{r.name}</span>
+                        {r.featured ? <span className="ml-1.5 text-xs text-amber-600">★ featured</span> : null}
                         <span className="block text-xs text-muted-foreground">
-                          {r.category ?? "No category"} · {r.submittedAt ? `submitted ${formatDateTime(r.submittedAt)}` : "draft"}
+                          {PROGRAM_TYPE_LABEL[r.programType]} · {r.category ?? "No category"}
+                          {r.subcategory ? ` · ${r.subcategory}` : ""}
                         </span>
+                        <span className="block text-xs text-muted-foreground">{r.submittedAt ? `submitted ${formatDateTime(r.submittedAt)}` : "draft"}</span>
                         <span className="block text-xs text-muted-foreground">
                           {r._count.links} creator links · {r._count.clicks} clicks
                         </span>
@@ -125,14 +130,21 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
                         </span>
                       </TableCell>
                       <TableCell>
-                        <StatusBadge status={TONE[r.status]} label={r.status.replace("_", " ").toLowerCase()} />
+                        <StatusBadge status={TONE[r.status]} label={STATUS_LABEL[r.status]} />
                         <div className="mt-1">
                           <VerifiedProgramMark verifiedAt={r.verifiedAt} />
                         </div>
+                        {r.verifiedAt ? <span className="block text-[11px] text-muted-foreground">verified {formatDate(r.verifiedAt)}</span> : null}
+                        {r.linkStatus ? (
+                          <span className={r.linkStatus.startsWith("broken") || r.linkStatus === "unreachable" ? "block text-[11px] text-destructive" : "block text-[11px] text-muted-foreground"}>
+                            link {r.linkStatus}
+                            {r.linkCheckedAt ? ` · ${formatDate(r.linkCheckedAt)}` : ""}
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="space-y-2 text-right">
                         <AffiliateReviewActions id={r.id} status={r.status} signupUrl={r.signupUrl} programUrl={r.programUrl} curated={!r.brand} />
-                        <AdminListingActions id={r.id} status={r.status} creatorLinks={r._count.links} />
+                        <AdminListingActions id={r.id} status={r.status} creatorLinks={r._count.links} featured={r.featured} />
                       </TableCell>
                     </TableRow>
                   ))}

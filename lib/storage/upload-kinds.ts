@@ -5,7 +5,7 @@
  * for products, brand logos/covers, creator photos and account avatars.
  * Pure; unit-tested.
  */
-export type UploadKind = "product-image" | "brand-logo" | "brand-cover" | "creator-image" | "avatar";
+export type UploadKind = "product-image" | "brand-logo" | "brand-cover" | "creator-image" | "avatar" | "program-logo";
 
 export type UploadScope =
   /** Needs an approved brand-owner session with a brand; stored under the brand id. */
@@ -13,7 +13,9 @@ export type UploadScope =
   /** Needs an approved creator session; stored under the user id. */
   | "creator"
   /** Any approved user; stored under the user id. */
-  | "user";
+  | "user"
+  /** Admins only (logos for affiliate-programme listings); stored under the admin's id. */
+  | "admin";
 
 export const UPLOAD_KINDS: Record<UploadKind, { scope: UploadScope; folder: string; label: string }> = {
   "product-image": { scope: "brand", folder: "products", label: "product image" },
@@ -21,6 +23,7 @@ export const UPLOAD_KINDS: Record<UploadKind, { scope: UploadScope; folder: stri
   "brand-cover": { scope: "brand", folder: "brands/cover", label: "brand cover image" },
   "creator-image": { scope: "creator", folder: "creators", label: "creator profile image" },
   avatar: { scope: "user", folder: "avatars", label: "profile photo" },
+  "program-logo": { scope: "admin", folder: "programs/logo", label: "programme logo" },
 };
 
 export function isUploadKind(value: unknown): value is UploadKind {

@@ -22,6 +22,7 @@ function json(body: Record<string, unknown>, status: number, headers: Record<str
  *   product-image · brand-logo · brand-cover   brand owner (with a brand)
  *   creator-image                              creator
  *   avatar                                     any signed-in user
+ *   program-logo                               admin (affiliate-programme listings)
  *
  * Order of checks: kind → auth (scope) → storage availability → rate limit →
  * multipart parse → declared metadata (cheap pre-check) → actual bytes (size
@@ -47,6 +48,11 @@ export async function POST(request: Request, ctx: { params: Promise<{ kind: stri
       userId = user.id;
       actorRole = user.role;
       entity = { type: "Brand", id: brand.id };
+    } else if (spec.scope === "admin") {
+      const user = await assertRole("ADMIN");
+      ownerId = userId = user.id;
+      actorRole = user.role;
+      entity = { type: "User", id: user.id };
     } else if (spec.scope === "creator") {
       const user = await assertRole("CREATOR");
       ownerId = userId = user.id;

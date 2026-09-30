@@ -7,7 +7,7 @@ const env = (v: Record<string, string>) => v as NodeJS.ProcessEnv;
 
 describe("upload kinds (one pipeline for every image)", () => {
   it("knows every kind and derives the prefix from the session owner only", () => {
-    expect(Object.keys(UPLOAD_KINDS).sort()).toEqual(["avatar", "brand-cover", "brand-logo", "creator-image", "product-image"]);
+    expect(Object.keys(UPLOAD_KINDS).sort()).toEqual(["avatar", "brand-cover", "brand-logo", "creator-image", "product-image", "program-logo"]);
     expect(isUploadKind("product-image")).toBe(true);
     expect(isUploadKind("../etc")).toBe(false);
     expect(isUploadKind("__proto__")).toBe(false);
