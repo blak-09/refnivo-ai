@@ -30,7 +30,7 @@ export function SplitSection({
   tinted?: boolean;
 }) {
   return (
-    <section id={id} aria-labelledby={`${id}-heading`} className={cn("scroll-mt-20 py-20 sm:py-24", tinted && "bg-muted/30")}>
+    <section id={id} aria-labelledby={`${id}-heading`} className={cn("scroll-mt-20 overflow-hidden py-20 sm:py-24", tinted && "bg-muted/30")}>
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16">
         <div className={cn(reverse && "lg:order-2")}>
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
