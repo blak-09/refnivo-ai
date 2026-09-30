@@ -2,7 +2,7 @@ import { ArrowUpRightIcon, LinkIcon, MousePointerClickIcon, ShoppingCartIcon, Wa
 
 /*
  * Static illustration of the brand dashboard for the landing hero. Every figure
- * here is invented sample data and the card is labelled "Demo data" — it never
+ * here is invented sample data (the card is titled "Example dashboard") — it never
  * reads the database, so it cannot be mistaken for real platform numbers.
  */
 const KPIS = [
@@ -44,16 +44,13 @@ export function DemoDashboard() {
     <figure className="relative mx-auto w-full max-w-lg" aria-label="Illustrative dashboard preview with demo data">
       <div aria-hidden className="absolute -inset-4 -z-10 rounded-[2rem] bg-linear-to-br from-violet-200/50 via-indigo-100/40 to-sky-100/50 blur-2xl dark:from-violet-900/30 dark:via-indigo-900/20 dark:to-sky-900/20" />
       <div className="overflow-hidden rounded-2xl border bg-card shadow-xl shadow-indigo-500/10">
-        <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-4 py-2.5">
+        <div className="grid grid-cols-[3rem_1fr_3rem] items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
           <div className="flex items-center gap-1.5" aria-hidden>
             <span className="size-2.5 rounded-full bg-rose-300" />
             <span className="size-2.5 rounded-full bg-amber-300" />
             <span className="size-2.5 rounded-full bg-emerald-300" />
           </div>
-          <p className="truncate text-xs font-medium text-muted-foreground">Brand dashboard · Last 30 days</p>
-          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold tracking-wide text-amber-800 uppercase dark:bg-amber-900/40 dark:text-amber-200">
-            Demo data
-          </span>
+          <p className="truncate text-center text-xs font-medium text-muted-foreground">Example dashboard · Last 30 days</p>
         </div>
 
         <div className="space-y-4 p-4 sm:p-5">
