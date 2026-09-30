@@ -16,7 +16,7 @@ const groups = [
   {
     title: "For Brands",
     links: [
-      { href: "/#brands", label: "Affiliate campaigns" },
+      { href: "/#brands", label: "Brand features" },
       { href: "/auth/register?role=BRAND_OWNER", label: "List your brand" },
     ],
   },

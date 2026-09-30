@@ -15,10 +15,10 @@ export const metadata: Metadata = { title: "Affiliate programs" };
 
 const STATUS: Record<AffiliateProgramStatus, { tone: string; label: string }> = {
   DRAFT: { tone: "DRAFT", label: "Draft" },
-  PENDING_REVIEW: { tone: "PENDING_REVIEW", label: "In review" },
-  APPROVED: { tone: "ACTIVE", label: "Published" },
+  PENDING_REVIEW: { tone: "PENDING_REVIEW", label: "Pending Verification" },
+  APPROVED: { tone: "ACTIVE", label: "Active" },
   REJECTED: { tone: "REJECTED", label: "Needs changes" },
-  PAUSED: { tone: "PAUSED", label: "Paused" },
+  PAUSED: { tone: "PAUSED", label: "Inactive" },
   CLOSED: { tone: "ENDED", label: "Closed" },
 };
 
@@ -42,6 +42,13 @@ export default async function BrandAffiliateProgramsPage() {
           </Button>
         }
       />
+
+      <p className="text-xs text-muted-foreground">
+        New listings are <span className="font-medium text-foreground">Pending Verification</span> until a Refnivo admin reviews the official program page.
+        Approved listings are <span className="font-medium text-foreground">Active</span> in the directory and carry a{" "}
+        <span className="font-medium text-foreground">Verified</span> mark with the review date; <span className="font-medium text-foreground">Inactive</span>{" "}
+        listings are hidden; resuming one sends it back for verification.
+      </p>
 
       {!programs.length ? (
         <EmptyState

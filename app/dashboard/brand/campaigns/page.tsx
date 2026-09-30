@@ -63,11 +63,15 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
         <EmptyState
           icon={MegaphoneIcon}
           title={filter === "ALL" ? "No campaigns yet" : `No ${CAMPAIGN_STATUS_LABEL[filter]?.toLowerCase() ?? ""} campaigns`}
-          description="A campaign links one product to a creator commission, a customer reward and the rules for a valid order."
+          description={
+            filter === "ALL"
+              ? "Create your first campaign to start working with creators. Each campaign links one product to a commission, a customer reward and the rules for a valid order."
+              : "Campaigns with this status will appear here."
+          }
           action={
             filter === "ALL" ? (
               <Button size="sm" nativeButton={false} render={<Link href="/dashboard/brand/campaigns/new" />}>
-                Create your first campaign
+                Create Campaign
               </Button>
             ) : undefined
           }

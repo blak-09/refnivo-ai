@@ -571,3 +571,21 @@ export async function listProgramsForReview(status: AffiliateProgramStatus | "AL
     include: { brand: { select: { name: true, slug: true, verificationStatus: true, owner: { select: { email: true } } } }, _count: { select: { links: true, clicks: true } } },
   });
 }
+
+/**
+ * A brand's published external programmes, for its public profile: listings the
+ * brand owns plus curated listings under the same brand name.
+ */
+export async function listPublicProgramsForBrand(brand: { id: string; name: string }): Promise<PublicAffiliateProgram[]> {
+  const rows = await prisma.affiliateProgram.findMany({
+    where: {
+      status: "APPROVED",
+      OR: [
+        { brandId: brand.id, brand: { status: "ACTIVE" } },
+        { brandId: null, brandName: { equals: brand.name, mode: "insensitive" } },
+      ],
+    },
+    select: publicProgramSelect,
+  });
+  return rows.sort(byName);
+}

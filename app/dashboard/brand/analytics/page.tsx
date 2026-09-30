@@ -3,32 +3,71 @@ import type { Metadata } from "next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
-import { CostByCampaignChart, FunnelChart, PartnerSplitChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/lazy-charts";
+import { CostByCampaignChart, FunnelChart, PartnerSplitChart, PerformanceChart, ReferralsOverTimeChart, RevenueByCampaignChart, RevenueSeriesChart } from "@/components/charts/lazy-charts";
+import { RangeTabs } from "@/components/dashboard/range-tabs";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
-import { getBrandOverview, getCampaignBreakdown, getPartnerTypeSplit, getReferralsOverTime, getTopCreators, getTopProducts } from "@/lib/services/metrics";
+import { getBrandOverview, getBrandSeries, getCampaignBreakdown, getPartnerTypeSplit, getReferralsOverTime, getTopCreators, getTopProducts, parseRange, RANGE_OPTIONS } from "@/lib/services/metrics";
 import { brandSourcePerformance } from "@/lib/services/channel-links";
 import { SourcePerformanceTable } from "@/components/links/source-performance";
 
 export const metadata: Metadata = { title: "Analytics" };
 
-export default async function AnalyticsPage() {
+export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const { brand } = await requireBrand();
-  const [overview, breakdown, series, split, topCreators, topProducts, sources] = await Promise.all([
+  const days = parseRange((await searchParams).range);
+  const rangeLabel = RANGE_OPTIONS.find((o) => Number(o.value) === days)?.label ?? `${days} days`;
+  const [overview, breakdown, series, split, topCreators, topProducts, sources, performance] = await Promise.all([
     getBrandOverview(brand.id),
     getCampaignBreakdown(brand.id),
-    getReferralsOverTime(brand.id, 30),
+    getReferralsOverTime(brand.id, days),
     getPartnerTypeSplit(brand.id),
     getTopCreators(brand.id, 10),
     getTopProducts(brand.id, 10),
     brandSourcePerformance(brand.id),
+    getBrandSeries(brand.id, days),
   ]);
+  const periodClicks = performance.reduce((s, d) => s + d.clicks, 0);
+  const periodConversions = performance.reduce((s, d) => s + d.conversions, 0);
+  const periodRevenue = performance.reduce((s, d) => s + d.revenue, 0);
   const totalCost = overview.approvedRewardCost + overview.approvedCommissionCost;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Analytics" description="All figures are computed from recorded clicks, orders and verified conversions — nothing is estimated." />
+      <PageHeader
+        title="Analytics"
+        description="All figures are computed from recorded clicks, orders and verified conversions — nothing is estimated."
+        actions={<RangeTabs basePath="/dashboard/brand/analytics" days={days} />}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Clicks & conversions</CardTitle>
+            <CardDescription>
+              {rangeLabel} · {periodClicks.toLocaleString("en-IN")} clicks · {periodConversions.toLocaleString("en-IN")} verified conversions
+              {periodClicks ? ` · ${((periodConversions / periodClicks) * 100).toFixed(1)}% conversion rate` : ""}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PerformanceChart data={performance} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue</CardTitle>
+            <CardDescription>
+              {rangeLabel} · {formatMoney(periodRevenue)} verified
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RevenueSeriesChart data={performance} />
+          </CardContent>
+        </Card>
+      </div>
+
+      <h2 className="text-sm font-semibold text-muted-foreground">All time</h2>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Campaigns" value={overview.totalCampaigns} hint={`${overview.activeCampaigns} active`} />
@@ -55,7 +94,7 @@ export default async function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Referrals over time</CardTitle>
-            <CardDescription>Last 30 days</CardDescription>
+            <CardDescription>{rangeLabel}</CardDescription>
           </CardHeader>
           <CardContent>
             <ReferralsOverTimeChart data={series} />

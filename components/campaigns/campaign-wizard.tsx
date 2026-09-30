@@ -145,7 +145,7 @@ const STEPS = [
   { key: "rules", title: "Rules & budget", schema: campaignRulesSchema },
   { key: "duration", title: "Duration", schema: campaignDurationSchema },
   { key: "preview", title: "Preview", schema: null },
-  { key: "publish", title: "Publish", schema: null },
+  { key: "publish", title: "Launch", schema: null },
 ] as const;
 
 type Props = ({ mode: "create" } | { mode: "edit"; campaign: Campaign }) & { products: WizardProduct[]; initialProductId?: string };
@@ -223,7 +223,7 @@ export function CampaignWizard(props: Props) {
           setFormError(pub.error);
           return;
         }
-        toast.success("Campaign published. It is now live in Discover Campaigns.");
+        toast.success("Campaign launched. It is now live in the affiliate directory.");
       } else {
         toast.success(kind === "publish" ? "Campaign saved." : "Draft saved.");
       }
@@ -552,7 +552,7 @@ export function CampaignWizard(props: Props) {
             <div className="space-y-5">
               {problems.length ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
-                  <p className="font-medium text-destructive">Fix these before publishing:</p>
+                  <p className="font-medium text-destructive">Fix these before launching:</p>
                   <ul className="mt-1 list-disc pl-5 text-destructive">
                     {problems.map((p) => (
                       <li key={p}>{p}</li>
@@ -611,7 +611,7 @@ export function CampaignWizard(props: Props) {
                 </Button>
               ) : canPublishNow ? (
                 <Button type="button" onClick={() => save("publish")} disabled={!!saving || !confirmed || problems.length > 0}>
-                  {saving === "publish" ? <Loader2Icon className="animate-spin" /> : <RocketIcon />} Publish campaign
+                  {saving === "publish" ? <Loader2Icon className="animate-spin" /> : <RocketIcon />} Launch Campaign
                 </Button>
               ) : (
                 <Button type="button" onClick={() => save("draft")} disabled={!!saving || problems.length > 0}>

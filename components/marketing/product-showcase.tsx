@@ -83,7 +83,6 @@ export function ProductShowcase({ product, brand, commissionLabel, creators, qrD
           src={product?.imageUrl}
           name={product?.name ?? "Featured product"}
           className="aspect-square w-full rounded-xl border-0 bg-linear-to-br from-slate-50 to-indigo-50"
-          priority
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
         />
         <div className="mt-3 flex items-center gap-2">

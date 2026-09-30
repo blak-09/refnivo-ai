@@ -145,3 +145,25 @@ export async function getPublicBrand(slug: string) {
     },
   });
 }
+
+/**
+ * Creators publicly associated with a brand: approved on one of its campaigns
+ * or connected with it. Public profile fields only — no social numbers, which
+ * are self-reported and never shown to customers.
+ */
+export async function getBrandCollaborators(brandId: string, take = 24) {
+  return prisma.creatorProfile.findMany({
+    where: {
+      user: {
+        status: "APPROVED",
+        OR: [
+          { partnerApplications: { some: { status: "APPROVED", partnerType: "CREATOR", campaign: { brandId } } } },
+          { connections: { some: { brandId, status: "ACCEPTED" } } },
+        ],
+      },
+    },
+    orderBy: [{ verificationStatus: "desc" }, { createdAt: "asc" }],
+    take,
+    select: { displayName: true, username: true, profileImageUrl: true, category: true, verificationStatus: true },
+  });
+}

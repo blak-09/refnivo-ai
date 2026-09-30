@@ -68,7 +68,7 @@ export function AffiliateJoinPanel({
       render={<a href={signupUrl} target="_blank" rel="noreferrer noopener" aria-label={`Join ${programName} on the programme's official signup page (opens in a new tab)`} />}
       onClick={() => setStep("asked")}
     >
-      Join program <ExternalLinkIcon className="size-4" aria-hidden />
+      Visit Official Program <ExternalLinkIcon className="size-4" aria-hidden />
     </Button>
   );
 

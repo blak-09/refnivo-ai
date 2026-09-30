@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarLogo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { isDemoAccount } from "@/lib/utils/demo";
-import { NAV, type NavItem, type NavKey } from "./nav";
+import { NAV, NAV_SECTION_LABEL, type NavItem, type NavKey } from "./nav";
 
 type ShellProps = {
   navKey: NavKey;
@@ -33,33 +33,41 @@ function isActive(pathname: string, item: NavItem) {
 
 function NavList({ nav, onNavigate, unread = 0 }: { nav: NavItem[]; onNavigate?: () => void; unread?: number }) {
   const pathname = usePathname();
+  const sections = (["main", "manage", "account"] as const)
+    .map((section) => ({ section, items: nav.filter((i) => (i.section ?? "main") === section) }))
+    .filter((g) => g.items.length);
   return (
-    <nav className="flex flex-col gap-0.5" aria-label="Dashboard">
-      {nav.map((item) => {
-        const active = isActive(pathname, item);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
-              active
-                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
-            )}
-          >
-            <item.icon className="size-4 shrink-0" aria-hidden />
-            <span className="truncate">{item.label}</span>
-            {item.badge === "notifications" && unread > 0 ? (
-              <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground" aria-label={`${unread} unread`}>
-                {unread > 99 ? "99+" : unread}
-              </span>
-            ) : null}
-          </Link>
-        );
-      })}
+    <nav className="flex flex-col gap-4" aria-label="Dashboard">
+      {sections.map(({ section, items }) => (
+        <div key={section} className="flex flex-col gap-0.5">
+          {NAV_SECTION_LABEL[section] ? (
+            <p className="px-2.5 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">{NAV_SECTION_LABEL[section]}</p>
+          ) : null}
+          {items.map((item) => {
+            const active = isActive(pathname, item);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={onNavigate}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                  active ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-xs" : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                )}
+              >
+                <item.icon className={cn("size-4 shrink-0", active ? "text-primary" : "")} aria-hidden />
+                <span className="truncate">{item.label}</span>
+                {item.badge === "notifications" && unread > 0 ? (
+                  <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-primary-foreground" aria-label={`${unread} unread`}>
+                    {unread > 99 ? "99+" : unread}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
+        </div>
+      ))}
     </nav>
   );
 }
@@ -83,7 +91,7 @@ function SidebarBody({
         <p className="truncate text-sm font-medium">{workspaceName}</p>
         <p className="truncate text-xs text-muted-foreground">{workspaceSubtitle ?? roleLabel}</p>
       </div>
-      <div className="flex-1 overflow-y-auto px-3">
+      <div className="flex-1 overflow-y-auto px-3 pb-3">
         <NavList nav={NAV[navKey]} onNavigate={onNavigate} unread={unreadNotifications} />
       </div>
       <Separator />

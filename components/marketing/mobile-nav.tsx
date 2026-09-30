@@ -10,7 +10,17 @@ import { Logo } from "@/components/brand/logo";
 export type NavLink = { href: string; label: string };
 
 /** Hamburger menu for the marketing header on small screens. */
-export function MobileNav({ links, signedIn, dashboardHref }: { links: NavLink[]; signedIn: boolean; dashboardHref: string }) {
+export function MobileNav({
+  links,
+  resources = [],
+  signedIn,
+  dashboardHref,
+}: {
+  links: NavLink[];
+  resources?: NavLink[];
+  signedIn: boolean;
+  dashboardHref: string;
+}) {
   const [open, setOpen] = React.useState(false);
   const close = () => setOpen(false);
   return (
@@ -24,7 +34,7 @@ export function MobileNav({ links, signedIn, dashboardHref }: { links: NavLink[]
           <div className="border-b px-5 py-4">
             <Logo size="sm" />
           </div>
-          <nav className="flex flex-col gap-1 px-3 py-3" aria-label="Mobile">
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-3" aria-label="Mobile">
             {links.map((l) => (
               <Link
                 key={l.href}
@@ -35,6 +45,21 @@ export function MobileNav({ links, signedIn, dashboardHref }: { links: NavLink[]
                 {l.label}
               </Link>
             ))}
+            {resources.length ? (
+              <>
+                <p className="mt-3 px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Resources</p>
+                {resources.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    onClick={close}
+                    className="rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+                  >
+                    {l.label}
+                  </Link>
+                ))}
+              </>
+            ) : null}
           </nav>
           <div className="mt-auto flex flex-col gap-2 border-t p-4">
             {signedIn ? (
@@ -44,10 +69,10 @@ export function MobileNav({ links, signedIn, dashboardHref }: { links: NavLink[]
             ) : (
               <>
                 <Button variant="outline" nativeButton={false} render={<Link href="/auth/login" onClick={close} />}>
-                  Sign In
+                  Log in
                 </Button>
                 <Button nativeButton={false} render={<Link href="/auth/register" onClick={close} />}>
-                  Sign Up
+                  Get Started
                 </Button>
               </>
             )}

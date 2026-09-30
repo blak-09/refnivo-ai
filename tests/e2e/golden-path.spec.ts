@@ -59,7 +59,7 @@ test("brand: signup → onboarding → product → published campaign", async ({
   await page.getByRole("button", { name: "Continue" }).click(); // duration: defaults (starts today)
   await page.getByRole("button", { name: "Continue" }).click(); // preview
   await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Publish campaign" }).click();
+  await page.getByRole("button", { name: "Launch Campaign" }).click();
   await expect(page).toHaveURL(/\/dashboard\/brand\/campaigns\/[a-z0-9]+$/, { timeout: 60_000 });
   await expect(page.getByText(/Active/i).first()).toBeVisible();
 

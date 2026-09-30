@@ -17,3 +17,5 @@ export const RevenueByCampaignChart = dynamic(() => import("./charts").then((m) 
 export const CostByCampaignChart = dynamic(() => import("./charts").then((m) => m.CostByCampaignChart), { ssr: false, loading: ChartSkeleton });
 export const PartnerSplitChart = dynamic(() => import("./charts").then((m) => m.PartnerSplitChart), { ssr: false, loading: SmallChartSkeleton });
 export const FunnelChart = dynamic(() => import("./charts").then((m) => m.FunnelChart), { ssr: false, loading: SmallChartSkeleton });
+export const PerformanceChart = dynamic(() => import("./charts").then((m) => m.PerformanceChart), { ssr: false, loading: ChartSkeleton });
+export const RevenueSeriesChart = dynamic(() => import("./charts").then((m) => m.RevenueSeriesChart), { ssr: false, loading: ChartSkeleton });

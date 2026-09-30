@@ -28,7 +28,7 @@ export function ProgramTypeBadge({ type, className }: { type: "REFNIVO" | "EXTER
 export function VerifiedProgramMark({ verifiedAt }: { verifiedAt: Date | null }) {
   if (!verifiedAt) return null;
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600" title="Refnivo checked the brand, the programme page and the signup link">
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600" title="Refnivo reviewed the official program page and URL. This is not a guarantee of the program.">
       <BadgeCheckIcon className="size-3.5" aria-hidden /> Verified by Refnivo
     </span>
   );
@@ -46,7 +46,8 @@ export function ActiveProgramPill({ className }: { className?: string }) {
   );
 }
 
-export const NOT_DISCLOSED = "Not publicly disclosed";
+/** Shown when a programme does not publish its commission — never a guessed figure. */
+export const NOT_DISCLOSED = "See program terms";
 export const OPEN_ELIGIBILITY = "Open application / subject to program approval";
 
 /** Commission as the programme states it — never a Refnivo figure, never guessed. */
@@ -62,5 +63,7 @@ export function eligibilityText(p: { requirements: string | null }): string {
 
 /** Wording for the join button: a direct application page vs. an informational one. */
 export function joinLabel(programType: string): string {
-  return programType === "REFERRAL" ? "View program" : "Join program";
+  return programType === "REFERRAL" ? "Visit program" : "Join program";
 }
+
+export const EXTERNAL_DETAILS_NOTE = "Program details may change — verify on the official program page.";

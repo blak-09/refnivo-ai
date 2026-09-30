@@ -2,19 +2,19 @@ import Link from "next/link";
 import { ArrowUpRightIcon, StarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/products/product-thumb";
-import { ActiveProgramPill, commissionText, eligibilityText, joinLabel, VerifiedProgramMark } from "@/components/affiliate/program-badge";
+import { ActiveProgramPill, commissionText, eligibilityText, EXTERNAL_DETAILS_NOTE, joinLabel, NOT_DISCLOSED, ProgramTypeBadge, VerifiedProgramMark } from "@/components/affiliate/program-badge";
 import { PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
 import { programBrandName, type PublicAffiliateProgram } from "@/lib/services/affiliate-programs";
 
 /**
  * Marketplace card for an external programme. Every figure is the programme's
- * own statement; anything it does not publish reads "Not publicly disclosed".
+ * own statement; anything it does not publish reads "See program terms".
  * "Join program" opens the official application page in a new tab.
  */
 export function ProgramCard({ program: p }: { program: PublicAffiliateProgram }) {
   const brandName = programBrandName(p);
   const commission = commissionText(p);
-  const disclosed = commission !== "Not publicly disclosed";
+  const disclosed = commission !== NOT_DISCLOSED;
   return (
     <article className="group relative flex h-full flex-col rounded-2xl border bg-card p-4 transition duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-lg sm:p-5">
       <header className="flex items-start gap-3">
@@ -39,6 +39,7 @@ export function ProgramCard({ program: p }: { program: PublicAffiliateProgram })
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <ActiveProgramPill />
+        <ProgramTypeBadge type="EXTERNAL" />
         <VerifiedProgramMark verifiedAt={p.verifiedAt} />
       </div>
 
@@ -60,11 +61,12 @@ export function ProgramCard({ program: p }: { program: PublicAffiliateProgram })
           <dd className="line-clamp-2 text-right">{eligibilityText(p)}</dd>
         </div>
       </dl>
+      <p className="mt-3 text-[11px] leading-snug text-muted-foreground">{EXTERNAL_DETAILS_NOTE}</p>
 
       {/* Above the card-wide link overlay so both buttons stay clickable. */}
       <div className="relative z-10 mt-4 flex flex-wrap gap-2">
         <Button size="sm" variant="outline" className="flex-1 justify-center" nativeButton={false} render={<Link href={`/affiliate-programs/${p.slug}`} />}>
-          Details
+          View program
         </Button>
         <Button
           size="sm"

@@ -23,7 +23,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: "notifications" };
+export type NavSection = "main" | "manage" | "account";
+export type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: "notifications"; section?: NavSection };
+
+/** Headings shown above each sidebar group (the main group has none). */
+export const NAV_SECTION_LABEL: Record<NavSection, string | null> = { main: null, manage: "Manage", account: "Account" };
 export type NavKey = "brand" | "creator" | "customer" | "admin";
 
 /**
@@ -33,35 +37,36 @@ export type NavKey = "brand" | "creator" | "customer" | "admin";
 export const NAV: Record<NavKey, NavItem[]> = {
   brand: [
     { href: "/dashboard/brand", label: "Overview", icon: LayoutDashboardIcon, exact: true },
-    { href: "/dashboard/brand/products", label: "Products", icon: PackageIcon },
     { href: "/dashboard/brand/campaigns", label: "Campaigns", icon: MegaphoneIcon },
     { href: "/dashboard/brand/affiliate-programs", label: "Affiliate Programs", icon: StoreIcon },
-    { href: "/creators", label: "Discover Creators", icon: CompassIcon },
+    { href: "/creators", label: "Creators", icon: CompassIcon },
     { href: "/dashboard/brand/creators", label: "Applications", icon: UsersIcon },
     { href: "/dashboard/brand/connections", label: "Connections", icon: HandshakeIcon },
-    { href: "/dashboard/brand/orders", label: "Orders & Conversions", icon: ShoppingCartIcon },
-    { href: "/dashboard/brand/payouts", label: "Commissions & Rewards", icon: WalletIcon },
+    { href: "/dashboard/brand/tracking", label: "Tracking", icon: LinkIcon },
     { href: "/dashboard/brand/analytics", label: "Analytics", icon: BarChart3Icon },
-    { href: "/dashboard/brand/profile", label: "Brand Profile", icon: StoreIcon },
-    { href: "/dashboard/brand/billing", label: "Billing & Plan", icon: CreditCardIcon },
-    { href: "/dashboard/brand/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
-    { href: "/dashboard/brand/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/dashboard/brand/payouts", label: "Payouts", icon: WalletIcon },
+    { href: "/dashboard/brand/products", label: "Products", icon: PackageIcon, section: "manage" },
+    { href: "/dashboard/brand/orders", label: "Orders & Conversions", icon: ShoppingCartIcon, section: "manage" },
+    { href: "/dashboard/brand/profile", label: "Brand Profile", icon: UserCircleIcon, section: "manage" },
+    { href: "/dashboard/brand/billing", label: "Billing & Plan", icon: CreditCardIcon, section: "manage" },
+    { href: "/dashboard/brand/notifications", label: "Notifications", icon: BellIcon, badge: "notifications", section: "account" },
+    { href: "/dashboard/brand/settings", label: "Settings", icon: SettingsIcon, section: "account" },
   ],
   creator: [
     { href: "/dashboard/creator", label: "Overview", icon: LayoutDashboardIcon, exact: true },
-    { href: "/campaigns", label: "Discover Campaigns", icon: CompassIcon },
-    { href: "/brands", label: "Discover Brands", icon: StoreIcon },
-    { href: "/affiliate-programs", label: "Affiliate Programs", icon: CompassIcon },
-    { href: "/dashboard/creator/campaigns", label: "My Applications", icon: MegaphoneIcon },
+    { href: "/dashboard/creator/discover", label: "Discover Programs", icon: CompassIcon },
+    { href: "/dashboard/creator/campaigns", label: "My Campaigns", icon: MegaphoneIcon },
     { href: "/dashboard/creator/connections", label: "Connections", icon: HandshakeIcon },
-    { href: "/dashboard/creator/links", label: "Referral Links & QR", icon: LinkIcon },
-    { href: "/dashboard/creator/affiliate-links", label: "My Affiliate Links", icon: LinkIcon },
+    { href: "/dashboard/creator/links", label: "Referral Links", icon: LinkIcon },
     { href: "/dashboard/creator/conversions", label: "Conversions", icon: ReceiptIcon },
-    { href: "/dashboard/creator/earnings", label: "Earnings", icon: WalletIcon },
-    { href: "/dashboard/creator/social", label: "Social Accounts", icon: Share2Icon },
-    { href: "/dashboard/creator/profile", label: "Profile", icon: UserCircleIcon },
-    { href: "/dashboard/creator/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
-    { href: "/dashboard/creator/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/dashboard/creator/earnings", label: "Earnings & Payouts", icon: WalletIcon },
+    { href: "/dashboard/creator/analytics", label: "Analytics", icon: BarChart3Icon },
+    { href: "/dashboard/creator/affiliate-links", label: "External Affiliate Links", icon: StoreIcon, section: "manage" },
+    { href: "/brands", label: "Brand Directory", icon: StoreIcon, section: "manage" },
+    { href: "/dashboard/creator/social", label: "Social Accounts", icon: Share2Icon, section: "manage" },
+    { href: "/dashboard/creator/profile", label: "Profile", icon: UserCircleIcon, section: "account" },
+    { href: "/dashboard/creator/notifications", label: "Notifications", icon: BellIcon, badge: "notifications", section: "account" },
+    { href: "/dashboard/creator/settings", label: "Settings", icon: SettingsIcon, section: "account" },
   ],
   customer: [
     { href: "/dashboard/customer", label: "Overview", icon: LayoutDashboardIcon, exact: true },

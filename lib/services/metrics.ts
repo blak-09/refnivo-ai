@@ -308,3 +308,172 @@ export async function getPartnerStats(userId: string) {
     rewardsRedeemed: rewardsRedeemed._sum.amount ?? 0,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Tracking & time series (brand Tracking page, analytics range filters)
+// ---------------------------------------------------------------------------
+
+export type TrackingLinkRow = {
+  id: string;
+  code: string;
+  source: string;
+  status: string;
+  partnerType: "CREATOR" | "CUSTOMER";
+  partnerName: string;
+  partnerUsername: string | null;
+  campaignId: string;
+  campaignName: string;
+  clicks: number;
+  conversions: number;
+  revenue: number;
+  commission: number;
+};
+
+/**
+ * Every referral link on the brand's campaigns with what it actually produced:
+ * recorded clicks, verified conversions, verified revenue and non-rejected
+ * commission. Busiest links first.
+ */
+export async function getBrandTrackingLinks(brandId: string, filters: { campaignId?: string; partnerType?: "CREATOR" | "CUSTOMER" } = {}, limit = 200): Promise<TrackingLinkRow[]> {
+  const links = await prisma.referralLink.findMany({
+    where: { campaign: { brandId }, ...(filters.campaignId ? { campaignId: filters.campaignId } : {}), ...(filters.partnerType ? { partnerType: filters.partnerType } : {}) },
+    select: {
+      id: true,
+      code: true,
+      source: true,
+      status: true,
+      partnerType: true,
+      campaignId: true,
+      campaign: { select: { name: true } },
+      owner: { select: { name: true, creatorProfile: { select: { username: true, displayName: true } } } },
+      _count: { select: { clicks: true } },
+      referrals: {
+        where: { status: "VERIFIED" },
+        select: { conversion: { select: { amount: true } }, commissions: { select: { amount: true, status: true } } },
+      },
+    },
+    take: 1000,
+  });
+  return links
+    .map((l) => ({
+      id: l.id,
+      code: l.code,
+      source: l.source,
+      status: l.status,
+      partnerType: l.partnerType,
+      partnerName: l.owner.creatorProfile?.displayName ?? l.owner.name,
+      partnerUsername: l.owner.creatorProfile?.username ?? null,
+      campaignId: l.campaignId,
+      campaignName: l.campaign.name,
+      clicks: l._count.clicks,
+      conversions: l.referrals.length,
+      revenue: l.referrals.reduce((s, r) => s + (r.conversion?.amount ?? 0), 0),
+      commission: l.referrals.reduce((s, r) => s + r.commissions.filter((c) => c.status !== "REJECTED").reduce((t, c) => t + c.amount, 0), 0),
+    }))
+    .sort((a, b) => b.revenue - a.revenue || b.conversions - a.conversions || b.clicks - a.clicks)
+    .slice(0, limit);
+}
+
+export type SeriesPoint = { date: string; label: string; clicks: number; conversions: number; revenue: number };
+
+function emptySeries(days: number): Map<string, SeriesPoint> {
+  const buckets = new Map<string, SeriesPoint>();
+  for (let i = 0; i < days; i++) {
+    const d = subDays(new Date(), days - 1 - i);
+    const key = format(d, "yyyy-MM-dd");
+    buckets.set(key, { date: key, label: format(d, "d MMM"), clicks: 0, conversions: 0, revenue: 0 });
+  }
+  return buckets;
+}
+
+/** Daily clicks, verified conversions and verified revenue for a brand over the last `days` days. */
+export async function getBrandSeries(brandId: string, days = 30): Promise<SeriesPoint[]> {
+  const since = startOfDay(subDays(new Date(), days - 1));
+  const [clicks, conversions] = await Promise.all([
+    prisma.referralClick.findMany({ where: { campaign: { brandId }, createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.conversion.findMany({ where: { brandId, referral: { status: "VERIFIED" }, reversedAt: null, verifiedAt: { gte: since } }, select: { verifiedAt: true, amount: true } }),
+  ]);
+  const buckets = emptySeries(days);
+  for (const c of clicks) {
+    const b = buckets.get(format(c.createdAt, "yyyy-MM-dd"));
+    if (b) b.clicks += 1;
+  }
+  for (const c of conversions) {
+    const b = c.verifiedAt ? buckets.get(format(c.verifiedAt, "yyyy-MM-dd")) : undefined;
+    if (b) {
+      b.conversions += 1;
+      b.revenue += c.amount;
+    }
+  }
+  return [...buckets.values()];
+}
+
+/** Daily clicks, verified conversions and verified revenue for one partner (creator/customer). */
+export async function getPartnerSeries(userId: string, days = 30): Promise<SeriesPoint[]> {
+  const since = startOfDay(subDays(new Date(), days - 1));
+  const [clicks, conversions] = await Promise.all([
+    prisma.referralClick.findMany({ where: { referralLink: { ownerId: userId }, createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.conversion.findMany({ where: { referral: { referrerId: userId, status: "VERIFIED" }, reversedAt: null, verifiedAt: { gte: since } }, select: { verifiedAt: true, amount: true } }),
+  ]);
+  const buckets = emptySeries(days);
+  for (const c of clicks) {
+    const b = buckets.get(format(c.createdAt, "yyyy-MM-dd"));
+    if (b) b.clicks += 1;
+  }
+  for (const c of conversions) {
+    const b = c.verifiedAt ? buckets.get(format(c.verifiedAt, "yyyy-MM-dd")) : undefined;
+    if (b) {
+      b.conversions += 1;
+      b.revenue += c.amount;
+    }
+  }
+  return [...buckets.values()];
+}
+
+/** Per-campaign performance for one partner: clicks, verified conversions, revenue and commission. */
+export async function getPartnerCampaignPerformance(userId: string) {
+  const links = await prisma.referralLink.findMany({
+    where: { ownerId: userId },
+    select: {
+      campaignId: true,
+      campaign: { select: { name: true, slug: true, brand: { select: { name: true } }, product: { select: { name: true } } } },
+      _count: { select: { clicks: true } },
+      referrals: { where: { status: "VERIFIED" }, select: { conversion: { select: { amount: true } }, commissions: { select: { amount: true, status: true } } } },
+    },
+  });
+  const byCampaign = new Map<string, { campaignId: string; name: string; slug: string; brand: string; product: string; clicks: number; conversions: number; revenue: number; commission: number }>();
+  for (const l of links) {
+    const row = byCampaign.get(l.campaignId) ?? {
+      campaignId: l.campaignId,
+      name: l.campaign.name,
+      slug: l.campaign.slug,
+      brand: l.campaign.brand.name,
+      product: l.campaign.product.name,
+      clicks: 0,
+      conversions: 0,
+      revenue: 0,
+      commission: 0,
+    };
+    row.clicks += l._count.clicks;
+    row.conversions += l.referrals.length;
+    for (const r of l.referrals) {
+      row.revenue += r.conversion?.amount ?? 0;
+      row.commission += r.commissions.filter((c) => c.status !== "REJECTED").reduce((s, c) => s + c.amount, 0);
+    }
+    byCampaign.set(l.campaignId, row);
+  }
+  return [...byCampaign.values()].sort((a, b) => b.revenue - a.revenue || b.conversions - a.conversions || b.clicks - a.clicks);
+}
+
+/** Allowed analytics windows (days). "Today" is a 1-day window. */
+export const RANGE_OPTIONS = [
+  { value: "1", label: "Today" },
+  { value: "7", label: "7 days" },
+  { value: "30", label: "30 days" },
+  { value: "90", label: "90 days" },
+] as const;
+
+export function parseRange(value: string | undefined, fallback = 30): number {
+  const n = Number(value);
+  return RANGE_OPTIONS.some((o) => Number(o.value) === n) ? n : fallback;
+}

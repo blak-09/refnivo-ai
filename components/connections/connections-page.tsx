@@ -76,7 +76,7 @@ export async function ConnectionsPage({
       {!rows.length ? (
         <EmptyState
           icon={HandshakeIcon}
-          title={EMPTY[tab].title}
+          title={tab === "ALL" && viewer.kind === "BRAND" ? "No creators connected yet" : EMPTY[tab].title}
           description={EMPTY[tab].description}
           action={
             <Button size="sm" nativeButton={false} render={<Link href={discover.href} />}>

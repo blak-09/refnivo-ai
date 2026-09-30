@@ -16,7 +16,7 @@ import {
   YAxis,
 } from "recharts";
 import { formatMoney } from "@/lib/money";
-import type { CampaignBreakdownRow, DailyPoint } from "@/lib/services/metrics";
+import type { CampaignBreakdownRow, DailyPoint, SeriesPoint } from "@/lib/services/metrics";
 
 const COLORS = {
   creator: "var(--chart-1)",
@@ -49,7 +49,7 @@ export function ReferralsOverTimeChart({ data }: { data: DailyPoint[] }) {
   return (
     <div className="h-64">
       {!hasData ? (
-        <Empty message="No referrals in the last 30 days yet." />
+        <Empty message="No referrals in this period yet." />
       ) : (
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
@@ -177,6 +177,62 @@ export function FunnelChart({ steps }: { steps: { label: string; value: number }
             </div>
           );
         })
+      )}
+    </div>
+  );
+}
+
+/** Clicks and verified conversions per day (brand or partner). */
+export function PerformanceChart({ data, emptyMessage = "No clicks or conversions in this period yet." }: { data: SeriesPoint[]; emptyMessage?: string }) {
+  const hasData = data.some((d) => d.clicks > 0 || d.conversions > 0);
+  return (
+    <div className="h-64">
+      {!hasData ? (
+        <Empty message={emptyMessage} />
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+            <defs>
+              <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+              </linearGradient>
+              <linearGradient id="fillConversions" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.35} />
+                <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+            <YAxis {...axisProps} allowDecimals={false} />
+            <Tooltip {...tooltipStyle} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Area type="monotone" dataKey="clicks" name="Clicks" stroke="var(--chart-1)" fill="url(#fillClicks)" />
+            <Area type="monotone" dataKey="conversions" name="Verified conversions" stroke="var(--chart-3)" fill="url(#fillConversions)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+  );
+}
+
+/** Verified revenue per day. */
+export function RevenueSeriesChart({ data }: { data: SeriesPoint[] }) {
+  const hasData = data.some((d) => d.revenue > 0);
+  return (
+    <div className="h-64">
+      {!hasData ? (
+        <Empty message="No verified revenue in this period yet." />
+      ) : (
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+            <YAxis {...axisProps} tickFormatter={(v: number) => formatMoney(v).replace(/\.00$/, "")} width={70} />
+            <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
+            <Bar dataKey="revenue" name="Verified revenue" fill={COLORS.revenue} radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       )}
     </div>
   );

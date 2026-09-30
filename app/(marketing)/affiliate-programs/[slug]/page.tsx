@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandLogo } from "@/components/products/product-thumb";
 import { AffiliateJoinPanel } from "@/components/affiliate/join-panel";
-import { ActiveProgramPill, APPROVAL_LABEL, commissionText, eligibilityText, NOT_DISCLOSED, ProgramTypeBadge, VerifiedProgramMark } from "@/components/affiliate/program-badge";
+import { ActiveProgramPill, APPROVAL_LABEL, commissionText, eligibilityText, EXTERNAL_DETAILS_NOTE, NOT_DISCLOSED, ProgramTypeBadge, VerifiedProgramMark } from "@/components/affiliate/program-badge";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { creatorLinkForProgram } from "@/lib/services/affiliate-links";
@@ -71,9 +71,9 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
     ["Status", "Active"],
     ["Affiliate network", program.networkName],
     ["Cookie / attribution", program.cookieDurationDays ? `${program.cookieDurationDays} days` : null],
-    ["Joining", program.approvalType ? APPROVAL_LABEL[program.approvalType] : null],
     ["Minimum followers", program.minFollowers ? program.minFollowers.toLocaleString("en-IN") : null],
-    ["Region", program.geography],
+    ["Country availability", program.geography],
+    ["Application process", program.approvalType ? APPROVAL_LABEL[program.approvalType] : "Apply on the official program page"],
     ["Paid by", `${brandName}'s programme — not Refnivo`],
   ];
 
@@ -123,10 +123,10 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
             <CardContent className="flex items-start gap-3 py-2 text-sm">
               <InfoIcon className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
               <div>
-                <p className="font-medium">This is an external {typeLabel.toLowerCase()} program</p>
+                <p className="font-medium">External affiliate program</p>
                 <p className="mt-1 text-muted-foreground">
-                  Refnivo lists this programme and links to its official page. Approval, sales tracking, commission and payment are handled by the programme
-                  {program.networkName ? ` (via ${program.networkName})` : ""}, not by Refnivo.
+                  This program is managed externally. Refnivo provides discovery and does not control the external program&apos;s approval, tracking or payouts
+                  {program.networkName ? ` (it runs on ${program.networkName})` : ""}.
                 </p>
                 {curated ? (
                   <p className="mt-2 text-muted-foreground">
@@ -140,7 +140,7 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
 
           {program.description ? (
             <section>
-              <h2 className="text-lg font-semibold">About the brand</h2>
+              <h2 className="text-lg font-semibold">About this program</h2>
               <p className="mt-2 text-sm whitespace-pre-line text-muted-foreground">{program.description}</p>
             </section>
           ) : null}
@@ -159,7 +159,24 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
                     <dd className="text-right font-medium">{value}</dd>
                   </div>
                 ))}
+              <div className="flex justify-between gap-4 px-4 py-2.5">
+                <dt className="text-muted-foreground">Terms</dt>
+                <dd className="text-right font-medium">
+                  <a href={program.programUrl ?? program.signupUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">
+                    Official program terms
+                  </a>
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4 px-4 py-2.5">
+                <dt className="text-muted-foreground">Official program link</dt>
+                <dd className="min-w-0 truncate text-right font-medium">
+                  <a href={program.signupUrl} target="_blank" rel="noreferrer noopener" className="text-primary hover:underline">
+                    {hostOf(program.signupUrl) ?? "Open"}
+                  </a>
+                </dd>
+              </div>
             </dl>
+            <p className="mt-2 text-xs text-muted-foreground">{EXTERNAL_DETAILS_NOTE}</p>
           </section>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -169,7 +186,7 @@ export default async function AffiliateProgramPage({ params, searchParams }: { p
               <p className="mt-1 text-xs text-muted-foreground">Set and paid by the programme. Refnivo does not guarantee it.</p>
             </section>
             <section className="rounded-xl border bg-card p-4">
-              <h2 className="text-sm font-semibold text-muted-foreground">Eligibility</h2>
+              <h2 className="text-sm font-semibold text-muted-foreground">Eligibility & eligible products</h2>
               <p className="mt-1 text-sm">{eligibilityText(program)}</p>
               {program.supportedPlatforms.length ? (
                 <div className="mt-2 flex flex-wrap gap-1.5">

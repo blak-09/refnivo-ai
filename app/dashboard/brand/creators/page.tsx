@@ -73,8 +73,13 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
       {!applications.length ? (
         <EmptyState
           icon={UsersIcon}
-          title={filter === "PENDING" ? "No applications waiting for review" : "Nothing here yet"}
+          title={filter === "PENDING" ? "No applications waiting for review" : "No creators connected yet"}
           description="When a creator applies to one of your campaigns, or a customer joins a referral program, they show up here with their profile and audience details."
+          action={
+            <Button size="sm" variant="outline" nativeButton={false} render={<Link href="/creators" />}>
+              Discover Creators
+            </Button>
+          }
         />
       ) : (
         <div className="grid gap-3">
