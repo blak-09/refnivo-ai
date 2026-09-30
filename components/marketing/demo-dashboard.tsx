@@ -99,7 +99,6 @@ export function DemoDashboard() {
           </div>
         </div>
       </div>
-      <figcaption className="mt-3 text-center text-xs text-muted-foreground">Illustration with demo data — not real Refnivo figures.</figcaption>
     </figure>
   );
 }
