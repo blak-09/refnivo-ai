@@ -29,8 +29,10 @@ import {
   updateAffiliateProgram,
 } from "@/lib/services/affiliate-programs";
 import { resolveReferralCode } from "@/lib/services/tracking";
-import { adminAffiliateProgramSchema, affiliateProgramSchema } from "@/lib/validation/affiliate";
-import { EXAMPLE_AFFILIATE_PROGRAMS, seedExampleAffiliatePrograms } from "../../prisma/seed-data/affiliate-programs";
+import { adminAffiliateProgramSchema, AFFILIATE_CATEGORIES, affiliateProgramSchema, PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { EXAMPLE_AFFILIATE_PROGRAMS, INDIAN_AFFILIATE_PROGRAMS, seedExampleAffiliatePrograms } from "../../prisma/seed-data/affiliate-programs";
 import { makeCreator, makeOwnerWithBrand, uniq } from "../helpers";
 
 /**
@@ -433,5 +435,52 @@ describe("verified programme seed", () => {
       expect(words, e.slug).toBeGreaterThanOrEqual(25);
       expect(words, e.slug).toBeLessThanOrEqual(90);
     }
+  });
+
+  it("has exactly 100 distinct Indian programmes, none duplicating the global list", () => {
+    expect(INDIAN_AFFILIATE_PROGRAMS).toHaveLength(100);
+    const lower = (xs: string[]) => xs.map((x) => x.toLowerCase());
+    const unique = (xs: string[]) => new Set(lower(xs)).size;
+    expect(unique(INDIAN_AFFILIATE_PROGRAMS.map((e) => e.slug))).toBe(100);
+    expect(unique(INDIAN_AFFILIATE_PROGRAMS.map((e) => e.brandName))).toBe(100);
+    expect(unique(INDIAN_AFFILIATE_PROGRAMS.map((e) => e.signupUrl))).toBe(100);
+    // Brands already listed globally (Flipkart, Nykaa, boAt, Plum…) are not listed twice.
+    const global = new Set(lower(EXAMPLE_AFFILIATE_PROGRAMS.map((e) => e.brandName)));
+    expect(INDIAN_AFFILIATE_PROGRAMS.filter((e) => global.has(e.brandName.toLowerCase())).map((e) => e.brandName)).toEqual([]);
+    const types = new Set(Object.keys(PROGRAM_TYPE_LABEL));
+    const categories = new Set<string>(AFFILIATE_CATEGORIES);
+    for (const e of INDIAN_AFFILIATE_PROGRAMS) {
+      expect(e.geography, e.slug).toBe("India");
+      expect(e.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+      expect(types.has(e.programType as string), e.slug).toBe(true);
+      expect(categories.has(e.category ?? ""), e.slug).toBe(true);
+      expect(e.sources.urls.length).toBeGreaterThan(0);
+      expect(e.signupUrl).toMatch(/^https:\/\//);
+      expect(e.programUrl).toMatch(/^https:\/\//);
+      expect(e.websiteUrl).toMatch(/^https:\/\//);
+      expect(e.logoUrl).toMatch(/^\/brand-logos\/[a-z0-9-]+\.png$/);
+      expect(existsSync(join(process.cwd(), "public", e.logoUrl!)), e.slug).toBe(true);
+      // A rate is only stored with its type, and never invented: no commission means no type either.
+      expect(Boolean(e.commissionDescription), e.slug).toBe(Boolean(e.commissionType));
+      const words = (e.description ?? "").split(/\s+/).length;
+      expect(words, e.slug).toBeGreaterThanOrEqual(25);
+      expect(words, e.slug).toBeLessThanOrEqual(90);
+      expect(e.description, e.slug).not.toMatch(/guarantee|#1|highest commission|per month/i);
+    }
+  });
+
+  it("seeds the Indian programmes as active, verified, external listings", async () => {
+    await prisma.$transaction((tx) => seedExampleAffiliatePrograms(tx));
+    const rows = await prisma.affiliateProgram.findMany({ where: { slug: { in: INDIAN_AFFILIATE_PROGRAMS.map((e) => e.slug) } } });
+    expect(rows).toHaveLength(100);
+    for (const r of rows) {
+      expect(r.brandId).toBeNull();
+      expect(r.status).toBe("APPROVED");
+      expect(r.verifiedAt?.toISOString().slice(0, 10)).toBe("2026-10-01");
+    }
+    const urbanMonkey = rows.find((r) => r.slug === "urban-monkey-affiliate-program")!;
+    expect(urbanMonkey).toMatchObject({ commissionType: "PERCENTAGE", commissionDescription: "10% of total referral sales", cookieDurationDays: 30, networkName: "UpPromote" });
+    // Conflicting published rates are left unstated rather than guessed.
+    expect(rows.find((r) => r.slug === "tahvo-affiliate-program")!.commissionDescription).toBeNull();
   });
 });

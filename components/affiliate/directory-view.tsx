@@ -7,9 +7,10 @@ import { EmptyState } from "@/components/dashboard/primitives";
 import { CampaignProgramCard } from "@/components/affiliate/campaign-program-card";
 import { ProgramCard } from "@/components/affiliate/program-card";
 import { DIRECTORY_SORTS, listDirectory } from "@/lib/services/directory";
+import { PROGRAM_TYPE_LABEL } from "@/lib/validation/affiliate";
 import { cn } from "@/lib/utils";
 
-export type DirectorySearch = { q?: string; kind?: string; category?: string; sort?: string; page?: string };
+export type DirectorySearch = { q?: string; kind?: string; category?: string; type?: string; commission?: string; sort?: string; page?: string };
 
 /**
  * The programme directory (Refnivo campaigns + external programmes), shared by
@@ -18,12 +19,20 @@ export type DirectorySearch = { q?: string; kind?: string; category?: string; so
  */
 export async function DirectoryView({ basePath, sp }: { basePath: string; sp: DirectorySearch }) {
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
-  const { items, total, categories, counts, kind } = await listDirectory({ q: sp.q, kind: sp.kind, category: sp.category, sort: sp.sort, page });
-  const hasFilters = !!(sp.q || sp.kind || sp.category);
+  const { items, total, categories, types, counts, kind } = await listDirectory({
+    q: sp.q,
+    kind: sp.kind,
+    category: sp.category,
+    type: sp.type,
+    commission: sp.commission,
+    sort: sp.sort,
+    page,
+  });
+  const hasFilters = !!(sp.q || sp.kind || sp.category || sp.type || sp.commission);
 
   const href = (over: Partial<DirectorySearch>) => {
     const p = new URLSearchParams();
-    const merged = { q: sp.q, kind: sp.kind, category: sp.category, sort: sp.sort, ...over };
+    const merged = { q: sp.q, kind: sp.kind, category: sp.category, type: sp.type, commission: sp.commission, sort: sp.sort, ...over };
     for (const [k, v] of Object.entries(merged)) if (v) p.set(k, String(v));
     return `${basePath}${p.toString() ? `?${p}` : ""}`;
   };
@@ -36,20 +45,34 @@ export async function DirectoryView({ basePath, sp }: { basePath: string; sp: Di
 
   return (
     <div>
-      <form key={`${sp.q ?? ""}|${sp.sort ?? ""}`} className="grid gap-3 sm:grid-cols-[1fr_auto_auto]" role="search">
+      <form key={`${sp.q ?? ""}|${sp.sort ?? ""}|${sp.type ?? ""}|${sp.commission ?? ""}`} className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto_auto]" role="search">
         <div className="relative">
           <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
           <Input name="q" defaultValue={sp.q} placeholder="Search brands, products or categories…" aria-label="Search programs" className="h-11 pl-9" />
           {sp.kind ? <input type="hidden" name="kind" value={sp.kind} /> : null}
           {sp.category ? <input type="hidden" name="category" value={sp.category} /> : null}
         </div>
-        <NativeSelect name="sort" defaultValue={sp.sort ?? "featured"} aria-label="Sort by" className="h-11">
-          {DIRECTORY_SORTS.map(([value, label]) => (
-            <option key={value} value={value}>
-              Sort: {label}
-            </option>
-          ))}
-        </NativeSelect>
+        <div className="grid grid-cols-2 gap-3 lg:contents">
+          <NativeSelect name="type" defaultValue={sp.type ?? ""} aria-label="Program type" className="h-11">
+            <option value="">All program types</option>
+            {types.map((t) => (
+              <option key={t} value={t}>
+                {PROGRAM_TYPE_LABEL[t]}
+              </option>
+            ))}
+          </NativeSelect>
+          <NativeSelect name="sort" defaultValue={sp.sort ?? "featured"} aria-label="Sort by" className="h-11">
+            {DIRECTORY_SORTS.map(([value, label]) => (
+              <option key={value} value={value}>
+                Sort: {label}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        <label className="flex h-11 cursor-pointer items-center gap-2 rounded-lg border bg-card px-3 text-sm whitespace-nowrap">
+          <input type="checkbox" name="commission" value="1" defaultChecked={sp.commission === "1"} className="size-4 accent-primary" />
+          Commission disclosed
+        </label>
         <Button type="submit" className="h-11">
           Search
         </Button>
@@ -95,6 +118,8 @@ export async function DirectoryView({ basePath, sp }: { basePath: string; sp: Di
       <p className="mt-5 text-sm text-muted-foreground" aria-live="polite">
         {total} {total === 1 ? "program" : "programs"}
         {kind === "REFNIVO" ? " · Refnivo campaigns" : kind === "EXTERNAL" ? " · external programs" : ""}
+        {sp.type && types.includes(sp.type as (typeof types)[number]) ? ` · ${PROGRAM_TYPE_LABEL[sp.type as (typeof types)[number]]}` : ""}
+        {sp.commission === "1" ? " · commission disclosed" : ""}
         {hasFilters ? (
           <>
             {" · "}

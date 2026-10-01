@@ -46,13 +46,21 @@ export function campaignCommission(c: MarketplaceCampaign): string {
   return c.creatorCommissionType === "PERCENTAGE" ? `${formatPercent(c.creatorCommissionValue)} per sale` : `${formatMoney(c.creatorCommissionValue, c.currency)} per sale`;
 }
 
-export type DirectoryFilters = { q?: string; kind?: string; category?: string; sort?: string; page?: number };
+export type DirectoryFilters = { q?: string; kind?: string; category?: string; type?: string; commission?: string; sort?: string; page?: number };
 export const DIRECTORY_PAGE_SIZE = 24;
 export const DIRECTORY_SORTS = [
   ["featured", "Featured"],
-  ["newest", "Newest"],
-  ["az", "A–Z"],
+  ["newest", "Recently added"],
+  ["az", "Brand A–Z"],
+  ["category", "Category"],
+  ["commission", "Commission available"],
 ] as const;
+type DirectorySort = (typeof DIRECTORY_SORTS)[number][0];
+
+/** True when the listing states its commission (Refnivo campaigns always do). Never inferred. */
+export function hasPublicCommission(i: DirectoryItem): boolean {
+  return i.kind === "REFNIVO" ? i.campaign.campaignType !== "CUSTOMER_REFERRAL" : !!i.program.commissionDescription;
+}
 
 /**
  * The merged directory. Refnivo campaigns come from the live-campaign query,
@@ -62,7 +70,7 @@ export async function listDirectory(filters: DirectoryFilters = {}, pageSize = D
   const kind: DirectoryKind | undefined = filters.kind === "refnivo" ? "REFNIVO" : filters.kind === "external" ? "EXTERNAL" : undefined;
   const q = filters.q?.trim() || undefined;
   // Both lists are always loaded so every tab shows an accurate count.
-  const [campaigns, external] = await Promise.all([listMarketplaceCampaigns({ q, sort: "newest" }), listPublishedPrograms({ q, sort: "featured" }, 500)]);
+  const [campaigns, external] = await Promise.all([listMarketplaceCampaigns({ q, sort: "newest" }), listPublishedPrograms({ q, sort: "featured" }, 2000)]);
 
   let items: DirectoryItem[] = [
     ...campaigns.map((c) => ({
@@ -84,25 +92,33 @@ export async function listDirectory(filters: DirectoryFilters = {}, pageSize = D
     })),
   ];
 
+  // Programme types are an external-programme concept; picking one narrows the directory to external listings.
+  const types = [...new Set(external.programs.map((p) => p.programType))].sort();
+  const type = types.find((t) => t === filters.type);
+  if (type) items = items.filter((i) => i.kind === "EXTERNAL" && i.program.programType === type);
+  if (filters.commission === "1") items = items.filter(hasPublicCommission);
+
   // Category chips: what exists for the selected type (before the category filter).
   const categories = [...new Set(items.filter((i) => !kind || i.kind === kind).map((i) => i.category))].sort((a, b) => a.localeCompare(b));
   if (filters.category) items = items.filter((i) => i.category === filters.category);
-  // Tab counts honour the search and category, not the selected tab itself.
+  // Tab counts honour the search and filters, not the selected tab itself.
   const counts = { all: items.length, refnivo: items.filter((i) => i.kind === "REFNIVO").length, external: items.filter((i) => i.kind === "EXTERNAL").length };
   if (kind) items = items.filter((i) => i.kind === kind);
 
   const byName = (a: DirectoryItem, b: DirectoryItem) => a.brandName.localeCompare(b.brandName, "en", { sensitivity: "base" });
   const featuredRank = (i: DirectoryItem) => (i.kind === "EXTERNAL" && i.program.featured ? 0 : i.kind === "REFNIVO" ? 1 : 2);
-  const sort = filters.sort === "newest" || filters.sort === "az" ? filters.sort : "featured";
-  items.sort(
-    sort === "newest"
-      ? (a, b) => b.sortDate - a.sortDate || byName(a, b)
-      : sort === "az"
-        ? byName
-        : // Featured: pinned programmes, then Refnivo campaigns (natively tracked), then A–Z.
-          (a, b) => featuredRank(a) - featuredRank(b) || byName(a, b),
-  );
+  const sort: DirectorySort = DIRECTORY_SORTS.some(([v]) => v === filters.sort) ? (filters.sort as DirectorySort) : "featured";
+  const COMPARE: Record<DirectorySort, (a: DirectoryItem, b: DirectoryItem) => number> = {
+    // Featured: pinned programmes, then Refnivo campaigns (natively tracked), then A–Z.
+    featured: (a, b) => featuredRank(a) - featuredRank(b) || byName(a, b),
+    newest: (a, b) => b.sortDate - a.sortDate || byName(a, b),
+    az: byName,
+    category: (a, b) => a.category.localeCompare(b.category, "en", { sensitivity: "base" }) || byName(a, b),
+    // Listings that state their commission first; nothing is ranked by a guessed rate.
+    commission: (a, b) => Number(hasPublicCommission(b)) - Number(hasPublicCommission(a)) || byName(a, b),
+  };
+  items.sort(COMPARE[sort]);
 
-  const page = Math.min(Math.max(1, Math.floor(filters.page ?? 1)), 20);
-  return { items: items.slice(0, page * pageSize), total: items.length, categories, counts, kind };
+  const page = Math.min(Math.max(1, Math.floor(filters.page ?? 1)), 50);
+  return { items: items.slice(0, page * pageSize), total: items.length, categories, types, counts, kind };
 }

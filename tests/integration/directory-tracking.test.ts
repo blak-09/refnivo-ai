@@ -5,7 +5,7 @@ import { decideApplication, joinCampaign } from "@/lib/services/partners";
 import { recordOrder, verifyConversion } from "@/lib/services/conversions";
 import { recordClick } from "@/lib/services/tracking";
 import { getBrandSeries, getBrandTrackingLinks, getPartnerCampaignPerformance, getPartnerSeries, parseRange } from "@/lib/services/metrics";
-import { createAffiliateProgram, listPublicProgramsForBrand, reviewAffiliateProgram } from "@/lib/services/affiliate-programs";
+import { createAffiliateProgram, listProgramsForReview, listPublicProgramsForBrand, reviewAffiliateProgram } from "@/lib/services/affiliate-programs";
 import { getBrandCollaborators } from "@/lib/services/brands";
 import { listDirectory } from "@/lib/services/directory";
 import { affiliateProgramSchema } from "@/lib/validation/affiliate";
@@ -118,6 +118,42 @@ describe("programme directory and brand profile", () => {
 
     const listed = await listPublicProgramsForBrand({ id: owner.brand.id, name: brandName });
     expect(listed.map((p) => p.id)).toEqual([program.id]);
+  });
+
+  it("filters by programme type and by disclosed commission, without inventing rates", async () => {
+    const tag = uniq("Filt");
+    const reviewer = await prisma.user.create({ data: { name: "Admin", email: `${uniq("admin")}@test.local`, role: "ADMIN", status: "APPROVED" } });
+    const make = async (over: Record<string, unknown>) => {
+      const o = await makeOwnerWithBrand(`${tag} ${uniq("b")}`);
+      const p = await createAffiliateProgram(
+        o.brand.id,
+        o.user.id,
+        affiliateProgramSchema.parse({ name: `${tag} programme ${uniq("n")}`, signupUrl: `https://network.example.com/join/${uniq("u")}`, category: "Beauty", ...over }),
+        { submit: true },
+      );
+      await reviewAffiliateProgram(reviewer.id, p.id, { decision: "APPROVE", verified: true }, { checkLink: okLink });
+      return p;
+    };
+    const referral = await make({ programType: "REFERRAL", commissionType: "FIXED", commissionDescription: "₹100 per referral" });
+    const undisclosed = await make({ programType: "INFLUENCER" });
+
+    const byType = await listDirectory({ q: tag, type: "REFERRAL" });
+    expect(byType.items.map((i) => i.key)).toEqual([`p-${referral.id}`]);
+    expect(byType.types).toEqual(expect.arrayContaining(["REFERRAL", "INFLUENCER"]));
+    expect((await listDirectory({ q: tag, type: "NOT_A_TYPE" })).total).toBe(2); // unknown type is ignored
+
+    const disclosed = await listDirectory({ q: tag, commission: "1" });
+    expect(disclosed.items.map((i) => i.key)).toEqual([`p-${referral.id}`]);
+    expect(disclosed.items.some((i) => i.key === `p-${undisclosed.id}`)).toBe(false);
+
+    // "Commission available" puts stated rates first; it never ranks by a guessed number.
+    const sorted = await listDirectory({ q: tag, sort: "commission" });
+    expect(sorted.items.map((i) => i.key)).toEqual([`p-${referral.id}`, `p-${undisclosed.id}`]);
+
+    // Admin search finds listings by name and paginates with a total.
+    const admin = await listProgramsForReview("APPROVED", 1, { q: tag });
+    expect(admin.total).toBe(2);
+    expect(admin).toHaveLength(1);
   });
 
   it("shows only approved or connected creators as collaborations, without social numbers", async () => {

@@ -1,5 +1,6 @@
 import type { AffiliateCommissionType, AffiliateProgramType, Prisma, PrismaClient, SocialPlatform } from "@prisma/client";
 import type { BEST_FOR_OPTIONS } from "../../lib/validation/affiliate";
+import { INDIAN_ENTRIES } from "./indian-affiliate-programs";
 
 /**
  * Verified external affiliate / creator / ambassador programmes, inserted
@@ -24,7 +25,7 @@ import type { BEST_FOR_OPTIONS } from "../../lib/validation/affiliate";
  */
 type BestFor = (typeof BEST_FOR_OPTIONS)[number];
 
-type Entry = {
+export type AffiliateProgramEntry = {
   slug: string;
   brandName: string;
   name: string;
@@ -47,6 +48,8 @@ type Entry = {
   /** Where each stated fact was checked, and when. Kept in code, not shown to users. */
   sources: { checkedOn: string; urls: string[]; notes: string };
 };
+
+type Entry = AffiliateProgramEntry;
 
 const CHECKED = "2026-09-30";
 
@@ -1039,7 +1042,7 @@ export type ExampleAffiliateProgram = Omit<
 };
 
 /** Entries as rows: every unstated field is null — never a default that would claim terms. */
-export const EXAMPLE_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = ENTRIES.map(({ logo, signupUrl, ...e }) => ({
+const toRow = ({ logo, signupUrl, ...e }: Entry): ExampleAffiliateProgram => ({
   ...e,
   signupUrl: signupUrl ?? e.programUrl,
   subcategory: e.subcategory ?? null,
@@ -1056,7 +1059,16 @@ export const EXAMPLE_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = ENTRIES.map
   minFollowers: null,
   sourceUrl: e.sources.urls[0],
   featured: false,
-}));
+});
+
+/** The 50 verified global programmes. */
+export const EXAMPLE_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = ENTRIES.map(toRow);
+
+/** The 100 verified Indian programmes (prisma/seed-data/indian-affiliate-programs.ts). */
+export const INDIAN_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = INDIAN_ENTRIES.map(toRow);
+
+/** Everything the seed inserts. */
+export const VERIFIED_AFFILIATE_PROGRAMS: ExampleAffiliateProgram[] = [...EXAMPLE_AFFILIATE_PROGRAMS, ...INDIAN_AFFILIATE_PROGRAMS];
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -1070,7 +1082,7 @@ type Db = PrismaClient | Prisma.TransactionClient;
 export async function seedExampleAffiliatePrograms(db: Db): Promise<{ created: string[]; skipped: string[] }> {
   const created: string[] = [];
   const skipped: string[] = [];
-  for (const { sources, ...entry } of EXAMPLE_AFFILIATE_PROGRAMS) {
+  for (const { sources, ...entry } of VERIFIED_AFFILIATE_PROGRAMS) {
     const exists = await db.affiliateProgram.findFirst({
       where: {
         OR: [

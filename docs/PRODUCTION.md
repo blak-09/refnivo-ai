@@ -153,7 +153,8 @@ platform in a staging deployment first.
 - Admin → **Affiliate programs** → *Add affiliate program* lists a programme a brand runs publicly (its own signup page or its authorised affiliate network's). Fill in only what the programme publishes; leave the rest empty ("not stated").
 - A listing goes live through **Approve** or **Activate**; **Deactivate** takes it off the marketplace (Inactive). "Verified by Refnivo" is set only by the approval checklist or the edit form's **Verified** tick — both re-check the official URL and refuse a broken one.
 - **Check link** on a row re-tests the official URL; a broken result removes the Verified mark (the listing stays active until you deactivate it). Logos can be uploaded from the edit form (admin-only `program-logo` upload) or set to a `/brand-logos/…` path.
-- Example listings (`prisma/seed-data/affiliate-programs.ts`) reach production through the reviewed SQL script, inserted as `PENDING_REVIEW`. Local: `npm run db:seed:affiliate-examples`.
+- Verified listings live in `prisma/seed-data/affiliate-programs.ts` (50 global) and `prisma/seed-data/indian-affiliate-programs.ts` (100 Indian), each with its check date and sources. Local: `npm run db:seed:affiliate-examples`. Production: generate the SQL with `npx tsx scripts/affiliate-programs-sql.ts indian` (or `global`) and run it in the Supabase SQL editor — rows go in as active and verified as of their check date, with an audit entry each; existing slugs, brand names and signup URLs are skipped, so re-running is safe. Logos must be deployed (`public/brand-logos/`) before or with the SQL.
+- The admin list searches programme, brand, category and country, filters by source (added by Refnivo / brand submitted) and pages 100 at a time.
 - To remove a listing: **Close** (links stop forwarding, click history kept) or **Delete** (only while no creator has saved a link).
 
 ## 5. Connection pooling

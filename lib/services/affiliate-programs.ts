@@ -488,7 +488,7 @@ function typesMatching(q: string) {
 }
 
 /** Upper bound on listings sorted in memory (sorting needs case-insensitive brand names: "boAt", "eBay"). */
-const MAX_LISTED = 500;
+const MAX_LISTED = 2000;
 
 const byName = (a: PublicAffiliateProgram, b: PublicAffiliateProgram) =>
   programBrandName(a).localeCompare(programBrandName(b), "en", { sensitivity: "base" }) || a.name.localeCompare(b.name, "en", { sensitivity: "base" });
@@ -563,13 +563,43 @@ export async function getBrandProgram(brandId: string, id: string) {
   return prisma.affiliateProgram.findFirst({ where: { id, brandId } });
 }
 
-export async function listProgramsForReview(status: AffiliateProgramStatus | "ALL" = "PENDING_REVIEW", take = 100) {
-  return prisma.affiliateProgram.findMany({
-    where: status === "ALL" ? {} : { status },
-    orderBy: [{ submittedAt: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }],
-    take,
-    include: { brand: { select: { name: true, slug: true, verificationStatus: true, owner: { select: { email: true } } } }, _count: { select: { links: true, clicks: true } } },
-  });
+/**
+ * Admin listing queue. `q` searches programme, brand, category and country;
+ * `source` separates curated listings (added by Refnivo) from brand submissions.
+ * Paged so the queue keeps working at hundreds of listings.
+ */
+export async function listProgramsForReview(
+  status: AffiliateProgramStatus | "ALL" = "PENDING_REVIEW",
+  take = 100,
+  opts: { q?: string; source?: "curated" | "brand"; skip?: number } = {},
+) {
+  const q = opts.q?.trim();
+  const where: Prisma.AffiliateProgramWhereInput = {
+    ...(status === "ALL" ? {} : { status }),
+    ...(opts.source === "curated" ? { brandId: null } : opts.source === "brand" ? { brandId: { not: null } } : {}),
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { brandName: { contains: q, mode: "insensitive" } },
+            { brand: { name: { contains: q, mode: "insensitive" } } },
+            { category: { contains: q, mode: "insensitive" } },
+            { geography: { contains: q, mode: "insensitive" } },
+          ],
+        }
+      : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.affiliateProgram.findMany({
+      where,
+      orderBy: [{ submittedAt: { sort: "asc", nulls: "last" } }, { updatedAt: "desc" }],
+      take,
+      skip: opts.skip ?? 0,
+      include: { brand: { select: { name: true, slug: true, verificationStatus: true, owner: { select: { email: true } } } }, _count: { select: { links: true, clicks: true } } },
+    }),
+    prisma.affiliateProgram.count({ where }),
+  ]);
+  return Object.assign(rows, { total });
 }
 
 /**

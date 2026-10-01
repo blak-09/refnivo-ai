@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import type { AffiliateProgramStatus } from "@prisma/client";
 import { PlusIcon, StoreIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
@@ -29,11 +31,25 @@ const TONE: Record<AffiliateProgramStatus, string> = { DRAFT: "DRAFT", PENDING_R
 const STATUS_LABEL: Record<AffiliateProgramStatus, string> = { DRAFT: "draft", PENDING_REVIEW: "to review", APPROVED: "active", REJECTED: "rejected", PAUSED: "inactive", CLOSED: "closed" };
 
 /** Admin review queue for external affiliate programme listings. */
-export default async function AdminAffiliateProgramsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+const PAGE_SIZE = 100;
+const SOURCES = [
+  { value: undefined, label: "All sources" },
+  { value: "curated", label: "Added by Refnivo" },
+  { value: "brand", label: "Brand submitted" },
+] as const;
+
+export default async function AdminAffiliateProgramsPage({ searchParams }: { searchParams: Promise<{ status?: string; q?: string; source?: string; page?: string }> }) {
   await requireRole("ADMIN");
-  const { status } = await searchParams;
-  const filter = FILTERS.some((f) => f.value === status) ? (status as AffiliateProgramStatus | "ALL") : "PENDING_REVIEW";
-  const rows = await listProgramsForReview(filter);
+  const sp = await searchParams;
+  const filter = FILTERS.some((f) => f.value === sp.status) ? (sp.status as AffiliateProgramStatus | "ALL") : "PENDING_REVIEW";
+  const source = sp.source === "curated" || sp.source === "brand" ? sp.source : undefined;
+  const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
+  const rows = await listProgramsForReview(filter, PAGE_SIZE, { q: sp.q, source, skip: (page - 1) * PAGE_SIZE });
+  const href = (over: Record<string, string | undefined>) => {
+    const p = new URLSearchParams();
+    for (const [k, v] of Object.entries({ status: filter, q: sp.q, source, ...over })) if (v) p.set(k, v);
+    return `/dashboard/admin/affiliate-programs?${p}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -50,7 +66,7 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
         {FILTERS.map((f) => (
           <Link
             key={f.value}
-            href={`/dashboard/admin/affiliate-programs?status=${f.value}`}
+            href={href({ status: f.value, page: undefined })}
             role="tab"
             aria-selected={filter === f.value}
             className={cn("rounded-full border px-3 py-1 text-xs font-medium transition-colors", filter === f.value ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted")}
@@ -59,11 +75,28 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
           </Link>
         ))}
       </div>
+      <form className="flex flex-col gap-2 sm:flex-row" role="search">
+        <input type="hidden" name="status" value={filter} />
+        <Input name="q" defaultValue={sp.q} placeholder="Search programme, brand, category or country…" aria-label="Search listings" className="sm:max-w-sm" />
+        <NativeSelect name="source" defaultValue={source ?? ""} aria-label="Source" className="sm:w-48">
+          {SOURCES.map((s) => (
+            <option key={s.label} value={s.value ?? ""}>
+              {s.label}
+            </option>
+          ))}
+        </NativeSelect>
+        <Button type="submit" variant="outline">
+          Filter
+        </Button>
+      </form>
 
       <Card>
         <CardHeader>
-          <CardTitle>Listings</CardTitle>
-          <CardDescription>Oldest submission first. “Activate” publishes a listing; “Check link” re-tests its official URL.</CardDescription>
+          <CardTitle>Listings ({rows.total})</CardTitle>
+          <CardDescription>
+            Oldest submission first. “Activate” publishes a listing; “Check link” re-tests its official URL. Refnivo&apos;s own campaigns are managed under
+            Campaigns.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {!rows.length ? (
@@ -152,6 +185,25 @@ export default async function AdminAffiliateProgramsPage({ searchParams }: { sea
               </Table>
             </div>
           )}
+          {rows.total > PAGE_SIZE ? (
+            <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + rows.length} of {rows.total}
+              </span>
+              <div className="flex gap-2">
+                {page > 1 ? (
+                  <Button size="sm" variant="outline" nativeButton={false} render={<Link href={href({ page: String(page - 1) })} />}>
+                    Previous
+                  </Button>
+                ) : null}
+                {page * PAGE_SIZE < rows.total ? (
+                  <Button size="sm" variant="outline" nativeButton={false} render={<Link href={href({ page: String(page + 1) })} />}>
+                    Next
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
