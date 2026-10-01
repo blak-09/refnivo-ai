@@ -13,7 +13,7 @@ import { appOrigin } from "./links";
  * The page is rendered per request (the header needs the visitor's session),
  * but none of this content is visitor-specific, so it is cached for 60 s and
  * bounded to what the page actually shows (4 campaigns, 16 brands, 4
- * creators, 24 external programmes, counts). Before this, every homepage hit ran the full
+ * creators, 60 external programmes, counts). Before this, every homepage hit ran the full
  * marketplace, brand and creator listings (unbounded) plus three counts and a
  * QR render, all round-tripping to the database.
  *
@@ -44,7 +44,7 @@ const loadLanding = unstable_cache(
       listMarketplaceCampaigns({ sort: "trending", limit: 4 }),
       listPublicBrands({ limit: 16 }),
       listPublicCreators({ limit: 4 }),
-      listPublishedPrograms({ sort: "featured" }, 24),
+      listPublishedPrograms({ sort: "featured" }, 60),
       (async (): Promise<Omit<LandingStats, "externalPrograms">> => {
         const [activeCampaigns, brandCount, creatorCount] = await Promise.all([
           prisma.campaign.count({ where: { status: "ACTIVE" } }),
@@ -57,7 +57,7 @@ const loadLanding = unstable_cache(
     return { campaigns, brands, creators, programs: external.programs, stats: { ...stats, externalPrograms: external.total } };
   },
   // Bump the key whenever LandingData changes shape: cached entries outlive deployments.
-  ["landing-data-v2"],
+  ["landing-data-v3"],
   { revalidate: LANDING_REVALIDATE_SECONDS, tags: [LANDING_CACHE_TAG] },
 );
 

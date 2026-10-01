@@ -85,25 +85,31 @@ function SectionHeading({ id, eyebrow, title, body, center = false }: { id: stri
 
 export default async function LandingPage() {
   // Cached for 60 s and bounded to what is shown (lib/services/landing.ts); renders even if the database is down.
-  const [{ campaigns, brands, creators, programs }, qrDataUrl] = await Promise.all([getLandingData(), getMarketplaceQr()]);
+  const [{ campaigns, brands, creators, programs, stats }, qrDataUrl] = await Promise.all([getLandingData(), getMarketplaceQr()]);
 
   const hero = campaigns[0] ?? null;
   const showcaseCreators = creators.slice(0, 2).map((c) => ({ name: c.displayName, imageUrl: c.profileImageUrl }));
 
-  // Logo strip: Refnivo brands and external programmes that have a real logo, one entry per brand name.
+  // Logo strip: verified Refnivo brands and published external programmes with a real logo,
+  // one entry per brand name, in a stable mixed order (not A–Z) so the strip never starts "A, A, A".
   const seen = new Set<string>();
+  const mixKey = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   const logos: LogoItem[] = [
-    ...brands.filter((b) => b.logoUrl && b.slug).map((b) => ({ key: `b-${b.slug}`, name: b.name, logoUrl: b.logoUrl!, href: `/brands/${b.slug}` })),
+    ...brands
+      .filter((b) => b.logoUrl && b.slug && b.verificationStatus === "VERIFIED")
+      .map((b) => ({ key: `b-${b.slug}`, name: b.name, logoUrl: b.logoUrl!, href: `/brands/${b.slug}` })),
     ...programs.flatMap((p) => {
       const logoUrl = p.logoUrl ?? p.brand?.logoUrl;
       return logoUrl ? [{ key: `p-${p.slug}`, name: programBrandName(p), logoUrl, href: `/affiliate-programs/${p.slug}` }] : [];
     }),
-  ].filter((l) => {
-    const k = l.name.toLowerCase();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  });
+  ]
+    .filter((l) => {
+      const k = l.name.toLowerCase();
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .sort((a, b) => mixKey(a.key) - mixKey(b.key));
 
   // Creator visual: a few real listings — Refnivo campaigns first (one per brand), then external programmes.
   const campaignBrands = new Set<string>();
@@ -136,7 +142,7 @@ export default async function LandingPage() {
     <>
       <HeroSection />
 
-      <TrustedBrands items={logos} />
+      <TrustedBrands items={logos} total={stats?.externalPrograms ?? null} />
 
       {/* One platform, multiple growth channels */}
       <section id="product" aria-labelledby="platform-heading" className="scroll-mt-20 py-20 sm:py-24">
