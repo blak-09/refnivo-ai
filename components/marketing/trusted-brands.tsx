@@ -23,8 +23,8 @@ function trimmed(logoUrl: string) {
  *
  * Wordmark logos (wider than tall) are shown large on their own; icon-style
  * logos sit beside the brand name, so no name is ever printed twice. Two rows
- * drift in opposite directions, pause on hover, and stand still for reduced
- * motion (then scroll by hand).
+ * drift in opposite directions and pause on hover or keyboard focus; with
+ * reduced motion they keep moving, but three times slower.
  */
 export function TrustedBrands({ items, total }: { items: LogoItem[]; total: number | null }) {
   if (items.length < 6) return null;
@@ -35,7 +35,7 @@ export function TrustedBrands({ items, total }: { items: LogoItem[]; total: numb
     const t = trimmed(b.logoUrl);
     const wordmark = t && t.w / t.h >= 1.8;
     return (
-      <li key={`${hidden ? "b" : "a"}-${b.key}`} aria-hidden={hidden || undefined} className={hidden ? "motion-reduce:hidden" : undefined}>
+      <li key={`${hidden ? "b" : "a"}-${b.key}`} aria-hidden={hidden || undefined}>
         <Link
           href={b.href}
           tabIndex={hidden ? -1 : undefined}
@@ -80,11 +80,11 @@ export function TrustedBrands({ items, total }: { items: LogoItem[]; total: numb
       </div>
       <div className="group/marquee mt-8 space-y-4 [mask-image:linear-gradient(to_right,transparent,black_7%,black_93%,transparent)]">
         {rows.map((row, i) => (
-          <div key={i} className="overflow-x-auto py-1 [scrollbar-width:none] motion-safe:overflow-hidden [&::-webkit-scrollbar]:hidden">
+          <div key={i} className="overflow-hidden py-1">
             <ul
               className={cn(
-                "flex w-max gap-4 px-2 group-hover/marquee:[animation-play-state:paused]",
-                i % 2 ? "motion-safe:animate-marquee-reverse" : "motion-safe:animate-marquee",
+                "flex w-max gap-4 px-2 group-focus-within/marquee:[animation-play-state:paused] group-hover/marquee:[animation-play-state:paused] motion-reduce:[animation-duration:240s]",
+                i % 2 ? "animate-marquee-reverse" : "animate-marquee",
               )}
             >
               {row.map((b) => tile(b, false))}
