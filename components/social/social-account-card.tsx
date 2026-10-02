@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BrandLogo } from "@/components/products/product-thumb";
+import { PLATFORM_BRAND, PlatformIcon } from "@/components/social/platform-icon";
+import { cn } from "@/lib/utils";
 import type { PublicSocialAccount } from "@/lib/services/social-accounts";
 import { formatDate } from "@/lib/utils/dates";
 
@@ -57,7 +59,15 @@ export function SocialAccountCard({ row }: { row: PlatformRow }) {
     <Card className="h-full rounded-2xl">
       <CardContent className="flex h-full flex-col gap-3">
         <div className="flex items-start gap-3">
-          <BrandLogo src={account?.avatarUrl ?? null} name={row.label} className="size-10 rounded-xl" sizes="40px" />
+          {account?.avatarUrl ? (
+            // The connected account's own picture, badged with the platform's mark.
+            <span className="relative shrink-0">
+              <BrandLogo src={account.avatarUrl} name={row.label} className="size-11 rounded-full" sizes="44px" />
+              <PlatformIcon platform={row.platform} className="absolute -right-1 -bottom-1 size-5 rounded-md ring-2 ring-card" />
+            </span>
+          ) : (
+            <PlatformIcon platform={row.platform} className="size-11" />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="font-semibold">{row.label}</h3>
@@ -74,7 +84,7 @@ export function SocialAccountCard({ row }: { row: PlatformRow }) {
             {account ? (
               <p className="truncate text-sm text-muted-foreground">{account.handle ?? "Linked"}</p>
             ) : (
-              <p className="text-sm text-muted-foreground">{row.configured ? "Not connected" : "Unavailable on this deployment"}</p>
+              <p className="text-sm text-muted-foreground">{row.configured ? "Not connected" : "Coming soon"}</p>
             )}
           </div>
         </div>
@@ -102,7 +112,11 @@ export function SocialAccountCard({ row }: { row: PlatformRow }) {
             ) : null}
           </div>
         ) : (
-          <p className="text-xs text-muted-foreground">{row.reason}</p>
+          // The technical reason (missing keys) is for the team, not the creator.
+          <p className="text-xs text-muted-foreground">
+            Refnivo is finishing the official {row.label} connection. Until then you can add your {row.label} handle on your profile — it is shown as
+            self-reported.
+          </p>
         )}
 
         <div className="mt-auto flex flex-wrap gap-2 pt-1">
@@ -122,12 +136,17 @@ export function SocialAccountCard({ row }: { row: PlatformRow }) {
             </>
           ) : row.configured ? (
             // A plain link: the platform authenticates the creator, we never see a password.
-            <Button size="sm" nativeButton={false} render={<a href={`/api/social/${row.platform.toLowerCase()}/start`} />}>
-              Connect {row.label}
+            <Button
+              size="sm"
+              className={cn("gap-2 border-0", PLATFORM_BRAND[row.platform]?.button)}
+              nativeButton={false}
+              render={<a href={`/api/social/${row.platform.toLowerCase()}/start`} />}
+            >
+              <PlatformIcon platform={row.platform} className="size-4 rounded-[4px] ring-1 ring-white/40" /> Connect {row.label}
             </Button>
           ) : (
             <Button size="sm" variant="outline" disabled>
-              Not available yet
+              Coming soon
             </Button>
           )}
         </div>

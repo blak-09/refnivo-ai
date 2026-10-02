@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { InfoIcon, ShieldCheckIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +13,7 @@ const ERRORS: Record<string, string> = {
   cancelled: "You cancelled the connection — nothing was linked.",
   state: "That link expired or did not start here. Please press Connect again.",
   expired: "The connection took too long. Please press Connect again.",
-  unavailable: "That platform is not enabled on this deployment yet.",
+  unavailable: "That platform connection is coming soon.",
   claimed: "That account is already linked to another Refnivo profile.",
   provider: "The platform refused the connection.",
   "rate-limited": "Too many attempts. Please try again in a little while.",
@@ -56,10 +57,13 @@ export default async function SocialAccountsPage({ searchParams }: { searchParam
           <CardContent className="flex items-start gap-3 py-2 text-sm">
             <InfoIcon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
             <div>
-              <p className="font-medium">Social connections are not switched on yet</p>
+              <p className="font-medium">Official social connections are coming soon</p>
               <p className="mt-1 text-muted-foreground">
-                Each platform needs its own developer app before Refnivo can offer it. Until then you can still add your handles by hand on your profile — they
-                are shown as self-reported.
+                Until they are switched on, add your handles on your{" "}
+                <Link href="/dashboard/creator/profile" className="font-medium text-primary hover:underline">
+                  profile
+                </Link>{" "}
+                — brands see them marked as self-reported.
               </p>
             </div>
           </CardContent>
