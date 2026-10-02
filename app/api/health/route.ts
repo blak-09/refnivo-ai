@@ -3,6 +3,7 @@ import { getBootState } from "@/lib/config/boot-state";
 import { describeDatabaseTarget } from "@/lib/config/database-url";
 import { checkDatabase, checkSchema } from "@/lib/db/health";
 import { describeStorage } from "@/lib/storage/availability";
+import { SOCIAL_PLATFORMS, getSocialProvider } from "@/lib/social";
 import { probeRateLimitStore } from "@/lib/utils/rate-limit";
 
 export const runtime = "nodejs";
@@ -41,6 +42,8 @@ export async function GET() {
         storage: describeStorage(process.env),
         // Which limiter store is actually answering (fail-open hides provider errors from users).
         rateLimit: await probeRateLimitStore(),
+        // Which social platforms creators can connect (true = both keys and the encryption key are set). No values.
+        social: Object.fromEntries(SOCIAL_PLATFORMS.map((p) => [p.toLowerCase(), getSocialProvider(p) !== null])),
         latencyMs: db.latencyMs,
         time: new Date().toISOString(),
       }
