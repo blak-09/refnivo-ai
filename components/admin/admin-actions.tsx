@@ -1,7 +1,8 @@
 "use client";
 
-import { BanIcon, CheckIcon, PauseIcon, RotateCcwIcon, ShieldCheckIcon, ShieldOffIcon, SquareIcon, ArchiveIcon, XIcon, WalletIcon, SearchIcon } from "lucide-react";
+import { BanIcon, CheckIcon, PauseIcon, RotateCcwIcon, ShieldCheckIcon, ShieldOffIcon, SquareIcon, ArchiveIcon, XIcon, WalletIcon, SearchIcon, ZapIcon, RefreshCwIcon } from "lucide-react";
 import { moderateCampaignAction, payoutReviewAction, reactivateUserAction, suspendUserAction, verificationAction } from "@/app/actions/admin";
+import { refreshAutoPayoutAction, startAutoPayoutAction } from "@/app/actions/payout-accounts";
 import { ConfirmAction } from "@/components/shared/confirm-action";
 
 // ---------------------------------------------------------------------------
@@ -170,9 +171,51 @@ export function CampaignModeration({ campaignId, status }: { campaignId: string;
 // Payout review
 // ---------------------------------------------------------------------------
 
-export function PayoutReview({ payoutId, status }: { payoutId: string; status: string }) {
+export type PayoutAutoState = {
+  /** RazorpayX is configured and the request has a saved account. */
+  canAutoPay: boolean;
+  amountLabel: string;
+  accountLabel: string | null;
+  provider: string | null;
+  providerPayoutId: string | null;
+  providerStatus: string | null;
+};
+
+export function PayoutReview({ payoutId, status, auto }: { payoutId: string; status: string; auto?: PayoutAutoState }) {
+  // A RazorpayX payout in flight is settled by the provider (webhook / refresh), not by hand.
+  const inFlight = status === "PROCESSING" && auto?.provider === "RAZORPAYX";
   return (
     <div className="flex flex-wrap gap-2">
+      {status === "APPROVED" && auto?.canAutoPay ? (
+        <ConfirmAction
+          label={
+            <>
+              <ZapIcon /> Pay via RazorpayX
+            </>
+          }
+          variant="default"
+          title={`Send ${auto.amountLabel} now?`}
+          description={`RazorpayX transfers ${auto.amountLabel} to ${auto.accountLabel ?? "the saved account"} straight away. The request is marked paid automatically with the bank reference once RazorpayX confirms it.`}
+          confirmLabel="Send money"
+          successMessage="Payout sent to RazorpayX."
+          run={() => startAutoPayoutAction({ payoutId })}
+        />
+      ) : null}
+      {inFlight ? (
+        <ConfirmAction
+          label={
+            <>
+              <RefreshCwIcon /> {auto?.providerPayoutId ? "Refresh status" : "Retry safely"}
+            </>
+          }
+          title="Check with RazorpayX"
+          description="Asks RazorpayX for the latest status (or resends the same attempt, which never pays twice)."
+          confirmLabel="Check"
+          successMessage="Status updated."
+          run={() => refreshAutoPayoutAction({ payoutId })}
+          immediate
+        />
+      ) : null}
       {status === "REQUESTED" ? (
         <ConfirmAction
           label={
@@ -204,7 +247,7 @@ export function PayoutReview({ payoutId, status }: { payoutId: string; status: s
           run={(note) => payoutReviewAction({ payoutId, action: "APPROVE", note })}
         />
       ) : null}
-      {["APPROVED", "PROCESSING"].includes(status) ? (
+      {["APPROVED", "PROCESSING"].includes(status) && !inFlight ? (
         <ConfirmAction
           label={
             <>
@@ -220,7 +263,7 @@ export function PayoutReview({ payoutId, status }: { payoutId: string; status: s
           run={(reference) => payoutReviewAction({ payoutId, action: "MARK_PAID", reference })}
         />
       ) : null}
-      {["APPROVED", "PROCESSING"].includes(status) ? (
+      {["APPROVED", "PROCESSING"].includes(status) && !inFlight ? (
         <ConfirmAction
           label={
             <>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { ReferralStatus } from "@prisma/client";
-import { ShoppingCartIcon } from "lucide-react";
+import { PiggyBankIcon, ShoppingCartIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -14,6 +14,7 @@ import { requireBrand } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
 import { countOrdersByStatus, listBrandOrders } from "@/lib/services/conversions";
 import { countPendingClaims, listBrandClaims } from "@/lib/services/order-claims";
+import { getWalletSummary, pendingWalletExposure, walletEnabled } from "@/lib/services/wallet";
 import { formatDate } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     countPendingClaims(brand.id),
   ]);
   const total = Object.values(counts).reduce((s, n) => s + (n ?? 0), 0);
+  const wallet = walletEnabled() ? await Promise.all([getWalletSummary(brand.id, 0), pendingWalletExposure(brand.id)]).then(([w, e]) => ({ balance: w.balance, owed: e.amount })) : null;
 
   return (
     <div className="space-y-6">
@@ -48,6 +50,20 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         title="Orders & Conversions"
         description="Customers confirm their order numbers from the campaign page; you match them in your store and confirm. You can also record orders by hand. A click is never counted as a sale."
       />
+
+      {wallet ? (
+        <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-4 py-3 text-sm", wallet.balance < wallet.owed ? "border-amber-500/40 bg-amber-500/5" : "bg-card")}>
+          <PiggyBankIcon className="size-4 text-primary" aria-hidden />
+          <span>
+            Wallet balance <span className="font-semibold tabular-nums">{formatMoney(wallet.balance)}</span>
+            <span className="text-muted-foreground"> · pending orders owe {formatMoney(wallet.owed)}</span>
+          </span>
+          <span className="text-muted-foreground">Verifying an order pays its commission and reward from your wallet.</span>
+          <Link href="/dashboard/brand/wallet" className="ml-auto font-medium text-primary hover:underline">
+            {wallet.balance < wallet.owed ? "Top up" : "Open wallet"}
+          </Link>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
         <KpiCard label="Claims to confirm" value={pendingClaims} hint="Customer order numbers awaiting you" />

@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { CheckoutButton } from "@/components/payments/checkout-button";
+import { PaymentMethodsStrip } from "@/components/payments/payment-methods";
 import { requireBrand } from "@/lib/auth/guards";
 import { PLAN_LIST } from "@/lib/config/plans";
 import { paymentsConfig } from "@/lib/payments";
@@ -33,6 +34,8 @@ export default async function BillingPage() {
         <KpiCard label="Payments made" value={transactions.filter((t) => t.status === "PAID" || t.status === "PARTIALLY_REFUNDED").length} icon={ReceiptIcon} />
         <KpiCard label="Billing status" value={config.enabled ? (config.mode === "live" ? "Live" : "Test mode") : "Not enabled"} hint={config.enabled ? "Payments are processed by Razorpay" : "Checkout is switched off on this deployment"} icon={LockIcon} />
       </div>
+
+      {config.enabled ? <PaymentMethodsStrip /> : null}
 
       {!config.enabled ? (
         <Card className="border-dashed">
@@ -149,7 +152,7 @@ export default async function BillingPage() {
                       <TableCell className="text-xs whitespace-nowrap">{formatDateTime(t.createdAt)}</TableCell>
                       <TableCell>
                         <span className="font-mono text-xs font-medium">{t.reference}</span>
-                        <span className="block text-xs text-muted-foreground">{t.planKey ? `${t.planKey} plan` : t.purpose}</span>
+                        <span className="block text-xs text-muted-foreground">{t.purpose === "WALLET_TOPUP" ? "Wallet top-up" : t.planKey ? `${t.planKey} plan` : t.purpose}</span>
                       </TableCell>
                       <TableCell className="text-right tabular-nums">
                         {formatMoney(t.amount, t.currency)}

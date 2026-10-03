@@ -28,7 +28,7 @@ function present(status: PaymentStatus) {
     case "REFUNDED":
       return { icon: AlertCircleIcon, tone: "text-muted-foreground", title: "Payment refunded", body: "This payment was refunded in full." };
     case "FAILED":
-      return { icon: XCircleIcon, tone: "text-destructive", title: "Payment failed", body: "We couldn't complete your payment. No plan was activated." };
+      return { icon: XCircleIcon, tone: "text-destructive", title: "Payment failed", body: "We couldn't complete your payment. Nothing was charged to your plan or wallet." };
     case "CANCELLED":
       return { icon: XCircleIcon, tone: "text-muted-foreground", title: "Payment cancelled", body: "Your payment was cancelled. No successful payment was recorded." };
     case "EXPIRED":
@@ -53,7 +53,8 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
   const view = present(payment.status);
   const open = isOpen(payment.status);
   const plan = getPlan(payment.planKey);
-  const canRetry = ["FAILED", "CANCELLED", "EXPIRED"].includes(payment.status) && !!plan && paymentsEnabled();
+  const isTopup = payment.purpose === "WALLET_TOPUP";
+  const canRetry = ["FAILED", "CANCELLED", "EXPIRED"].includes(payment.status) && (!!plan || isTopup) && paymentsEnabled();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -89,7 +90,12 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
                 <dd className="font-mono text-xs break-all">{payment.providerPaymentId}</dd>
               </div>
             ) : null}
-            {plan ? (
+            {isTopup ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">For</dt>
+                <dd>Wallet top-up</dd>
+              </div>
+            ) : plan ? (
               <div className="flex justify-between gap-4">
                 <dt className="text-muted-foreground">Plan</dt>
                 <dd>{plan.name}</dd>
@@ -125,13 +131,15 @@ export default async function PaymentPage({ params }: { params: Promise<{ id: st
           ) : null}
 
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
-            <Button nativeButton={false} render={<Link href="/dashboard/brand" />} variant={payment.status === "PAID" ? "default" : "outline"} className="w-full sm:w-auto">
-              Go to dashboard
+            <Button nativeButton={false} render={<Link href={isTopup ? "/dashboard/brand/wallet" : "/dashboard/brand"} />} variant={payment.status === "PAID" ? "default" : "outline"} className="w-full sm:w-auto">
+              {isTopup ? "Go to wallet" : "Go to dashboard"}
             </Button>
             <Button nativeButton={false} render={<Link href="/dashboard/brand/billing" />} variant="outline" className="w-full sm:w-auto">
               View transactions
             </Button>
-            {canRetry && plan ? (
+            {canRetry && isTopup ? (
+              <CheckoutButton topupAmountMinor={payment.amount} label="Retry payment" payer={{ name: user.name, email: user.email }} className="w-full sm:w-auto" />
+            ) : canRetry && plan ? (
               <CheckoutButton planKey={plan.key} planName={plan.name} label="Retry payment" payer={{ name: user.name, email: user.email }} className="w-full sm:w-auto" />
             ) : null}
             <PaymentStatusWatcher transactionId={payment.id} open={open} />

@@ -22,6 +22,8 @@ type ShellProps = {
   user: { name: string; email: string; avatarUrl?: string | null };
   /** Unread in-app notifications (server-computed). */
   unreadNotifications?: number;
+  /** Nav entries for features switched off on this deployment. */
+  hiddenHrefs?: string[];
   onLogout: () => Promise<void>;
   children: React.ReactNode;
 };
@@ -79,9 +81,11 @@ function SidebarBody({
   roleLabel,
   user,
   unreadNotifications = 0,
+  hiddenHrefs,
   onLogout,
   onNavigate,
 }: Omit<ShellProps, "children"> & { onNavigate?: () => void }) {
+  const nav = hiddenHrefs?.length ? NAV[navKey].filter((item) => !hiddenHrefs.includes(item.href)) : NAV[navKey];
   return (
     <div className="flex h-full flex-col">
       <div className="px-4 pt-5 pb-4">
@@ -92,7 +96,7 @@ function SidebarBody({
         <p className="truncate text-xs text-muted-foreground">{workspaceSubtitle ?? roleLabel}</p>
       </div>
       <div className="flex-1 overflow-y-auto px-3 pb-3">
-        <NavList nav={NAV[navKey]} onNavigate={onNavigate} unread={unreadNotifications} />
+        <NavList nav={nav} onNavigate={onNavigate} unread={unreadNotifications} />
       </div>
       <Separator />
       <div className="flex items-center gap-2 p-3">

@@ -84,8 +84,8 @@ const PAYMENT_KEY_VARS = [
   "RAZORPAY_KEY_ID",
   "RAZORPAY_KEY_SECRET",
   "RAZORPAY_WEBHOOK_SECRET",
-  "PAYOUT_ACCOUNT_ENCRYPTION_KEY",
 ] as const;
+const RAZORPAYX_VARS = ["RAZORPAYX_KEY_ID", "RAZORPAYX_KEY_SECRET", "RAZORPAYX_ACCOUNT_NUMBER", "RAZORPAYX_WEBHOOK_SECRET"] as const;
 const DEV_ESCAPE_HATCHES = ["SEED_ALLOW_REMOTE", "ADMIN_ALLOW_LOCAL", "STORAGE_ALLOW_LOCAL", "RATE_LIMIT_ALLOW_MEMORY"] as const;
 
 function isHttps(value: string | undefined): boolean {
@@ -214,6 +214,30 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
     if (provider !== "NONE") warnings.push(`PAYMENT_PROVIDER=${provider} is set but PAYMENTS_ENABLED is not true: checkout is disabled.`);
     const keysPresent = PAYMENT_KEY_VARS.filter((name) => set(env[name]));
     if (keysPresent.length) warnings.push(`Payment credentials are set but payments are disabled: ${keysPresent.join(", ")}.`);
+  }
+
+  // Saved payout accounts: UPI IDs / bank details are encrypted with this key.
+  const payoutKeySet = set(env.PAYOUT_ACCOUNT_ENCRYPTION_KEY);
+  if (payoutKeySet && (env.PAYOUT_ACCOUNT_ENCRYPTION_KEY as string).trim().length < 16) {
+    errors.push("PAYOUT_ACCOUNT_ENCRYPTION_KEY is too short: use 32 random bytes (openssl rand -base64 32).");
+  }
+
+  // Automatic payouts (RazorpayX). Optional; half-configured means payouts stay manual.
+  const payoutProvider = (env.PAYOUT_PROVIDER ?? "").trim().toUpperCase();
+  if (payoutProvider === "RAZORPAYX") {
+    const missing = RAZORPAYX_VARS.filter((name) => !set(env[name]));
+    if (missing.length) warnings.push(`PAYOUT_PROVIDER=RAZORPAYX needs ${missing.join(", ")}: payouts stay manual.`);
+    if (!payoutKeySet) warnings.push("PAYOUT_PROVIDER=RAZORPAYX needs PAYOUT_ACCOUNT_ENCRYPTION_KEY (saved payout accounts): payouts stay manual.");
+  } else if (payoutProvider && payoutProvider !== "NONE" && payoutProvider !== "MANUAL") {
+    warnings.push(`PAYOUT_PROVIDER "${payoutProvider}" is not supported (use RAZORPAYX): payouts stay manual.`);
+  } else {
+    const present = RAZORPAYX_VARS.filter((name) => set(env[name]));
+    if (present.length) warnings.push(`RazorpayX credentials are set but PAYOUT_PROVIDER is not RAZORPAYX: ${present.join(", ")}.`);
+  }
+
+  // Brand wallet. Top-ups need payments; with payments off, admins can still credit wallets by hand.
+  if ((env.BRAND_WALLET_ENABLED ?? "").trim().toLowerCase() === "true" && !paymentsOn) {
+    warnings.push("BRAND_WALLET_ENABLED=true but payments are off: brands cannot top up online, and orders cannot be verified until an admin credits their wallet.");
   }
 
   // Social connections. Each platform is optional and independent; a half-set

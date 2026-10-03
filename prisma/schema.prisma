@@ -264,6 +264,26 @@ enum PaymentStatus {
 enum PaymentPurpose {
   /// A brand buying or renewing a subscription plan.
   BRAND_PLAN
+  /// A brand adding money to its Refnivo wallet, which funds commissions and rewards.
+  WALLET_TOPUP
+}
+
+enum PayoutAccountType {
+  UPI
+  BANK
+}
+
+enum WalletEntryType {
+  /// Money added through checkout (credit).
+  TOPUP
+  /// A top-up refunded by the provider (debit).
+  TOPUP_REFUND
+  /// Commissions and rewards owed for a verified order (debit).
+  ORDER_DEBIT
+  /// A verified order later refunded: what it owed comes back (credit).
+  REVERSAL_CREDIT
+  /// Manual correction by an admin, with a reason (either sign).
+  ADJUSTMENT
 }
 
 enum SubscriptionStatus {
@@ -384,6 +404,7 @@ model User {
   rewards             Reward[]
   commissions         Commission[]
   payoutRequests      PayoutRequest[]
+  payoutAccounts      PayoutAccount[]
   auditLogs           AuditLog[]
   notifications       Notification[]
   passwordResetTokens PasswordResetToken[]
@@ -451,6 +472,7 @@ model Brand {
   orderClaims       OrderClaim[]
   payments          PaymentTransaction[]
   subscription      BrandSubscription?
+  wallet            BrandWallet?
   connections       Connection[]
   affiliatePrograms AffiliateProgram[]
 
@@ -1136,28 +1158,102 @@ model BrandSubscription {
 }
 
 model PayoutRequest {
-  id              String       @id @default(cuid())
-  userId          String
-  kind            PayoutKind   @default(COMMISSION)
+  id               String       @id @default(cuid())
+  userId           String
+  kind             PayoutKind   @default(COMMISSION)
   /// Minor units. Frozen at request time from the linked items.
-  amount          Int
-  currency        String       @default("INR")
-  status          PayoutStatus @default(REQUESTED)
+  amount           Int
+  currency         String       @default("INR")
+  status           PayoutStatus @default(REQUESTED)
   /// Free-text settlement method chosen by the user (e.g. "UPI", "Bank transfer", "Brand voucher"). Never account numbers.
-  payoutMethod    String
+  payoutMethod     String
   /// External settlement reference recorded by the admin when marking PAID.
-  payoutReference String?
-  adminNote       String?
-  processedById   String?
-  requestedAt     DateTime     @default(now())
-  processedAt     DateTime?
+  payoutReference  String?
+  adminNote        String?
+  processedById    String?
+  requestedAt      DateTime     @default(now())
+  processedAt      DateTime?
+  /// Saved account the user chose to be paid into. Null for older free-text requests.
+  payoutAccountId  String?
+  /// Automatic payout via a provider (RAZORPAYX). Null when settled by hand.
+  provider         String?
+  providerPayoutId String?      @unique
+  /// Provider-reported state (queued / processing / processed / reversed / failed).
+  providerStatus   String?
+  /// Incremented per automatic attempt; part of the provider idempotency key.
+  providerAttempt  Int          @default(0)
+  /// Admin who started the automatic payout (credited when the provider confirms).
+  initiatedById    String?
 
-  user  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  items PayoutItem[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payoutAccount PayoutAccount? @relation(fields: [payoutAccountId], references: [id], onDelete: SetNull)
+  items         PayoutItem[]
 
   @@index([userId, status])
   @@index([status])
   @@map("payout_requests")
+}
+
+/// Where a creator or customer is paid. Details are encrypted at rest; only a masked label is ever shown.
+model PayoutAccount {
+  id                    String            @id @default(cuid())
+  userId                String
+  type                  PayoutAccountType
+  holderName            String
+  /// AES-256-GCM (PAYOUT_ACCOUNT_ENCRYPTION_KEY) JSON: { vpa } or { accountNumber, ifsc }. Never logged, never sent to the browser.
+  encryptedDetails      String
+  /// Safe display label, e.g. "ar•••@okicici" or "HDFC0001234 · ••••4321".
+  maskedLabel           String
+  isDefault             Boolean           @default(false)
+  /// RazorpayX contact / fund account, created on the first automatic payout.
+  providerContactId     String?
+  providerFundAccountId String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  /// Soft delete: past payouts keep pointing at the account they were paid into.
+  deletedAt             DateTime?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payoutRequests PayoutRequest[]
+
+  @@index([userId, deletedAt])
+  @@map("payout_accounts")
+}
+
+/// A brand's prepaid balance. `balance` changes only together with a WalletEntry, under a row lock.
+model BrandWallet {
+  brandId   String   @id
+  /// Minor units. Can only go negative through a provider refund of a top-up or an admin adjustment.
+  balance   Int      @default(0)
+  currency  String   @default("INR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  brand   Brand         @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  entries WalletEntry[]
+
+  @@map("brand_wallets")
+}
+
+/// Append-only wallet ledger. `idempotencyKey` makes every credit/debit happen at most once.
+model WalletEntry {
+  id                   String          @id @default(cuid())
+  brandId              String
+  type                 WalletEntryType
+  /// Signed minor units: positive = credit, negative = debit.
+  amount               Int
+  balanceAfter         Int
+  idempotencyKey       String          @unique
+  referralId           String?
+  paymentTransactionId String?
+  note                 String?
+  actorId              String?
+  createdAt            DateTime        @default(now())
+
+  wallet BrandWallet @relation(fields: [brandId], references: [brandId], onDelete: Cascade)
+
+  @@index([brandId, createdAt])
+  @@map("wallet_entries")
 }
 
 /// Links exactly one commission or reward to at most one payout request.

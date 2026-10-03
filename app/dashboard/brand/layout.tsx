@@ -1,6 +1,7 @@
 import { logoutAction } from "@/app/actions/auth";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { countUnread } from "@/lib/services/notify";
+import { walletEnabled } from "@/lib/services/wallet";
 import { requireBrand } from "@/lib/auth/guards";
 
 export default async function BrandLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export default async function BrandLayout({ children }: { children: React.ReactN
       workspaceSubtitle={brand.industry ?? "Brand"}
       user={{ name: user.name, email: user.email, avatarUrl: user.avatarUrl }}
       unreadNotifications={unreadNotifications}
+      hiddenHrefs={walletEnabled() ? [] : ["/dashboard/brand/wallet"]}
       onLogout={logoutAction}
     >
       {children}

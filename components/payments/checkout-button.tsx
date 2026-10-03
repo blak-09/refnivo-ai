@@ -6,6 +6,7 @@ import Script from "next/script";
 import { toast } from "sonner";
 import { Loader2Icon, LockIcon } from "lucide-react";
 import { cancelPaymentAction, startPlanCheckoutAction, verifyPaymentAction } from "@/app/actions/payments";
+import { startWalletTopupAction } from "@/app/actions/wallet";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -39,17 +40,23 @@ declare global {
 export function CheckoutButton({
   planKey,
   planName,
+  topupAmountMinor,
   label,
   payer,
   className,
   variant,
+  disabled,
 }: {
-  planKey: string;
-  planName: string;
+  /** A plan purchase… */
+  planKey?: string;
+  planName?: string;
+  /** …or a wallet top-up (whole rupees, in paise). */
+  topupAmountMinor?: number;
   label: string;
   payer: { name: string; email: string };
   className?: string;
   variant?: React.ComponentProps<typeof Button>["variant"];
+  disabled?: boolean;
 }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
@@ -59,7 +66,7 @@ export function CheckoutButton({
     if (pending) return; // no double submits
     setPending(true);
     try {
-      const created = await startPlanCheckoutAction({ planKey });
+      const created = topupAmountMinor !== undefined ? await startWalletTopupAction({ amountMinor: topupAmountMinor }) : await startPlanCheckoutAction({ planKey });
       if (!created.ok) {
         toast.error(created.error);
         return;
@@ -75,7 +82,7 @@ export function CheckoutButton({
         amount,
         currency,
         name: "Refnivo",
-        description: `${planName} plan`,
+        description: topupAmountMinor !== undefined ? "Wallet top-up" : `${planName ?? created.data.planName} plan`,
         order_id: providerOrderId,
         prefill: { name: payer.name, email: payer.email },
         theme: { color: "#4f46e5" },
@@ -107,7 +114,7 @@ export function CheckoutButton({
   return (
     <>
       <Script src="https://checkout.razorpay.com/v1/checkout.js" strategy="lazyOnload" onReady={() => setScriptReady(true)} />
-      <Button onClick={start} disabled={pending || !scriptReady} className={className} variant={variant}>
+      <Button onClick={start} disabled={disabled || pending || !scriptReady} className={className} variant={variant}>
         {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : <LockIcon className="size-4" aria-hidden />}
         {pending ? "Opening secure checkout…" : label}
       </Button>

@@ -4,17 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { KpiCard, PageHeader } from "@/components/dashboard/primitives";
 import { PartnerConversionsTable } from "@/components/links/partner-conversions-table";
 import { PayoutHistory } from "@/components/payouts/payout-history";
+import { PayoutAccountsManager } from "@/components/payouts/payout-accounts";
 import { PayoutRequestButton } from "@/components/payouts/payout-panel";
 import { requireCreator } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
 import { getPartnerStats } from "@/lib/services/metrics";
+import { autoPayoutsEnabled } from "@/lib/services/auto-payouts";
+import { listPayoutAccounts, MAX_PAYOUT_ACCOUNTS, payoutAccountsEnabled } from "@/lib/services/payout-accounts";
 import { payoutSummary } from "@/lib/services/payouts";
 
 export const metadata: Metadata = { title: "Earnings" };
 
 export default async function CreatorEarningsPage() {
   const { user } = await requireCreator();
-  const [stats, payout] = await Promise.all([getPartnerStats(user.id), payoutSummary(user.id, "COMMISSION")]);
+  const accountsOn = payoutAccountsEnabled();
+  const [stats, payout, accounts] = await Promise.all([getPartnerStats(user.id), payoutSummary(user.id, "COMMISSION"), accountsOn ? listPayoutAccounts(user.id) : Promise.resolve([])]);
+  const automatic = autoPayoutsEnabled();
 
   const blockedReason = payout.open
     ? `A request for ${formatMoney(payout.open.amount)} is ${payout.open.status.toLowerCase().replace("_", " ")}.`
@@ -37,8 +42,8 @@ export default async function CreatorEarningsPage() {
         <CardHeader>
           <CardTitle>Payouts</CardTitle>
           <CardDescription>
-            Payouts are settled manually by the Refnivo AI team — there is no automatic transfer. Request a payout once your approved commission reaches{" "}
-            {formatMoney(payout.minimum)}; the team reviews it, settles it to your chosen method and records the reference here.
+            Request a payout once your approved commission reaches {formatMoney(payout.minimum)}. The Refnivo AI team reviews every request,{" "}
+            {automatic ? "then sends it straight to your saved UPI ID or bank account" : "settles it to your chosen method"} and records the bank reference here.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -46,10 +51,21 @@ export default async function CreatorEarningsPage() {
             Eligible now: <span className="font-semibold tabular-nums">{formatMoney(payout.eligible)}</span>
             <span className="text-muted-foreground"> across {payout.eligibleCount} approved commission{payout.eligibleCount === 1 ? "" : "s"}</span>
           </p>
-          <PayoutRequestButton kind="COMMISSION" canRequest={payout.canRequest} reason={blockedReason} />
+          <PayoutRequestButton kind="COMMISSION" canRequest={payout.canRequest} reason={blockedReason} accounts={accounts} />
           <PayoutHistory rows={payout.history} />
         </CardContent>
       </Card>
+      {accountsOn ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payout accounts</CardTitle>
+            <CardDescription>Save the UPI ID or bank account you want to be paid into, then choose it when you request a payout.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PayoutAccountsManager accounts={accounts} max={MAX_PAYOUT_ACCOUNTS} />
+          </CardContent>
+        </Card>
+      ) : null}
       <PartnerConversionsTable userId={user.id} kind="commission" />
     </div>
   );

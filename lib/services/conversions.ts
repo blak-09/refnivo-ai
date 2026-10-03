@@ -4,6 +4,7 @@ import { isCampaignLive } from "@/lib/domain/campaign-rules";
 import { computeCreatorCommission, computeCustomerReward, meetsMinimumPurchase } from "@/lib/domain/rewards";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
+import { creditForReversedOrder, debitForVerifiedOrder, walletEnabled, WalletError } from "./wallet";
 import { adminUserIds, notify, notifyMany } from "./notify";
 import { hashValue } from "./tracking";
 
@@ -198,6 +199,17 @@ export async function verifyConversionInTx(tx: Tx, brandId: string, actorId: str
       }
     }
 
+    // Wallet on: the order is paid for out of the brand wallet in this same transaction
+    // (throws, and verifies nothing, if the balance does not cover it).
+    if (walletEnabled()) {
+      try {
+        await debitForVerifiedOrder(tx, { brandId, referralId, owed, orderReference: referral.conversion.orderReference, actorId });
+      } catch (err) {
+        if (err instanceof WalletError) throw new ConversionError(err.message);
+        throw err;
+      }
+    }
+
     await tx.referral.update({ where: { id: referralId }, data: { status: "VERIFIED", verifiedAt: now } });
     await tx.conversion.update({ where: { id: referral.conversion.id }, data: { verifiedById: actorId, verifiedAt: now } });
     await tx.commission.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "APPROVED" } });
@@ -286,6 +298,8 @@ export async function reverseConversion(brandId: string, actorId: string, referr
     await tx.conversion.update({ where: { id: referral.conversion.id }, data: { reversedAt: now, reversalReason: reason.trim() } });
     await tx.commission.updateMany({ where: { id: { in: reversedCommissions.map((c) => c.id) } }, data: { status: "REVERSED" } });
     await tx.reward.updateMany({ where: { id: { in: reversedRewards.map((r) => r.id) } }, data: { status: "REVERSED" } });
+    // Whatever this order took from the wallet goes back (nothing, if it was verified before the wallet).
+    await creditForReversedOrder(tx, { brandId, referralId, orderReference: referral.conversion.orderReference, actorId });
 
     const reversedAmount = [...reversedCommissions, ...reversedRewards].reduce((s, e) => s + e.amount, 0);
 

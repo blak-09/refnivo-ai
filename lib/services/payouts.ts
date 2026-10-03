@@ -69,13 +69,23 @@ export async function payoutSummary(userId: string, kind: PayoutKind) {
 }
 
 /** Creates a REQUESTED payout for every eligible ledger row of the user. */
-export async function requestPayout(userId: string, kind: PayoutKind, method: PayoutMethod, now = new Date()) {
+export async function requestPayout(userId: string, kind: PayoutKind, method: PayoutMethod, now = new Date(), opts: { payoutAccountId?: string | null } = {}) {
   return transaction(async (tx) => {
     // Serialise per user: two simultaneous requests would otherwise both pass
     // the "open request" check and race on the same ledger rows.
     await tx.$queryRaw`SELECT "id" FROM "users" WHERE "id" = ${userId} FOR UPDATE`;
     const open = await tx.payoutRequest.findFirst({ where: { userId, kind, status: { in: OPEN_STATUSES } }, select: { id: true } });
     if (open) throw new PayoutError("You already have a payout request in progress.");
+
+    // A saved account (UPI / bank) is where the money goes; the method label comes from it.
+    let payoutAccountId: string | null = null;
+    let methodLabel: string = method;
+    if (opts.payoutAccountId) {
+      const account = await tx.payoutAccount.findFirst({ where: { id: opts.payoutAccountId, userId, deletedAt: null }, select: { id: true, type: true, maskedLabel: true } });
+      if (!account) throw new PayoutError("Choose one of your saved payout accounts.");
+      payoutAccountId = account.id;
+      methodLabel = `${account.type === "UPI" ? "UPI" : "Bank transfer"} · ${account.maskedLabel}`;
+    }
 
     const items = await eligibleItems(userId, kind, tx);
     if (!items.length) throw new PayoutError("Nothing is eligible for payout yet.");
@@ -93,7 +103,8 @@ export async function requestPayout(userId: string, kind: PayoutKind, method: Pa
           kind,
           amount,
           currency: items[0].currency,
-          payoutMethod: method,
+          payoutMethod: methodLabel,
+          payoutAccountId,
           requestedAt: now,
           items: {
             create: items.map((i) => (kind === "COMMISSION" ? { commissionId: i.id, amount: i.amount } : { rewardId: i.id, amount: i.amount })),
@@ -109,7 +120,7 @@ export async function requestPayout(userId: string, kind: PayoutKind, method: Pa
       throw err;
     }
 
-    await recordAudit({ userId, action: "PAYOUT_REQUESTED", entityType: "PayoutRequest", entityId: request.id, metadata: { kind, amount, method, items: items.length } }, tx);
+    await recordAudit({ userId, action: "PAYOUT_REQUESTED", entityType: "PayoutRequest", entityId: request.id, metadata: { kind, amount, method: methodLabel, savedAccount: !!payoutAccountId, items: items.length } }, tx);
     await notifyMany(
       await adminUserIds(tx),
       {
@@ -330,6 +341,11 @@ export async function listPayoutRequests(status?: PayoutStatus | "OPEN" | "ALL")
       adminNote: true,
       requestedAt: true,
       processedAt: true,
+      provider: true,
+      providerPayoutId: true,
+      providerStatus: true,
+      providerAttempt: true,
+      payoutAccount: { select: { id: true, type: true, holderName: true, maskedLabel: true, deletedAt: true } },
       user: { select: { id: true, name: true, email: true, role: true } },
       _count: { select: { items: true } },
     },

@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { PayoutReview } from "@/components/admin/admin-actions";
+import { PayoutAccountReveal } from "@/components/admin/payout-account-reveal";
 import { requireRole } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
+import { autoPayoutsEnabled } from "@/lib/services/auto-payouts";
 import { listPayoutRequests, listSettledThenReversed } from "@/lib/services/payouts";
 import { formatDate } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils";
@@ -26,12 +28,17 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
   const { status } = await searchParams;
   const filter = FILTERS.some((f) => f.value === status) ? (status as PayoutStatus | "OPEN" | "ALL") : "OPEN";
   const [rows, clawbacks] = await Promise.all([listPayoutRequests(filter), listSettledThenReversed()]);
+  const automatic = autoPayoutsEnabled();
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Payouts & redemptions"
-        description="Manual settlement queue. Money never moves through the platform: approve, settle off-platform (UPI / bank / voucher), then mark paid with the external reference. Only that step marks commissions PAID and rewards REDEEMED."
+        description={
+          automatic
+            ? "Approve a request, then Pay via RazorpayX to send it to the saved UPI ID or bank account — it is marked paid with the bank reference when RazorpayX confirms. Requests without a saved account are settled by hand: pay off-platform, then mark paid with the reference."
+            : "Manual settlement queue: approve, pay off-platform (Reveal shows the saved UPI ID or bank account), then mark paid with the external reference. Only that step marks commissions PAID and rewards REDEEMED."
+        }
       />
 
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
@@ -80,7 +87,22 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     <span className="block text-xs text-muted-foreground">{p._count.items} entr{p._count.items === 1 ? "y" : "ies"}</span>
                   </TableCell>
                   <TableCell className="text-right tabular-nums">{formatMoney(p.amount, p.currency)}</TableCell>
-                  <TableCell className="text-xs">{p.payoutMethod}</TableCell>
+                  <TableCell className="text-xs">
+                    {p.payoutMethod}
+                    {p.payoutAccount ? (
+                      <>
+                        <span className="block text-muted-foreground">{p.payoutAccount.holderName}</span>
+                        {p.payoutAccount.deletedAt ? <span className="block text-muted-foreground">(account removed later)</span> : null}
+                        <PayoutAccountReveal accountId={p.payoutAccount.id} />
+                      </>
+                    ) : null}
+                    {p.provider ? (
+                      <span className="block text-[10px] text-muted-foreground">
+                        {p.provider} · {p.providerStatus ?? "—"}
+                        {p.providerAttempt > 1 ? ` · attempt ${p.providerAttempt}` : ""}
+                      </span>
+                    ) : null}
+                  </TableCell>
                   <TableCell>
                     <StatusBadge status={p.status} />
                     {p.payoutReference ? <span className="block font-mono text-[10px] text-muted-foreground">{p.payoutReference}</span> : null}
@@ -91,7 +113,18 @@ export default async function AdminPayoutsPage({ searchParams }: { searchParams:
                     ) : null}
                   </TableCell>
                   <TableCell>
-                    <PayoutReview payoutId={p.id} status={p.status} />
+                    <PayoutReview
+                      payoutId={p.id}
+                      status={p.status}
+                      auto={{
+                        canAutoPay: automatic && !!p.payoutAccount && !p.payoutAccount.deletedAt,
+                        amountLabel: formatMoney(p.amount, p.currency),
+                        accountLabel: p.payoutAccount ? `${p.payoutAccount.holderName} (${p.payoutAccount.maskedLabel})` : null,
+                        provider: p.provider,
+                        providerPayoutId: p.providerPayoutId,
+                        providerStatus: p.providerStatus,
+                      }}
+                    />
                   </TableCell>
                 </TableRow>
               ))}

@@ -92,9 +92,26 @@ Route handler: `GET/POST /api/auth/[...nextauth]` (Auth.js).
 
 | Action | Notes |
 | --- | --- |
-| `requestPayoutAction({ kind, method })` | `kind ∈ COMMISSION (creators), REWARD (customers)`; `method ∈ UPI, Bank transfer, Brand voucher`. Bundles every eligible ledger row into a REQUESTED payout once the balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins notified. Nothing is paid here. |
+| `requestPayoutAction({ kind, method, payoutAccountId? })` | `kind ∈ COMMISSION (creators), REWARD (customers)`; `method ∈ UPI, Bank transfer, Brand voucher`; an optional saved account (must be the caller's) sets where the money goes. Bundles every eligible ledger row into a REQUESTED payout once the balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins notified. Nothing is paid here. |
 | `markNotificationReadAction({ id })` / `markAllNotificationsReadAction()` | Owner-scoped |
 | `setEmailNotificationsAction(enabled)` | Per-user e-mail opt-out (security e-mails ignore it) |
+
+## Payout accounts & automatic payouts (`app/actions/payout-accounts.ts`)
+
+| Action | Who | Notes |
+| --- | --- | --- |
+| `addPayoutAccountAction({ type: "UPI", holderName, vpa } \| { type: "BANK", holderName, accountNumber, confirmAccountNumber, ifsc })` | CREATOR / CUSTOMER | Needs `PAYOUT_ACCOUNT_ENCRYPTION_KEY`. Encrypted at rest; returns `{ id, label }` (masked). Max 5, no duplicates, rate-limited |
+| `setDefaultPayoutAccountAction({ accountId })` / `removePayoutAccountAction({ accountId })` | owner | Remove is a soft delete; refused while an open payout uses the account |
+| `revealPayoutAccountAction({ accountId })` | ADMIN | Full UPI ID / bank details to pay by hand; audited every time |
+| `startAutoPayoutAction({ payoutId })` | ADMIN | APPROVED request with a saved account → RazorpayX payout (PROCESSING). Also the safe retry of an unknown attempt |
+| `refreshAutoPayoutAction({ payoutId })` | ADMIN | Re-reads the payout from RazorpayX and applies it (PAID with UTR / FAILED) |
+
+## Brand wallet (`app/actions/wallet.ts`)
+
+| Action | Who | Notes |
+| --- | --- | --- |
+| `startWalletTopupAction({ amountMinor })` | BRAND_OWNER | Needs `BRAND_WALLET_ENABLED` + payments. Whole rupees, ₹500–₹5,00,000. Returns Razorpay checkout params; the wallet is credited only when the payment is confirmed |
+| `adminAdjustWalletAction({ brandId, amountMinor, note, requestKey })` | ADMIN | Signed amount (credit/debit) with a reason; `requestKey` makes a double submit apply once; audited |
 
 ## Account (`app/actions/account.ts`)
 
@@ -141,12 +158,14 @@ The 50 verified programmes live in `prisma/seed-data/affiliate-programs.ts` (sou
 /check-registration                 public status lookup (Registration ID or email)
 /admin/registrations                → /dashboard/admin/registrations (ADMIN)
 /dashboard                 → role home
-/dashboard/brand           overview · products[/new|/[id]] · campaigns[/new|/[id]|/[id]/edit] · creators?status&type · orders?status · payouts · analytics · profile · notifications · settings
+/dashboard/brand           overview · products[/new|/[id]] · campaigns[/new|/[id]|/[id]/edit] · creators?status&type · orders?status · payouts · wallet · billing[/[id]] · analytics · profile · notifications · settings
 /dashboard/creator         overview · campaigns · links · conversions · earnings · profile · notifications · settings
 /dashboard/customer        overview · referrals · rewards · notifications · settings
-/dashboard/admin           overview · registrations · users?q&role&status · verification · campaigns · conversions · payouts?status · audit?action&entityType&userId · health · notifications · settings
+/dashboard/admin           overview · registrations · users?q&role&status · verification · campaigns · conversions · payouts?status · payments · wallets · audit?action&entityType&userId · health · notifications · settings
 
 /api/health                        GET → 200 {ok,db,latencyMs} · 503 {status:"database-down"} · 503 {status:"misconfigured", errors:[rule names]}
 /api/uploads/product-image         POST (brand owner) multipart `file` → {url}; JPEG/PNG/WebP ≤ 5 MB, magic-byte checked, rate-limited
 /api/exports/campaigns/[id]        GET (brand owner, own campaign) → CSV of partners + orders, audited, rate-limited
+/api/payments/webhook              POST (Razorpay) → signature over raw body; payment / refund outcomes (plans + wallet top-ups)
+/api/payouts/webhook               POST (RazorpayX) → signature over raw body; payout.processed → PAID (UTR), failed/reversed/rejected → FAILED; 503 when not configured
 ```

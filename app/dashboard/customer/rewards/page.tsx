@@ -4,17 +4,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { KpiCard, PageHeader } from "@/components/dashboard/primitives";
 import { PartnerConversionsTable } from "@/components/links/partner-conversions-table";
 import { PayoutHistory } from "@/components/payouts/payout-history";
+import { PayoutAccountsManager } from "@/components/payouts/payout-accounts";
 import { PayoutRequestButton } from "@/components/payouts/payout-panel";
 import { requireRole } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
 import { getPartnerStats } from "@/lib/services/metrics";
+import { autoPayoutsEnabled } from "@/lib/services/auto-payouts";
+import { listPayoutAccounts, MAX_PAYOUT_ACCOUNTS, payoutAccountsEnabled } from "@/lib/services/payout-accounts";
 import { payoutSummary } from "@/lib/services/payouts";
 
 export const metadata: Metadata = { title: "Rewards" };
 
 export default async function CustomerRewardsPage() {
   const user = await requireRole("CUSTOMER");
-  const [stats, payout] = await Promise.all([getPartnerStats(user.id), payoutSummary(user.id, "REWARD")]);
+  const accountsOn = payoutAccountsEnabled();
+  const [stats, payout, accounts] = await Promise.all([getPartnerStats(user.id), payoutSummary(user.id, "REWARD"), accountsOn ? listPayoutAccounts(user.id) : Promise.resolve([])]);
+  const automatic = autoPayoutsEnabled();
 
   const blockedReason = payout.open
     ? `A redemption of ${formatMoney(payout.open.amount)} is ${payout.open.status.toLowerCase().replace("_", " ")}.`
@@ -36,8 +41,8 @@ export default async function CustomerRewardsPage() {
         <CardHeader>
           <CardTitle>Redeem rewards</CardTitle>
           <CardDescription>
-            Available rewards are settled manually by the Refnivo AI team as a payout or brand voucher. Submit a request once your available balance reaches{" "}
-            {formatMoney(payout.minimum)}; the team reviews it and records the settlement reference here.
+            Submit a request once your available balance reaches {formatMoney(payout.minimum)}. The Refnivo AI team reviews it,{" "}
+            {automatic ? "then sends it to your saved UPI ID or bank account (or issues a brand voucher)" : "settles it as a payout or brand voucher"} and records the reference here.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -45,10 +50,21 @@ export default async function CustomerRewardsPage() {
             Available now: <span className="font-semibold tabular-nums">{formatMoney(payout.eligible)}</span>
             <span className="text-muted-foreground"> across {payout.eligibleCount} reward{payout.eligibleCount === 1 ? "" : "s"}</span>
           </p>
-          <PayoutRequestButton kind="REWARD" canRequest={payout.canRequest} reason={blockedReason} />
+          <PayoutRequestButton kind="REWARD" canRequest={payout.canRequest} reason={blockedReason} accounts={accounts} />
           <PayoutHistory rows={payout.history} />
         </CardContent>
       </Card>
+      {accountsOn ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Payout accounts</CardTitle>
+            <CardDescription>Save the UPI ID or bank account you want to be paid into, then choose it when you request a redemption.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PayoutAccountsManager accounts={accounts} max={MAX_PAYOUT_ACCOUNTS} />
+          </CardContent>
+        </Card>
+      ) : null}
       <PartnerConversionsTable userId={user.id} kind="reward" />
     </div>
   );

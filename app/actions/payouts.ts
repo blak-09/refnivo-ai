@@ -26,7 +26,7 @@ export async function requestPayoutAction(input: unknown): Promise<ActionResult<
   if (parsed.data.kind === "REWARD" && user.role !== "CUSTOMER") return fail("Only customers can redeem rewards.");
 
   try {
-    const request = await requestPayout(user.id, parsed.data.kind, parsed.data.method);
+    const request = await requestPayout(user.id, parsed.data.kind, parsed.data.method, new Date(), { payoutAccountId: parsed.data.payoutAccountId });
     revalidatePath("/dashboard/creator/earnings");
     revalidatePath("/dashboard/customer/rewards");
     revalidatePath("/dashboard/admin/payouts");

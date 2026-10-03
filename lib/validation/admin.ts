@@ -29,6 +29,8 @@ export const payoutReviewSchema = z.object({
 export const payoutRequestSchema = z.object({
   kind: z.enum(["COMMISSION", "REWARD"]),
   method: z.enum(["UPI", "Bank transfer", "Brand voucher"]),
+  /** A saved payout account; when given, the method is taken from it. */
+  payoutAccountId: z.string().min(1).max(40).optional(),
 });
 
 export const notificationIdSchema = z.object({ id });

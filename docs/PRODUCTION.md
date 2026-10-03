@@ -119,6 +119,54 @@ marked PAID from a verified provider response, never from the browser.
 Plans and prices live in `lib/config/plans.ts` (server-side); the client only ever sends a plan key.
 A deployment running test keys in production is allowed but warned about at boot.
 
+Checkout is Razorpay's hosted window, so brands can pay by **UPI, card, netbanking or wallet**; Refnivo never sees
+card or bank details. Add `order.paid` to the webhook events too if you like — unknown events are acknowledged.
+
+### Saved payout accounts (creators / customers)
+
+```bash
+PAYOUT_ACCOUNT_ENCRYPTION_KEY=$(openssl rand -base64 32)   # generate ONCE; changing it makes saved accounts unreadable
+```
+
+With the key set, Earnings / Rewards show **Payout accounts**: a partner saves up to 5 UPI IDs or bank accounts
+(validated, encrypted with AES-256-GCM, shown back only masked) and picks one when requesting a payout. Admins see the
+masked account on `/dashboard/admin/payouts` and can **Reveal** the full details to pay by hand — every reveal is audited
+(`PAYOUT_ACCOUNT_REVEALED`). Accounts are soft-deleted, and one used by an open payout cannot be removed.
+
+### Automatic payouts (RazorpayX)
+
+```bash
+PAYOUT_PROVIDER=RAZORPAYX
+RAZORPAYX_KEY_ID=rzp_live_xxx          # API keys of the Razorpay account with RazorpayX activated
+RAZORPAYX_KEY_SECRET=xxx
+RAZORPAYX_ACCOUNT_NUMBER=2323230000000000   # RazorpayX → My Account & Settings → Banking: the account money is paid from
+RAZORPAYX_WEBHOOK_SECRET=xxx
+```
+
+Needs the encryption key above. In RazorpayX add a webhook to `https://<your-domain>/api/payouts/webhook` with
+`payout.processed`, `payout.failed`, `payout.reversed`, `payout.rejected` and `payout.updated`.
+
+Flow: admin **Approves** a request → **Pay via RazorpayX** → the request moves to `PROCESSING` and RazorpayX sends the
+money by UPI (UPI IDs) or IMPS (bank accounts). The webhook (or **Refresh status**) then marks it `PAID` with the bank
+UTR as the reference, or `FAILED` with RazorpayX's reason (approve again to retry with a new attempt). Each attempt has
+its own `X-Payout-Idempotency` key, so if RazorpayX times out the request stays `PROCESSING` and **Retry safely**
+resends the same key — it can never pay twice. A refund that lands after approval is removed from the amount before
+sending. Keep the RazorpayX balance topped up: payouts are queued (`queue_if_low_balance`) when it runs low.
+
+### Brand wallet
+
+```bash
+BRAND_WALLET_ENABLED=true
+```
+
+Brands get **Wallet** (`/dashboard/brand/wallet`): they top up through Razorpay checkout (₹500 – ₹5,00,000, whole
+rupees; needs payments on) and every order they verify debits its commission + reward from the balance in the same
+transaction as the verification. **While this is on, an order cannot be verified unless the wallet covers it** — tell
+brands before switching it on. Refunding a verified order credits the amount back; refunding a top-up (admin, from
+Payments) debits it (the balance may go negative if it was already spent). Admins can credit or debit any wallet with
+a reason at `/dashboard/admin/wallets` (e.g. a bank transfer received offline); every change is a ledger row with a
+running balance, and adjustments are audited.
+
 ## 4c. Social account connections (creator profiles)
 
 Each platform is a separate developer app and is enabled independently — configuring one says nothing about the
@@ -231,8 +279,8 @@ the admin was created in.
 ## 8. Start-up validation, rate limiting and security logs
 
 - On boot in production, `instrumentation.ts` runs `validateProductionEnv()` and **refuses to start** if `AUTH_SECRET` (≥ 32 chars),
-  a non-local pooled `DATABASE_URL`, an https `NEXT_PUBLIC_APP_URL` or an https `NEXTAUTH_URL`/`AUTH_URL` is missing, or if any payment
-  flag (`PAYMENTS_ENABLED`, `PAYMENT_PROVIDER` ≠ `NONE`) is enabled, or if only one of `GOOGLE_CLIENT_ID` /
+  a non-local pooled `DATABASE_URL`, an https `NEXT_PUBLIC_APP_URL` or an https `NEXTAUTH_URL`/`AUTH_URL` is missing, if payments are
+  half-configured (`PAYMENTS_ENABLED=true` without Razorpay keys) or `PAYOUT_ACCOUNT_ENCRYPTION_KEY` is too short, or if only one of `GOOGLE_CLIENT_ID` /
   `GOOGLE_CLIENT_SECRET` is set. Messages name variables only — values are never printed.
 - Rate limiting: `RATE_LIMIT_PROVIDER=memory` (default) counts per instance; set `upstash` with `UPSTASH_REDIS_REST_URL` /
   `UPSTASH_REDIS_REST_TOKEN` for a shared counter across serverless instances. The limiter is **fail-open**: if the shared store is
@@ -319,11 +367,12 @@ attached to the anonymised user; a brand owner's brand is suspended, its campaig
 says so); **admins cannot self-delete** (remove admin access first; the last admin is protected). Every existing
 session is invalidated (`sessionVersion` bump) and the user is signed out to `/auth/login?reason=account-deleted`.
 
-## 12. Manual payouts, e-mail and notifications
+## 12. Payouts, e-mail and notifications
 
-- **Payouts / redemptions** are manual: creators and customers request settlement from Earnings / Rewards once their
-  approved balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins review at `/dashboard/admin/payouts`, settle off-platform and
-  record the external reference with **Mark paid** — the only path that sets commissions `PAID` / rewards `REDEEMED`.
+- **Payouts / redemptions**: creators and customers request settlement from Earnings / Rewards once their
+  approved balance reaches `PAYOUT_MINIMUM_AMOUNT`; admins review at `/dashboard/admin/payouts` and either settle
+  off-platform and record the reference with **Mark paid**, or (RazorpayX configured, see §4b) **Pay via RazorpayX**.
+  `MARK_PAID` — by hand or from the RazorpayX webhook — is the only path that sets commissions `PAID` / rewards `REDEEMED`.
   Refunds recorded by a brand reverse the related ledger entries (`REVERSED`), including ones already settled (visible
   as `alreadySettled` in the audit log so the balance can be recovered manually).
 - **Stale sessions**: a session cookie whose account is suspended, pending, rejected, deleted, or whose
@@ -358,7 +407,7 @@ session is invalidated (`sessionVersion` bump) and the user is signed out to `/a
 
 ## 13. Pre-launch checklist
 
-- [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; `PAYMENT_PROVIDER=NONE`, `PAYMENTS_ENABLED=false`
+- [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; payments flags as intended (`PAYMENTS_ENABLED`, `PAYOUT_PROVIDER`, `BRAND_WALLET_ENABLED` — all off by default; see §4b)
 - [ ] `SIGNUP_APPROVAL` chosen deliberately (`auto` = self-service launch, `manual` = gated)
 - [ ] `CONTACT_HASH_SECRET` set (dedicated, never rotated) so `AUTH_SECRET` can be rotated freely
 - [ ] Google sign-in (optional): migration `20260918120000_google_oauth` applied, then `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set with the production redirect URI registered (section 9)

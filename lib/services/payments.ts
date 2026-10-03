@@ -1,10 +1,12 @@
 import { randomBytes } from "node:crypto";
-import { Prisma, type PaymentStatus, type PaymentTransaction } from "@prisma/client";
+import { Prisma, type PaymentPurpose, type PaymentStatus, type PaymentTransaction } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
 import { getPlan, periodEnd, type Plan } from "@/lib/config/plans";
 import { PaymentProviderError, type PaymentProvider, type ProviderPayment } from "@/lib/payments";
 import { securityEvent } from "@/lib/utils/security-log";
+import { formatMoney } from "@/lib/money";
 import { recordAudit } from "./audit";
+import { creditWallet, debitWallet, WALLET_TOPUP_MAX, WALLET_TOPUP_MIN } from "./wallet";
 import { notify } from "./notify";
 
 export class PaymentError extends Error {
@@ -43,53 +45,55 @@ export function newReference(): string {
   return `RFN-${randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
-/**
- * Creates the local transaction and the provider order.
- *
- * The client sends a plan KEY only: the amount is read from the server-side plan
- * table and frozen on the row, so a tampered request can never change the price.
- * The row exists before the provider is called, so an order that is created but
- * never paid is still visible and can be reconciled.
- */
-export async function startPlanCheckout(
-  provider: PaymentProvider,
-  input: { userId: string; brandId: string; brandName: string; planKey: unknown },
-  now = new Date(),
-): Promise<{ transaction: PaymentTransaction; plan: Plan; providerOrderId: string; publicKey: string }> {
-  const plan = getPlan(input.planKey);
-  if (!plan) throw new PaymentError("Unknown plan.");
+type CheckoutSpec = {
+  userId: string;
+  brandId: string;
+  purpose: PaymentPurpose;
+  planKey?: string | null;
+  /** Integer minor units, resolved on the server. */
+  amount: number;
+  currency: string;
+  metadata: Prisma.InputJsonValue;
+  notes: Record<string, string>;
+  /** What the audit trail records about the purchase. */
+  auditMeta: Record<string, unknown>;
+};
 
+/**
+ * Creates the local transaction and the provider order, for any purpose.
+ *
+ * The amount is always resolved by the caller on the server and frozen on the
+ * row, so a tampered request can never change the price. The row exists before
+ * the provider is called, so an order that is created but never paid is still
+ * visible and can be reconciled.
+ */
+async function startCheckout(provider: PaymentProvider, spec: CheckoutSpec, now: Date): Promise<{ transaction: PaymentTransaction; providerOrderId: string; publicKey: string }> {
   const reference = newReference();
   const row = await prisma.paymentTransaction.create({
     data: {
       reference,
-      userId: input.userId,
-      brandId: input.brandId,
-      purpose: "BRAND_PLAN",
-      planKey: plan.key,
-      amount: plan.amount, // server-resolved, never from the request
-      currency: plan.currency,
+      userId: spec.userId,
+      brandId: spec.brandId,
+      purpose: spec.purpose,
+      planKey: spec.planKey ?? null,
+      amount: spec.amount,
+      currency: spec.currency,
       status: "CREATED",
       provider: provider.key,
       expiresAt: new Date(now.getTime() + CHECKOUT_TTL_MS),
-      metadata: { planName: plan.name, periodDays: plan.periodDays, brandName: input.brandName },
+      metadata: spec.metadata,
     },
   });
 
   try {
-    const order = await provider.createOrder({
-      reference,
-      amount: plan.amount,
-      currency: plan.currency,
-      notes: { reference, planKey: plan.key, brandId: input.brandId },
-    });
+    const order = await provider.createOrder({ reference, amount: spec.amount, currency: spec.currency, notes: { reference, ...spec.notes } });
     // The provider must agree with what we asked for before any payer sees it.
-    if (order.amount !== plan.amount || order.currency !== plan.currency) {
+    if (order.amount !== spec.amount || order.currency !== spec.currency) {
       await prisma.paymentTransaction.update({
         where: { id: row.id },
-        data: { status: "FAILED", failureCode: "AMOUNT_MISMATCH", failureReason: "Provider order did not match the plan price." },
+        data: { status: "FAILED", failureCode: "AMOUNT_MISMATCH", failureReason: "Provider order did not match the requested amount." },
       });
-      securityEvent("PAYMENT_AMOUNT_MISMATCH", { reference, expected: plan.amount, got: order.amount });
+      securityEvent("PAYMENT_AMOUNT_MISMATCH", { reference, expected: spec.amount, got: order.amount });
       throw new PaymentError("Could not start the payment. Please try again.");
     }
     const updated = await prisma.paymentTransaction.update({
@@ -97,13 +101,13 @@ export async function startPlanCheckout(
       data: { providerOrderId: order.providerOrderId, status: "PENDING" },
     });
     await recordAudit({
-      userId: input.userId,
+      userId: spec.userId,
       action: "PAYMENT_STARTED",
       entityType: "PaymentTransaction",
       entityId: row.id,
-      metadata: { reference, planKey: plan.key, amount: plan.amount, provider: provider.key },
+      metadata: { reference, purpose: spec.purpose, amount: spec.amount, provider: provider.key, ...spec.auditMeta },
     });
-    return { transaction: updated, plan, providerOrderId: order.providerOrderId, publicKey: order.publicKey };
+    return { transaction: updated, providerOrderId: order.providerOrderId, publicKey: order.publicKey };
   } catch (err) {
     if (!(err instanceof PaymentError)) {
       await prisma.paymentTransaction
@@ -114,6 +118,65 @@ export async function startPlanCheckout(
     }
     throw err;
   }
+}
+
+/**
+ * Plan checkout. The client sends a plan KEY only: the amount is read from the
+ * server-side plan table.
+ */
+export async function startPlanCheckout(
+  provider: PaymentProvider,
+  input: { userId: string; brandId: string; brandName: string; planKey: unknown },
+  now = new Date(),
+): Promise<{ transaction: PaymentTransaction; plan: Plan; providerOrderId: string; publicKey: string }> {
+  const plan = getPlan(input.planKey);
+  if (!plan) throw new PaymentError("Unknown plan.");
+  const started = await startCheckout(
+    provider,
+    {
+      userId: input.userId,
+      brandId: input.brandId,
+      purpose: "BRAND_PLAN",
+      planKey: plan.key,
+      amount: plan.amount, // server-resolved, never from the request
+      currency: plan.currency,
+      metadata: { planName: plan.name, periodDays: plan.periodDays, brandName: input.brandName },
+      notes: { planKey: plan.key, brandId: input.brandId },
+      auditMeta: { planKey: plan.key },
+    },
+    now,
+  );
+  return { ...started, plan };
+}
+
+/**
+ * Wallet top-up. The amount is chosen by the brand but bounded and validated on
+ * the server (whole rupees between the minimum and maximum).
+ */
+export async function startWalletTopup(
+  provider: PaymentProvider,
+  input: { userId: string; brandId: string; brandName: string; amountMinor: unknown },
+  now = new Date(),
+): Promise<{ transaction: PaymentTransaction; providerOrderId: string; publicKey: string }> {
+  const amount = Number(input.amountMinor);
+  if (!Number.isInteger(amount) || amount % 100 !== 0) throw new PaymentError("Enter a whole rupee amount.");
+  if (amount < WALLET_TOPUP_MIN || amount > WALLET_TOPUP_MAX) {
+    throw new PaymentError(`Top-ups must be between ${formatMoney(WALLET_TOPUP_MIN)} and ${formatMoney(WALLET_TOPUP_MAX)}.`);
+  }
+  return startCheckout(
+    provider,
+    {
+      userId: input.userId,
+      brandId: input.brandId,
+      purpose: "WALLET_TOPUP",
+      amount,
+      currency: "INR",
+      metadata: { brandName: input.brandName, label: "Wallet top-up" },
+      notes: { purpose: "WALLET_TOPUP", brandId: input.brandId },
+      auditMeta: {},
+    },
+    now,
+  );
 }
 
 /**
@@ -189,6 +252,23 @@ async function applyInTransaction(
     if (becomesPaid && updated.purpose === "BRAND_PLAN" && updated.brandId && updated.planKey) {
       await grantPlan(tx, updated, now);
     }
+    if (updated.purpose === "WALLET_TOPUP" && updated.brandId && (alreadyPaid || becomesPaid)) {
+      if (becomesPaid) await grantTopup(tx, updated);
+      // A refunded top-up takes the refunded part back out of the wallet. It may go
+      // negative: the money has already left, and the balance must say so.
+      const newlyRefunded = updated.refundedAmount - row.refundedAmount;
+      if (newlyRefunded > 0) {
+        await debitWallet(tx, {
+          brandId: updated.brandId,
+          amount: newlyRefunded,
+          type: "TOPUP_REFUND",
+          idempotencyKey: `topup-refund:${updated.id}:${updated.refundedAmount}`,
+          paymentTransactionId: updated.id,
+          note: `Refund of top-up ${updated.reference}`,
+          allowNegative: true,
+        });
+      }
+    }
 
     await recordAudit(
       {
@@ -202,6 +282,31 @@ async function applyInTransaction(
     );
     return { transaction: updated, changed: true };
   });
+}
+
+/** Credits a paid top-up to the brand wallet, at most once per transaction. */
+async function grantTopup(tx: Prisma.TransactionClient, row: PaymentTransaction) {
+  if (!row.brandId) return;
+  await creditWallet(tx, {
+    brandId: row.brandId,
+    amount: row.amount,
+    type: "TOPUP",
+    idempotencyKey: `topup:${row.id}`,
+    paymentTransactionId: row.id,
+    note: `Top-up ${row.reference}`,
+  });
+  await notify(
+    {
+      userId: row.userId,
+      type: "SYSTEM",
+      idempotencyKey: `payment:${row.id}:PAID`,
+      title: "Wallet topped up",
+      body: `${formatMoney(row.amount)} was added to your Refnivo wallet (${row.reference}).`,
+      href: "/dashboard/brand/wallet",
+      email: true,
+    },
+    tx,
+  );
 }
 
 /** Grants or extends the brand's plan. Renewals extend from whichever is later: now, or the unused remainder. */
@@ -351,21 +456,43 @@ export async function refundPayment(
     return { state: result.state, transaction: row };
   }
 
-  const refunded = row.refundedAmount + result.amount;
-  const updated = await prisma.paymentTransaction.update({
-    where: { id: row.id },
-    data: {
-      refundedAmount: refunded,
-      status: refunded >= row.amount ? "REFUNDED" : "PARTIALLY_REFUNDED",
-      metadata: { ...(row.metadata as object satisfies object), lastRefundId: result.providerRefundId } as Prisma.InputJsonValue,
-    },
-  });
-  await recordAudit({
-    userId: input.adminId,
-    action: "PAYMENT_REFUNDED",
-    entityType: "PaymentTransaction",
-    entityId: row.id,
-    metadata: { reference: row.reference, amount: result.amount, providerRefundId: result.providerRefundId },
+  const updated = await transaction(async (tx) => {
+    // Re-read under a row lock: a refund webhook may have recorded part of this already.
+    await tx.$queryRaw`SELECT "id" FROM "payment_transactions" WHERE "id" = ${row.id} FOR UPDATE`;
+    const current = await tx.paymentTransaction.findUniqueOrThrow({ where: { id: row.id } });
+    const refunded = Math.min(current.amount, current.refundedAmount + result.amount);
+    const next = await tx.paymentTransaction.update({
+      where: { id: row.id },
+      data: {
+        refundedAmount: refunded,
+        status: refunded >= current.amount ? "REFUNDED" : "PARTIALLY_REFUNDED",
+        metadata: { ...(current.metadata as object satisfies object), lastRefundId: result.providerRefundId } as Prisma.InputJsonValue,
+      },
+    });
+    // A refunded top-up takes the money back out of the wallet (same key format as the webhook path, so never twice).
+    if (next.purpose === "WALLET_TOPUP" && next.brandId && refunded > current.refundedAmount) {
+      await debitWallet(tx, {
+        brandId: next.brandId,
+        amount: refunded - current.refundedAmount,
+        type: "TOPUP_REFUND",
+        idempotencyKey: `topup-refund:${next.id}:${refunded}`,
+        paymentTransactionId: next.id,
+        note: `Refund of top-up ${next.reference}`,
+        actorId: input.adminId,
+        allowNegative: true,
+      });
+    }
+    await recordAudit(
+      {
+        userId: input.adminId,
+        action: "PAYMENT_REFUNDED",
+        entityType: "PaymentTransaction",
+        entityId: row.id,
+        metadata: { reference: row.reference, amount: result.amount, providerRefundId: result.providerRefundId },
+      },
+      tx,
+    );
+    return next;
   });
   return { state: "done", transaction: updated };
 }
