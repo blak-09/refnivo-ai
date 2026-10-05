@@ -105,6 +105,10 @@ describe("security headers", () => {
     expect(withPayments).toMatch(/frame-src [^;]*https:\/\/api\.razorpay\.com/);
     expect(withPayments).not.toMatch(/\*/);
     expect(csp).not.toMatch(/\*/);
+    // Payment Request API: denied everywhere by default, allowed only for Razorpay's frames once payments are on.
+    const permissions = (h: { key: string; value: string }[]) => h.find((x) => x.key === "Permissions-Policy")!.value;
+    expect(permissions(securityHeaders(true, false))).toContain("payment=()");
+    expect(permissions(securityHeaders(true, true))).toContain('payment=(self "https://api.razorpay.com" "https://checkout.razorpay.com")');
   });
 
   it("development relaxes only what HMR needs and skips HSTS", () => {

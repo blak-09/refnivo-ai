@@ -59,7 +59,8 @@ export function securityHeaders(production = process.env.NODE_ENV === "productio
     { key: "X-Content-Type-Options", value: "nosniff" },
     { key: "X-Frame-Options", value: "DENY" },
     { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-    { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()" },
+    // Razorpay's checkout may use the Payment Request API (Google Pay / UPI on mobile) — only for its own frames, only when payments are on.
+    { key: "Permissions-Policy", value: `camera=(), microphone=(), geolocation=(), payment=(${payments ? 'self "https://api.razorpay.com" "https://checkout.razorpay.com"' : ""}), usb=()` },
     { key: "X-DNS-Prefetch-Control", value: "on" },
     { key: "Content-Security-Policy", value: contentSecurityPolicy(production, payments) },
   ];

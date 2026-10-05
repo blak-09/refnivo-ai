@@ -52,4 +52,4 @@ Legend: ✅ done · 🔜 next · ⬜ pending
 - [x] Unit + integration tests pass (see `npm test` output; CI enforces)
 - [x] Production build passes
 - [x] Mobile layout works
-- [ ] Playwright e2e
+- [x] Playwright e2e (golden path + auth guards)
