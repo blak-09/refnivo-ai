@@ -27,7 +27,18 @@ export default async function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Billing & plan" description="Your Refnivo plan, payments and receipts. Card details are handled by our payment provider and never stored by Refnivo." />
+      <PageHeader
+        title="Billing & plan"
+        description={
+          <>
+            Your Refnivo plan, payments and receipts. Card details are handled by our payment provider and never stored by Refnivo. See the{" "}
+            <Link href="/refund-policy" className="text-primary hover:underline">
+              refund &amp; cancellation policy
+            </Link>
+            .
+          </>
+        }
+      />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <KpiCard label="Current plan" value={current && currentPlan ? currentPlan.name : "No active plan"} hint={current && subscription ? `Renews ${formatDate(subscription.currentPeriodEnd)}` : "Early access — nothing to pay yet"} icon={CreditCardIcon} />

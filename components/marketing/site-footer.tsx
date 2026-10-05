@@ -36,6 +36,7 @@ const groups = [
       { href: "/contact", label: "Contact" },
       { href: "/privacy", label: "Privacy" },
       { href: "/terms", label: "Terms" },
+      { href: "/refund-policy", label: "Refund policy" },
     ],
   },
 ];

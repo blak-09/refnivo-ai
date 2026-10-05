@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { ProsePage } from "@/components/marketing/prose-page";
 
@@ -14,8 +15,13 @@ export default function TermsPage() {
       </ul>
       <h2>Payouts</h2>
       <p>
-        Creators can request a payout once their approved commissions reach the minimum threshold. Payouts are reviewed and
-        processed manually by the Refnivo AI team; there is no automatic UPI payout in this version.
+        Creators can request a payout once their approved commissions reach the minimum threshold. Every request is reviewed by the
+        Refnivo AI team and then paid to the UPI ID or bank account you choose; the bank reference is recorded on the request.
+      </p>
+      <h2>Payments and refunds</h2>
+      <p>
+        Plan payments and wallet top-ups are processed by Razorpay. Refunds and cancellations are covered by our{" "}
+        <Link href="/refund-policy">Refund &amp; Cancellation Policy</Link>.
       </p>
       <h2>Accounts</h2>
       <p>Accounts that abuse the referral system may be suspended. Decisions are recorded in an audit log.</p>

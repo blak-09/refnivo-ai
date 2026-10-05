@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { AlertCircleIcon, ShieldCheckIcon } from "lucide-react";
+import { ShieldCheckIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Editable, isPlaceholder } from "@/components/marketing/policy-placeholder";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -21,19 +22,6 @@ const POLICY = {
   /** Registered entity name and address, once the company details are final. */
   legalEntity: "[INSERT LEGAL ENTITY NAME AND REGISTERED ADDRESS]",
 };
-
-const isPlaceholder = (value: string) => /^\[.*\]$/.test(value.trim());
-
-/** Renders a value, or the placeholder marked as outstanding. */
-function Editable({ value }: { value: string }) {
-  if (!isPlaceholder(value)) return <>{value}</>;
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-dashed border-amber-400/70 bg-amber-50 px-1.5 py-0.5 font-mono text-[0.8em] text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
-      <AlertCircleIcon className="size-3" aria-hidden />
-      {value}
-    </span>
-  );
-}
 
 const SECTIONS = [
   { id: "information-we-collect", title: "Information we collect" },
