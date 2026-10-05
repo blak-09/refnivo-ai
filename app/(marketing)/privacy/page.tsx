@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ShieldCheckIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Editable, isPlaceholder } from "@/components/marketing/policy-placeholder";
+import { CONTACT_EMAIL } from "@/lib/config/contact";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -16,11 +17,11 @@ export const metadata: Metadata = {
  * real policy detail. Replace the value and the marker disappears.
  */
 const POLICY = {
-  effectiveDate: "[INSERT DATE]",
-  lastUpdated: "[INSERT DATE]",
-  privacyEmail: "[INSERT PRIVACY EMAIL]",
+  effectiveDate: "5 October 2026",
+  lastUpdated: "5 October 2026",
+  privacyEmail: CONTACT_EMAIL,
   /** Registered entity name and address, once the company details are final. */
-  legalEntity: "[INSERT LEGAL ENTITY NAME AND REGISTERED ADDRESS]",
+  legalEntity: "Refnivo, Hauz Khas, New Delhi, India",
 };
 
 const SECTIONS = [
@@ -254,7 +255,7 @@ export default function PrivacyPage() {
               </ul>
               <p>
                 Not every right applies in every jurisdiction, and some requests are limited by records we must keep. You can exercise most of these directly from
-                your dashboard, or write to us at <Editable value={POLICY.privacyEmail} />.
+                your dashboard, or write to us at <a href={`mailto:${POLICY.privacyEmail}`} className="font-medium text-primary underline-offset-4 hover:underline">{POLICY.privacyEmail}</a>.
               </p>
             </Section>
 
@@ -278,7 +279,7 @@ export default function PrivacyPage() {
                 </li>
               </ul>
               <p>
-                If you cannot sign in, contact us at <Editable value={POLICY.privacyEmail} /> and we will verify your identity before acting on the request.
+                If you cannot sign in, contact us at <a href={`mailto:${POLICY.privacyEmail}`} className="font-medium text-primary underline-offset-4 hover:underline">{POLICY.privacyEmail}</a> and we will verify your identity before acting on the request.
               </p>
             </Section>
 
@@ -327,7 +328,7 @@ export default function PrivacyPage() {
               <Card className="rounded-2xl not-prose">
                 <CardContent className="space-y-2 text-sm">
                   <p className="text-foreground">
-                    Contact us at <Editable value={POLICY.privacyEmail} />.
+                    Contact us at <a href={`mailto:${POLICY.privacyEmail}`} className="font-medium text-primary underline-offset-4 hover:underline">{POLICY.privacyEmail}</a>.
                   </p>
                   <p className="text-muted-foreground">
                     Entity and registered address: <Editable value={POLICY.legalEntity} />

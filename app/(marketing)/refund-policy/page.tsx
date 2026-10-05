@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ReceiptIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Editable, isPlaceholder } from "@/components/marketing/policy-placeholder";
+import { CONTACT_EMAIL } from "@/lib/config/contact";
 import { PLAN_LIST } from "@/lib/config/plans";
 import { formatMoney } from "@/lib/money";
 
@@ -18,10 +19,10 @@ export const metadata: Metadata = {
  * page as "needs to be filled in".
  */
 const POLICY = {
-  effectiveDate: "[INSERT DATE]",
-  lastUpdated: "[INSERT DATE]",
-  supportEmail: "[INSERT SUPPORT EMAIL]",
-  legalEntity: "[INSERT LEGAL ENTITY NAME AND REGISTERED ADDRESS]",
+  effectiveDate: "5 October 2026",
+  lastUpdated: "5 October 2026",
+  supportEmail: CONTACT_EMAIL,
+  legalEntity: "Refnivo, Hauz Khas, New Delhi, India",
   /** Days after a plan payment during which a full refund can be requested. */
   planRefundWindowDays: 7,
   /** Working days we take to approve and start a refund once requested. */
@@ -202,7 +203,7 @@ export default function RefundPolicyPage() {
 
             <Section id="how-to-request" index={6} title="How to request a refund">
               <p>
-                E-mail <Editable value={POLICY.supportEmail} /> from the e-mail address on your Refnivo account, or use our{" "}
+                E-mail <a href={`mailto:${POLICY.supportEmail}`} className="font-medium text-primary underline-offset-4 hover:underline">{POLICY.supportEmail}</a> from the e-mail address on your Refnivo account, or use our{" "}
                 <Link href="/contact">contact page</Link>, with:
               </p>
               <ul>
@@ -252,7 +253,7 @@ export default function RefundPolicyPage() {
               <Card className="rounded-2xl not-prose">
                 <CardContent className="space-y-2 text-sm">
                   <p className="text-foreground">
-                    Refund and billing questions: <Editable value={POLICY.supportEmail} />
+                    Refund and billing questions: <a href={`mailto:${POLICY.supportEmail}`} className="font-medium text-primary underline-offset-4 hover:underline">{POLICY.supportEmail}</a>
                   </p>
                   <p className="text-muted-foreground">
                     Entity and registered address: <Editable value={POLICY.legalEntity} />
