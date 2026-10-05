@@ -21,7 +21,7 @@ const POLICY = {
   lastUpdated: "5 October 2026",
   privacyEmail: CONTACT_EMAIL,
   /** Registered entity name and address, once the company details are final. */
-  legalEntity: "Refnivo, Hauz Khas, New Delhi, India",
+  legalEntity: "Refnivo, Hauz Khas, South West Delhi, Delhi 110016, India",
 };
 
 const SECTIONS = [

@@ -22,7 +22,7 @@ const POLICY = {
   effectiveDate: "5 October 2026",
   lastUpdated: "5 October 2026",
   supportEmail: CONTACT_EMAIL,
-  legalEntity: "Refnivo, Hauz Khas, New Delhi, India",
+  legalEntity: "Refnivo, Hauz Khas, South West Delhi, Delhi 110016, India",
   /** Days after a plan payment during which a full refund can be requested. */
   planRefundWindowDays: 7,
   /** Working days we take to approve and start a refund once requested. */
