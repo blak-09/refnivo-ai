@@ -24,6 +24,7 @@ import { programBrandName } from "@/lib/services/affiliate-programs";
 import { campaignCategory, campaignCommission } from "@/lib/services/directory";
 import { getLandingData, getMarketplaceQr } from "@/lib/services/landing";
 import { cn } from "@/lib/utils";
+import { CircleCallout, CommunityHomeBand } from "@/components/community/community-ui";
 
 const FEATURES = [
   { icon: MegaphoneIcon, title: "Referral campaigns", body: "Launch a campaign per product with its own commission, customer reward and approval rules." },
@@ -178,6 +179,7 @@ export default async function LandingPage() {
         cta={{ href: "/auth/register?role=BRAND_OWNER", label: "Start as a brand" }}
         visual={<CampaignBuilderVisual />}
         tinted
+        extra={<CircleCallout audience="BRAND" placement="home-brands" className="mt-8" />}
       />
 
       <SplitSection
@@ -190,6 +192,7 @@ export default async function LandingPage() {
         cta={{ href: "/auth/register?role=CREATOR", label: "Start as a creator" }}
         visual={<ProgramListVisual rows={programRows} />}
         reverse
+        extra={<CircleCallout audience="CREATOR" placement="home-creators" className="mt-8" />}
       />
 
       {/* Affiliate discovery: the two programme types, side by side */}
@@ -296,6 +299,9 @@ export default async function LandingPage() {
           </div>
         </div>
       </section>
+
+      {/* Refnivo Network (community) */}
+      <CommunityHomeBand />
 
       {/* Final CTA */}
       <section className="pb-20">

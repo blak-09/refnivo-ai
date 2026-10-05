@@ -4,6 +4,7 @@ import { ArrowRightIcon, BadgeIndianRupeeIcon, CompassIcon, MousePointerClickIco
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
+import { CircleCallout } from "@/components/community/community-ui";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireCreator } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
@@ -93,6 +94,8 @@ export default async function CreatorOverviewPage({ searchParams }: { searchPara
           )}
         </CardContent>
       </Card>
+
+      <CircleCallout audience="CREATOR" placement="creator-dashboard" />
     </div>
   );
 }

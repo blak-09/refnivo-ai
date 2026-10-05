@@ -57,7 +57,7 @@ export function classifyDatabaseError(err: unknown): { reason: DatabaseFailureRe
  * deploy went out before `npm run db:deploy` — without exposing anything but
  * the migration's name.
  */
-export const REQUIRED_MIGRATION = "20261003090000_payments_payouts_wallet";
+export const REQUIRED_MIGRATION = "20261005090000_community_clicks";
 
 export type SchemaHealth = { ok: true; latest: string } | { ok: false; missing: string; hint: string } | { ok: false; missing: null; hint: string };
 

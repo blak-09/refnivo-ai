@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
+import { CircleCallout } from "@/components/community/community-ui";
 import { FunnelChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/lazy-charts";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
@@ -223,6 +224,8 @@ export default async function BrandOverviewPage({ searchParams }: { searchParams
           )}
         </CardContent>
       </Card>
+
+      <CircleCallout audience="BRAND" placement="brand-dashboard" />
     </div>
   );
 }

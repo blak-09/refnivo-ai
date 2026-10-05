@@ -1375,3 +1375,26 @@ model AuditLog {
   @@index([action, createdAt])
   @@map("audit_logs")
 }
+
+/// Which Refnivo Network circle a join click was for. GENERAL = the shared "Join the community" CTA.
+enum CommunityAudience {
+  CREATOR
+  BRAND
+  GENERAL
+}
+
+/// One click on a "Join … community" CTA (the WhatsApp invite). Anonymous by design:
+/// no IP, no user id — only which circle, where on the site, and the viewer's role if signed in.
+model CommunityClick {
+  id        String            @id @default(cuid())
+  audience  CommunityAudience
+  /// Where the CTA was, e.g. "community-page", "home-band", "campaigns".
+  placement String
+  /// Role of a signed-in viewer (CREATOR, BRAND_OWNER, …); null when anonymous.
+  role      String?
+  createdAt DateTime          @default(now())
+
+  @@index([createdAt])
+  @@index([audience, createdAt])
+  @@map("community_clicks")
+}

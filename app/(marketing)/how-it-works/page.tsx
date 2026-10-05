@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { LinkIcon, PackageIcon, QrCodeIcon, ShoppingCartIcon, UsersIcon, WalletIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CircleCallout } from "@/components/community/community-ui";
 
 export const metadata: Metadata = { title: "How it works" };
 
@@ -82,6 +83,10 @@ export default function HowItWorksPage() {
         <Button variant="outline" nativeButton={false} render={<Link href="/campaigns" />}>
           Browse campaigns
         </Button>
+      </div>
+      <div className="mx-auto mt-12 grid max-w-4xl gap-3 md:grid-cols-2">
+        <CircleCallout audience="CREATOR" placement="how-it-works" />
+        <CircleCallout audience="BRAND" placement="how-it-works" />
       </div>
     </div>
   );

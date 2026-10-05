@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/dashboard/primitives";
 import { BrandLogo } from "@/components/products/product-thumb";
 import { listPublicBrands } from "@/lib/services/brands";
 import { BRAND_INDUSTRIES } from "@/lib/utils/labels";
+import { CircleCallout } from "@/components/community/community-ui";
 
 export const metadata: Metadata = { title: "Discover brands" };
 
@@ -66,6 +67,7 @@ export default async function BrandsPage({ searchParams }: { searchParams: Promi
           ))}
         </div>
       )}
+      <CircleCallout audience="CREATOR" placement="brands" className="mt-12" />
     </div>
   );
 }

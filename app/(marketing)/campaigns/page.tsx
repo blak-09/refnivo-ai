@@ -10,6 +10,7 @@ import { listMarketplaceCampaigns, type MarketplaceSort } from "@/lib/services/c
 import { prisma } from "@/lib/db/prisma";
 import { BRAND_INDUSTRIES, PRODUCT_CATEGORIES } from "@/lib/utils/labels";
 import { cn } from "@/lib/utils";
+import { CircleCallout } from "@/components/community/community-ui";
 
 export const metadata: Metadata = { title: "Discover campaigns", description: "Product campaigns from brands looking for creators and customer referrals." };
 
@@ -130,6 +131,7 @@ export default async function DiscoverCampaignsPage({ searchParams }: { searchPa
           ))}
         </div>
       )}
+      <CircleCallout audience="CREATOR" placement="campaigns" className="mt-12" />
     </div>
   );
 }

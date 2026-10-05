@@ -17,6 +17,7 @@ export function SplitSection({
   visual,
   reverse = false,
   tinted = false,
+  extra,
 }: {
   id: string;
   icon: LucideIcon;
@@ -28,6 +29,8 @@ export function SplitSection({
   visual: React.ReactNode;
   reverse?: boolean;
   tinted?: boolean;
+  /** Optional content under the CTA (e.g. a community callout). */
+  extra?: React.ReactNode;
 }) {
   return (
     <section id={id} aria-labelledby={`${id}-heading`} className={cn("scroll-mt-20 overflow-hidden py-20 sm:py-24", tinted && "bg-muted/30")}>
@@ -54,6 +57,7 @@ export function SplitSection({
           <CTAButton href={cta.href} className="mt-8">
             {cta.label}
           </CTAButton>
+          {extra}
         </div>
         <div className={cn("relative", reverse && "lg:order-1")}>
           <div aria-hidden className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-linear-to-br from-violet-100/70 to-sky-100/60 blur-2xl dark:from-violet-950/40 dark:to-sky-950/30" />

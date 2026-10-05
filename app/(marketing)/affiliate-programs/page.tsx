@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { InfoIcon } from "lucide-react";
 import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import { DirectoryView, type DirectorySearch } from "@/components/affiliate/directory-view";
+import { CircleCallout } from "@/components/community/community-ui";
 
 export const metadata: Metadata = {
   title: "Discover Affiliate Programs",
@@ -30,6 +31,8 @@ export default async function AffiliateProgramsPage({ searchParams }: { searchPa
       <div className="mt-8">
         <DirectoryView basePath="/affiliate-programs" sp={sp} />
       </div>
+
+      <CircleCallout audience="CREATOR" placement="affiliate-programs" className="mt-12" />
 
       <p className="mt-10 flex items-start gap-2 text-xs text-muted-foreground">
         <InfoIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />

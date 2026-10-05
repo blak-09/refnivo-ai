@@ -11,6 +11,7 @@ const links: NavLink[] = [
   { href: "/#brands", label: "For Brands" },
   { href: "/#creators", label: "For Creators" },
   { href: "/affiliate-programs", label: "Affiliate Programs" },
+  { href: "/community", label: "Community" },
 ];
 
 /** Everything that used to be a top-level link stays one click away under Resources. */

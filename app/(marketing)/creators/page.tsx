@@ -12,6 +12,7 @@ import { ProductThumb } from "@/components/products/product-thumb";
 import { compact, SelfReported } from "@/components/creators/creator-stats";
 import { listPublicCreators } from "@/lib/services/creators";
 import { CREATOR_CATEGORIES } from "@/lib/utils/labels";
+import { CircleCallout } from "@/components/community/community-ui";
 
 export const metadata: Metadata = {
   title: "Discover creators",
@@ -95,6 +96,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
           ))}
         </div>
       )}
+      <CircleCallout audience="BRAND" placement="creators" className="mt-12" />
     </div>
   );
 }
