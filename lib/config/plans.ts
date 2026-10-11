@@ -8,7 +8,7 @@
  *
  * Amounts are integer paise (lib/money), consistent with the rest of the ledger.
  */
-export type PlanKey = "starter" | "growth";
+export type PlanKey = "starter" | "growth" | "test";
 
 export type Plan = {
   key: PlanKey;
@@ -22,6 +22,8 @@ export type Plan = {
   features: string[];
   /** Shown as the suggested option on the billing page. */
   highlight?: boolean;
+  /** Internal plan for testing payments: not in PLAN_LIST, never shown on public pages. */
+  temporary?: boolean;
 };
 
 export const PLANS: Record<PlanKey, Plan> = {
@@ -44,9 +46,25 @@ export const PLANS: Record<PlanKey, Plan> = {
     features: ["Everything in Starter", "Creator discovery and applications", "Campaign and creator analytics", "CSV exports", "Priority support"],
     highlight: true,
   },
+  // TEMPORARY — ₹10 plan for testing real payments end to end. Remove (with TEST_PLAN and its
+  // strip on the billing page) once payment testing is finished.
+  test: {
+    key: "test",
+    name: "Test",
+    amount: 1_000, // ₹10
+    currency: "INR",
+    periodDays: 1,
+    tagline: "Temporary ₹10 plan for testing payments. It will be removed.",
+    features: ["Activates for 1 day", "Used only to test checkout and refunds"],
+    temporary: true,
+  },
 };
 
+/** The plans brands can choose from (public). The temporary test plan is deliberately not here. */
 export const PLAN_LIST: Plan[] = [PLANS.starter, PLANS.growth];
+
+/** TEMPORARY: the ₹10 payment-test plan (see PLANS.test). */
+export const TEST_PLAN: Plan = PLANS.test;
 
 export function isPlanKey(value: unknown): value is PlanKey {
   return typeof value === "string" && Object.hasOwn(PLANS, value);

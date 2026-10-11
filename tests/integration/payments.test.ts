@@ -298,3 +298,16 @@ describe("cancellation and refunds", () => {
     await expect(refundPayment(provider, { transactionId: row.id, adminId: admin.id })).rejects.toThrow(/more than the remaining/i);
   });
 });
+
+describe("temporary ₹10 test plan", () => {
+  it("is priced on the server at ₹10 for one day, buyable, and kept off the public plan list", async () => {
+    const { getPlan, PLAN_LIST, TEST_PLAN } = await import("@/lib/config/plans");
+    expect(TEST_PLAN).toMatchObject({ key: "test", amount: 1_000, periodDays: 1, temporary: true });
+    expect(getPlan("test")?.amount).toBe(1_000);
+    expect(PLAN_LIST.map((p) => p.key)).toEqual(["starter", "growth"]);
+
+    const owner = await brandOwner();
+    const { transaction } = await startPlanCheckout(provider, { ...owner, planKey: "test" });
+    expect(transaction).toMatchObject({ amount: 1_000, planKey: "test", status: "PENDING" });
+  });
+});

@@ -9,7 +9,7 @@ import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashb
 import { CheckoutButton } from "@/components/payments/checkout-button";
 import { PaymentMethodsStrip } from "@/components/payments/payment-methods";
 import { requireBrand } from "@/lib/auth/guards";
-import { PLAN_LIST } from "@/lib/config/plans";
+import { getPlan, PLAN_LIST, TEST_PLAN } from "@/lib/config/plans";
 import { paymentsConfig } from "@/lib/payments";
 import { getBrandSubscription, listUserTransactions, subscriptionIsCurrent } from "@/lib/services/payments";
 import { PAYMENT_STATUS_LABEL, paymentStatusTone } from "@/lib/utils/payment-labels";
@@ -23,7 +23,7 @@ export default async function BillingPage() {
   const config = paymentsConfig();
   const [subscription, transactions] = await Promise.all([getBrandSubscription(brand.id), listUserTransactions(user.id)]);
   const current = subscriptionIsCurrent(subscription);
-  const currentPlan = PLAN_LIST.find((p) => p.key === subscription?.planKey);
+  const currentPlan = getPlan(subscription?.planKey);
 
   return (
     <div className="space-y-6">
@@ -71,9 +71,34 @@ export default async function BillingPage() {
               <Badge>Active</Badge>
             </div>
             <CardDescription>
-              {formatMoney(currentPlan.amount)} every {currentPlan.periodDays} days · paid through {formatDate(subscription.currentPeriodEnd)}
+              {formatMoney(currentPlan.amount)} every {currentPlan.periodDays === 1 ? "day" : `${currentPlan.periodDays} days`} · paid through {formatDate(subscription.currentPeriodEnd)}
             </CardDescription>
           </CardHeader>
+        </Card>
+      ) : null}
+
+      {/* TEMPORARY: ₹10 test plan for checking real payments end to end — remove after testing. */}
+      {config.enabled ? (
+        <Card className="border-dashed border-amber-300 bg-amber-50/40 dark:border-amber-800 dark:bg-amber-950/10">
+          <CardContent className="flex flex-col gap-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm">
+              <p className="flex flex-wrap items-center gap-2 font-medium">
+                {TEST_PLAN.name} plan · {formatMoney(TEST_PLAN.amount, TEST_PLAN.currency)}
+                <Badge variant="outline" className="border-amber-300 text-amber-800 dark:border-amber-700 dark:text-amber-200">
+                  Temporary
+                </Badge>
+              </p>
+              <p className="mt-1 text-muted-foreground">{TEST_PLAN.tagline} Activates for {TEST_PLAN.periodDays} day.</p>
+            </div>
+            <CheckoutButton
+              planKey={TEST_PLAN.key}
+              planName={TEST_PLAN.name}
+              label={`Pay ${formatMoney(TEST_PLAN.amount, TEST_PLAN.currency)}`}
+              payer={{ name: user.name, email: user.email }}
+              variant="outline"
+              className="shrink-0"
+            />
+          </CardContent>
         </Card>
       ) : null}
 
