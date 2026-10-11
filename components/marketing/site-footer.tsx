@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ShieldCheckIcon } from "lucide-react";
 import { FooterLogo } from "@/components/brand/logo";
 
 const groups = [
@@ -69,7 +70,10 @@ export function SiteFooter() {
       <div className="border-t">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© {new Date().getFullYear()} Refnivo AI. All rights reserved.</p>
-          <p>Payouts are processed manually by the Refnivo team in this version.</p>
+          <p className="inline-flex items-center gap-1.5">
+            <ShieldCheckIcon className="size-3.5 text-emerald-600" aria-hidden />
+            Payments secured by <span className="font-semibold text-foreground">Razorpay</span>
+          </p>
         </div>
       </div>
     </footer>
