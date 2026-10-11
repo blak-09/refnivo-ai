@@ -8,13 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/dashboard/primitives";
 import { BrandLogo, ProductThumb } from "@/components/products/product-thumb";
-import { ProgramCard } from "@/components/affiliate/program-card";
-import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import { FloatingProfile } from "@/components/marketing/product-showcase";
 import { shortCommission, shortReward } from "@/components/campaigns/campaign-summary";
 import { formatMoney } from "@/lib/money";
 import { getBrandCollaborators, getPublicBrand } from "@/lib/services/brands";
-import { listPublicProgramsForBrand } from "@/lib/services/affiliate-programs";
 import { formatDate } from "@/lib/utils/dates";
 import { VERIFICATION_LABEL } from "@/lib/utils/labels";
 import type { BrandSocialLinks } from "@/lib/validation/brand";
@@ -31,7 +28,6 @@ const SOCIAL_LABEL: Record<string, string> = { instagram: "Instagram", youtube: 
 const TABS = [
   { value: "overview", label: "Overview" },
   { value: "campaigns", label: "Campaigns" },
-  { value: "programs", label: "Affiliate Programs" },
   { value: "collaborations", label: "Collaborations" },
 ] as const;
 type Tab = (typeof TABS)[number]["value"];
@@ -68,15 +64,10 @@ export default async function BrandProfilePage({ params, searchParams }: { param
   const tab: Tab = TABS.some((t) => t.value === sp.tab) ? (sp.tab as Tab) : "overview";
   const social = (brand.socialLinks ?? {}) as BrandSocialLinks;
   // Only rendered for a signed-in creator who could actually connect.
-  const [{ state: connectState }, programs, collaborators] = await Promise.all([
-    connectStateForBrand(brand.id),
-    listPublicProgramsForBrand({ id: brand.id, name: brand.name }),
-    getBrandCollaborators(brand.id),
-  ]);
+  const [{ state: connectState }, collaborators] = await Promise.all([connectStateForBrand(brand.id), getBrandCollaborators(brand.id)]);
   const counts: Record<Tab, number | null> = {
     overview: null,
     campaigns: brand.campaigns.length,
-    programs: brand.campaigns.length + programs.length,
     collaborations: collaborators.length,
   };
 
@@ -128,10 +119,9 @@ export default async function BrandProfilePage({ params, searchParams }: { param
             {tab === "overview" ? (
               <>
                 {brand.description ? <p className="text-sm whitespace-pre-line text-muted-foreground">{brand.description}</p> : null}
-                <div className="grid gap-3 sm:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     { label: "Refnivo campaigns", value: brand.campaigns.length, tab: "campaigns" },
-                    { label: "External programs", value: programs.length, tab: "programs" },
                     { label: "Creator collaborations", value: collaborators.length, tab: "collaborations" },
                   ].map((s) => (
                     <Link key={s.label} href={`/brands/${slug}?tab=${s.tab}`} scroll={false} className="rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40">
@@ -174,46 +164,6 @@ export default async function BrandProfilePage({ params, searchParams }: { param
               </section>
             ) : null}
 
-            {tab === "programs" ? (
-              <>
-                <section>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold">Refnivo Campaigns</h2>
-                    <ProgramTypeBadge type="REFNIVO" />
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">Joined and tracked on Refnivo. Commissions are recorded here once orders are verified.</p>
-                  {!brand.campaigns.length ? (
-                    <p className="mt-3 text-sm text-muted-foreground">No active Refnivo campaigns.</p>
-                  ) : (
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      {brand.campaigns.map((c) => (
-                        <CampaignRow key={c.id} c={c} />
-                      ))}
-                    </div>
-                  )}
-                </section>
-                <section>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold">External Affiliate Programs</h2>
-                    <ProgramTypeBadge type="EXTERNAL" />
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Managed by the brand or its network. Refnivo lists them for discovery and does not control their approval, tracking or payouts.
-                  </p>
-                  {!programs.length ? (
-                    <p className="mt-3 text-sm text-muted-foreground">No external affiliate programs listed.</p>
-                  ) : (
-                    <ul className="mt-3 grid gap-4 sm:grid-cols-2">
-                      {programs.map((p) => (
-                        <li key={p.id}>
-                          <ProgramCard program={p} />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              </>
-            ) : null}
 
             {tab === "collaborations" ? (
               <section>
@@ -274,9 +224,9 @@ export default async function BrandProfilePage({ params, searchParams }: { param
                 <p className="inline-flex items-center gap-1.5 font-medium">
                   <StoreIcon className="size-4 text-muted-foreground" aria-hidden /> Looking for more brands?
                 </p>
-                <p className="text-muted-foreground">Browse every Refnivo campaign and external affiliate program in one directory.</p>
-                <Link href="/affiliate-programs" className="font-medium text-primary hover:underline">
-                  Discover Affiliate Programs
+                <p className="text-muted-foreground">Browse every live Refnivo campaign in the marketplace.</p>
+                <Link href="/campaigns" className="font-medium text-primary hover:underline">
+                  Discover campaigns
                 </Link>
               </CardContent>
             </Card>

@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db/prisma";
 import { listMarketplaceCampaigns } from "./campaigns";
 import { listPublicBrands } from "./brands";
 import { listPublicCreators } from "./creators";
-import { listPublishedPrograms } from "./affiliate-programs";
 import { appOrigin } from "./links";
 
 /**
@@ -13,7 +12,7 @@ import { appOrigin } from "./links";
  * The page is rendered per request (the header needs the visitor's session),
  * but none of this content is visitor-specific, so it is cached for 60 s and
  * bounded to what the page actually shows (4 campaigns, 16 brands, 4
- * creators, 60 external programmes, counts). Before this, every homepage hit ran the full
+ * creators, counts). Before this, every homepage hit ran the full
  * marketplace, brand and creator listings (unbounded) plus three counts and a
  * QR render, all round-tripping to the database.
  *
@@ -26,26 +25,23 @@ import { appOrigin } from "./links";
 export const LANDING_CACHE_TAG = "landing";
 export const LANDING_REVALIDATE_SECONDS = 60;
 
-export type LandingStats = { activeCampaigns: number; brandCount: number; creatorCount: number; externalPrograms: number };
+export type LandingStats = { activeCampaigns: number; brandCount: number; creatorCount: number };
 
 export type LandingData = {
   campaigns: Awaited<ReturnType<typeof listMarketplaceCampaigns>>;
   brands: Awaited<ReturnType<typeof listPublicBrands>>;
   creators: Awaited<ReturnType<typeof listPublicCreators>>;
-  /** Published external programmes, featured first (logo strip + directory preview). */
-  programs: Awaited<ReturnType<typeof listPublishedPrograms>>["programs"];
   stats: LandingStats | null;
 };
 
 /** Everything the landing page shows. Throws if any part fails — see the note above. */
 const loadLanding = unstable_cache(
   async (): Promise<LandingData> => {
-    const [campaigns, brands, creators, external, stats] = await Promise.all([
+    const [campaigns, brands, creators, stats] = await Promise.all([
       listMarketplaceCampaigns({ sort: "trending", limit: 4 }),
       listPublicBrands({ limit: 16 }),
       listPublicCreators({ limit: 4 }),
-      listPublishedPrograms({ sort: "featured" }, 60),
-      (async (): Promise<Omit<LandingStats, "externalPrograms">> => {
+      (async (): Promise<LandingStats> => {
         const [activeCampaigns, brandCount, creatorCount] = await Promise.all([
           prisma.campaign.count({ where: { status: "ACTIVE" } }),
           prisma.brand.count({ where: { status: "ACTIVE" } }),
@@ -54,14 +50,14 @@ const loadLanding = unstable_cache(
         return { activeCampaigns, brandCount, creatorCount };
       })(),
     ]);
-    return { campaigns, brands, creators, programs: external.programs, stats: { ...stats, externalPrograms: external.total } };
+    return { campaigns, brands, creators, stats };
   },
   // Bump the key whenever LandingData changes shape: cached entries outlive deployments.
-  ["landing-data-v3"],
+  ["landing-data-v4"],
   { revalidate: LANDING_REVALIDATE_SECONDS, tags: [LANDING_CACHE_TAG] },
 );
 
-export const EMPTY_LANDING_DATA: LandingData = { campaigns: [], brands: [], creators: [], programs: [], stats: null };
+export const EMPTY_LANDING_DATA: LandingData = { campaigns: [], brands: [], creators: [], stats: null };
 
 export async function getLandingData(): Promise<LandingData> {
   try {

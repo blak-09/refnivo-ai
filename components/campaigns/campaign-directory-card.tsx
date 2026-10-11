@@ -2,16 +2,14 @@ import Link from "next/link";
 import { ArrowRightIcon, BadgeCheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BrandLogo } from "@/components/products/product-thumb";
-import { ActiveProgramPill, ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import type { MarketplaceCampaign } from "@/lib/services/campaigns";
 import { campaignCategory, campaignCommission } from "@/lib/services/directory";
 
 /**
- * Directory card for a Refnivo campaign — a programme run on Refnivo end to
- * end: Refnivo issues the link, tracks the order and records the commission.
- * Figures are the campaign's own configured terms.
+ * Directory card for a Refnivo campaign: Refnivo issues the link, tracks the
+ * order and records the commission. Figures are the campaign's own configured terms.
  */
-export function CampaignProgramCard({ campaign: c }: { campaign: MarketplaceCampaign }) {
+export function CampaignDirectoryCard({ campaign: c }: { campaign: MarketplaceCampaign }) {
   const href = `/campaigns/${c.slug}`;
   return (
     <article className="group relative flex h-full flex-col rounded-2xl border border-indigo-100 bg-card p-4 transition duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-lg sm:p-5 dark:border-indigo-900/50">
@@ -32,8 +30,9 @@ export function CampaignProgramCard({ campaign: c }: { campaign: MarketplaceCamp
       </header>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <ActiveProgramPill />
-        <ProgramTypeBadge type="REFNIVO" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden /> Active
+        </span>
       </div>
 
       <p className="mt-3 line-clamp-2 text-sm font-medium">{c.product.name}</p>

@@ -7,7 +7,6 @@ const groups = [
     links: [
       { href: "/how-it-works", label: "How it works" },
       { href: "/campaigns", label: "Discover campaigns" },
-      { href: "/affiliate-programs", label: "Affiliate programs" },
       { href: "/products", label: "Discover products" },
       { href: "/brands", label: "Discover brands" },
       { href: "/pricing", label: "Pricing" },

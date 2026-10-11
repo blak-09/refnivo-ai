@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { CheckIcon, ChevronRightIcon, RocketIcon, SearchIcon, type LucideIcon } from "lucide-react";
 import { BrandLogo } from "@/components/products/product-thumb";
-import { ProgramTypeBadge } from "@/components/affiliate/program-badge";
 import { CTAButton } from "@/components/marketing/cta-button";
 import { cn } from "@/lib/utils";
 
@@ -122,9 +121,9 @@ export function CampaignBuilderVisual() {
   );
 }
 
-export type ProgramRow = { key: string; name: string; logoUrl: string | null; detail: string; type: "REFNIVO" | "EXTERNAL"; href: string };
+export type ProgramRow = { key: string; name: string; logoUrl: string | null; detail: string; href: string };
 
-/** Creator visual: a live slice of the programme directory (real listings). */
+/** Creator visual: a live slice of the campaign marketplace (real listings). */
 export function ProgramListVisual({ rows }: { rows: ProgramRow[] }) {
   return (
     <Frame title="Find Brands to Promote">
@@ -143,17 +142,16 @@ export function ProgramListVisual({ rows }: { rows: ProgramRow[] }) {
                     <p className="truncate text-sm font-semibold">{r.name}</p>
                     <p className="truncate text-xs text-muted-foreground">{r.detail}</p>
                   </div>
-                  <ProgramTypeBadge type={r.type} className="hidden sm:inline-flex" />
                   <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                 </Link>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Programs appear here as brands list them.</p>
+          <p className="mt-4 rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Campaigns appear here as brands publish them.</p>
         )}
-        <Link href="/affiliate-programs" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
-          Browse the full directory <ChevronRightIcon className="size-4" aria-hidden />
+        <Link href="/campaigns" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
+          Browse all campaigns <ChevronRightIcon className="size-4" aria-hidden />
         </Link>
       </div>
     </Frame>

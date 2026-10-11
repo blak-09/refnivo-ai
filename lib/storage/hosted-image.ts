@@ -19,8 +19,8 @@ export function storagePublicOrigin(env: NodeJS.ProcessEnv = process.env): strin
 
 export function isHostedImage(src: string | null | undefined, env: NodeJS.ProcessEnv = process.env): boolean {
   if (!src) return false;
-  // Our own static files: /uploads (local storage) and /brand-logos (shipped with the app).
-  if (src.startsWith("/uploads/") || src.startsWith("/brand-logos/")) return true;
+  // Our own local uploads (local storage driver).
+  if (src.startsWith("/uploads/")) return true;
   const origin = storagePublicOrigin(env);
   if (!origin) return false;
   try {

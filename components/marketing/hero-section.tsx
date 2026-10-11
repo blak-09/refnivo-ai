@@ -22,8 +22,8 @@ export function HeroSection() {
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <CTAButton href="/auth/register">Get Started</CTAButton>
-            <CTAButton href="/affiliate-programs" variant="outline">
-              Explore Affiliate Programs
+            <CTAButton href="/campaigns" variant="outline">
+              Explore Campaigns
             </CTAButton>
           </div>
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">

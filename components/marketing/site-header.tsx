@@ -10,14 +10,13 @@ const links: NavLink[] = [
   { href: "/#product", label: "Product" },
   { href: "/#brands", label: "For Brands" },
   { href: "/#creators", label: "For Creators" },
-  { href: "/affiliate-programs", label: "Affiliate Programs" },
+  { href: "/campaigns", label: "Campaigns" },
   { href: "/community", label: "Community" },
 ];
 
 /** Everything that used to be a top-level link stays one click away under Resources. */
 const resources: NavLink[] = [
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/campaigns", label: "Refnivo Campaigns" },
   { href: "/brands", label: "Brand Directory" },
   { href: "/creators", label: "Creator Directory" },
   { href: "/pricing", label: "Pricing" },

@@ -32,7 +32,6 @@ export const COMMUNITY_PLACEMENTS = [
   "home-creators",
   "home-brands",
   "campaigns",
-  "affiliate-programs",
   "brands",
   "creators",
   "how-it-works",

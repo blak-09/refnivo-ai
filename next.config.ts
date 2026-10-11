@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
   // Never leak the framework version.
   poweredByHeader: false,
   images: { remotePatterns, formats: ["image/avif", "image/webp"] },
+  // External affiliate programmes were removed; old links land on the Refnivo equivalent.
+  async redirects() {
+    return [
+      { source: "/affiliate-programs", destination: "/campaigns", permanent: true },
+      { source: "/affiliate-programs/:slug*", destination: "/campaigns", permanent: true },
+      { source: "/dashboard/creator/affiliate-links", destination: "/dashboard/creator/discover", permanent: true },
+      { source: "/dashboard/brand/affiliate-programs/:path*", destination: "/dashboard/brand/campaigns", permanent: true },
+      { source: "/dashboard/admin/affiliate-programs/:path*", destination: "/dashboard/admin/campaigns", permanent: true },
+    ];
+  },
   async headers() {
     return [
       { source: "/(.*)", headers: securityHeaders() },

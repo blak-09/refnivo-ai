@@ -73,7 +73,7 @@ export default async function CreatorAnalyticsPage({ searchParams }: { searchPar
               description="Join a campaign and share your link — performance shows up here."
               action={
                 <Button size="sm" nativeButton={false} render={<Link href="/dashboard/creator/discover" />}>
-                  Discover programs
+                  Discover campaigns
                 </Button>
               }
             />

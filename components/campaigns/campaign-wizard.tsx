@@ -223,7 +223,7 @@ export function CampaignWizard(props: Props) {
           setFormError(pub.error);
           return;
         }
-        toast.success("Campaign launched. It is now live in the affiliate directory.");
+        toast.success("Campaign launched. It is now live in the campaign marketplace.");
       } else {
         toast.success(kind === "publish" ? "Campaign saved." : "Draft saved.");
       }

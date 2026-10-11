@@ -5,21 +5,17 @@ import { decideApplication, joinCampaign } from "@/lib/services/partners";
 import { recordOrder, verifyConversion } from "@/lib/services/conversions";
 import { recordClick } from "@/lib/services/tracking";
 import { getBrandSeries, getBrandTrackingLinks, getPartnerCampaignPerformance, getPartnerSeries, parseRange } from "@/lib/services/metrics";
-import { createAffiliateProgram, listProgramsForReview, listPublicProgramsForBrand, reviewAffiliateProgram } from "@/lib/services/affiliate-programs";
 import { getBrandCollaborators } from "@/lib/services/brands";
 import { listDirectory } from "@/lib/services/directory";
-import { affiliateProgramSchema } from "@/lib/validation/affiliate";
 import { campaignValues, makeCreator, makeOwnerWithBrand, uniq } from "../helpers";
 
 /**
- * Queries behind the redesigned pages: the unified programme directory, brand
+ * Queries behind the redesigned pages: the creator's campaign directory, brand
  * tracking/analytics series, and the public brand profile tabs.
  */
 let owner: Awaited<ReturnType<typeof makeOwnerWithBrand>>;
 let campaignId: string;
 let brandName: string;
-
-const okLink = async () => ({ reachable: true, status: "ok 200", checkedAt: new Date() });
 
 beforeAll(async () => {
   brandName = `Dir ${uniq("b")}`;
@@ -79,81 +75,32 @@ describe("tracking and analytics series", () => {
   });
 });
 
-describe("programme directory and brand profile", () => {
-  it("lists Refnivo campaigns and external programmes separately, with counts for every tab", async () => {
-    const program = await createAffiliateProgram(
-      owner.brand.id,
-      owner.user.id,
-      affiliateProgramSchema.parse({
-        name: `${brandName} Affiliates`,
-        signupUrl: `https://network.example.com/join/${uniq("u")}`,
-        commissionType: "PERCENTAGE",
-        commissionDescription: "Up to 8%",
-        approvalType: "APPLICATION",
-        category: "Electronics",
-      }),
-      { submit: true },
-    );
-    // Pending listings are not public.
-    expect(await listPublicProgramsForBrand({ id: owner.brand.id, name: brandName })).toHaveLength(0);
-    const reviewer = await prisma.user.create({ data: { name: "Admin", email: `${uniq("admin")}@test.local`, role: "ADMIN", status: "APPROVED" } });
-    await reviewAffiliateProgram(reviewer.id, program.id, { decision: "APPROVE", verified: true }, { checkLink: okLink });
-
+describe("campaign directory and brand profile", () => {
+  it("lists live Refnivo campaigns with search, category chips and category filter", async () => {
     const all = await listDirectory({ q: brandName });
-    expect(all.items.map((i) => i.kind).sort()).toEqual(["EXTERNAL", "REFNIVO"]);
-    expect(all.counts).toEqual({ all: 2, refnivo: 1, external: 1 });
+    expect(all.total).toBe(1);
+    expect(all.items[0].campaign.id).toBe(campaignId);
+    expect(all.items[0].commission).toMatch(/per sale|Customer rewards/);
+    expect(all.categories).toEqual(["Electronics"]); // "Headphones & audio" maps onto Electronics
 
-    const ext = await listDirectory({ q: brandName, kind: "external" });
-    expect(ext.items.map((i) => i.kind)).toEqual(["EXTERNAL"]);
-    // Counts stay accurate while a tab is selected.
-    expect(ext.counts).toEqual({ all: 2, refnivo: 1, external: 1 });
-
-    const ref = await listDirectory({ q: brandName, kind: "refnivo" });
-    expect(ref.items).toHaveLength(1);
-    expect(ref.items[0].kind === "REFNIVO" && ref.items[0].campaign.id).toBe(campaignId);
-    expect(ref.categories).toEqual(["Electronics"]); // "Headphones & audio" maps onto Electronics
-
-    const none = await listDirectory({ q: brandName, category: "Fashion" });
-    expect(none.items).toHaveLength(0);
-
-    const listed = await listPublicProgramsForBrand({ id: owner.brand.id, name: brandName });
-    expect(listed.map((p) => p.id)).toEqual([program.id]);
+    expect((await listDirectory({ q: brandName, category: "Electronics" })).total).toBe(1);
+    expect((await listDirectory({ q: brandName, category: "Fashion" })).items).toHaveLength(0);
+    expect((await listDirectory({ q: `${brandName}-no-such-brand` })).total).toBe(0);
   });
 
-  it("filters by programme type and by disclosed commission, without inventing rates", async () => {
-    const tag = uniq("Filt");
-    const reviewer = await prisma.user.create({ data: { name: "Admin", email: `${uniq("admin")}@test.local`, role: "ADMIN", status: "APPROVED" } });
-    const make = async (over: Record<string, unknown>) => {
-      const o = await makeOwnerWithBrand(`${tag} ${uniq("b")}`);
-      const p = await createAffiliateProgram(
-        o.brand.id,
-        o.user.id,
-        affiliateProgramSchema.parse({ name: `${tag} programme ${uniq("n")}`, signupUrl: `https://network.example.com/join/${uniq("u")}`, category: "Beauty", ...over }),
-        { submit: true },
-      );
-      await reviewAffiliateProgram(reviewer.id, p.id, { decision: "APPROVE", verified: true }, { checkLink: okLink });
-      return p;
-    };
-    const referral = await make({ programType: "REFERRAL", commissionType: "FIXED", commissionDescription: "₹100 per referral" });
-    const undisclosed = await make({ programType: "INFLUENCER" });
+  it("only lists campaigns that are live, and pages results", async () => {
+    const tag = uniq("Page");
+    const o = await makeOwnerWithBrand(`${tag} brand`);
+    const draft = await createCampaign(o.brand.id, o.brand.name, o.user.id, campaignValues(o.product.id, { name: `${tag} draft` }));
+    expect((await listDirectory({ q: tag })).total).toBe(0); // drafts are not listed
+    await transitionCampaign(o.brand.id, o.user.id, draft.id, "PUBLISH", { confirmed: true });
+    expect((await listDirectory({ q: tag })).total).toBe(1);
 
-    const byType = await listDirectory({ q: tag, type: "REFERRAL" });
-    expect(byType.items.map((i) => i.key)).toEqual([`p-${referral.id}`]);
-    expect(byType.types).toEqual(expect.arrayContaining(["REFERRAL", "INFLUENCER"]));
-    expect((await listDirectory({ q: tag, type: "NOT_A_TYPE" })).total).toBe(2); // unknown type is ignored
-
-    const disclosed = await listDirectory({ q: tag, commission: "1" });
-    expect(disclosed.items.map((i) => i.key)).toEqual([`p-${referral.id}`]);
-    expect(disclosed.items.some((i) => i.key === `p-${undisclosed.id}`)).toBe(false);
-
-    // "Commission available" puts stated rates first; it never ranks by a guessed number.
-    const sorted = await listDirectory({ q: tag, sort: "commission" });
-    expect(sorted.items.map((i) => i.key)).toEqual([`p-${referral.id}`, `p-${undisclosed.id}`]);
-
-    // Admin search finds listings by name and paginates with a total.
-    const admin = await listProgramsForReview("APPROVED", 1, { q: tag });
-    expect(admin.total).toBe(2);
-    expect(admin).toHaveLength(1);
+    const page1 = await listDirectory({ q: brandName.split(" ")[0] }, 1);
+    expect(page1.items.length).toBeLessThanOrEqual(1);
+    expect(page1.total).toBeGreaterThanOrEqual(page1.items.length);
+    // Unknown sort values fall back to "newest" instead of failing.
+    expect((await listDirectory({ q: tag, sort: "commission" })).total).toBe(1);
   });
 
   it("shows only approved or connected creators as collaborations, without social numbers", async () => {
