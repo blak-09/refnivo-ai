@@ -1,11 +1,15 @@
+import Image from "next/image";
 import { ArrowUpRightIcon, CheckIcon, CircleDollarSignIcon, ClockIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
- * Product mockups built in code (no screenshots, no stock images). Every figure
- * is invented sample data and each mockup is captioned "Example", so nothing
- * here can be read as real platform or customer numbers.
+ * Product mockups built in code (no screenshots). Every figure is invented
+ * sample data and each mockup is captioned "Example", so nothing here can be
+ * read as real platform or customer numbers. The applicant faces are cropped
+ * from the licensed stock photos in photos.tsx — models, not Refnivo creators.
  */
+
+const APPLICANTS = ["avatar-ring-light", "avatar-podcast", "avatar-smile"] as const;
 
 function Window({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -84,10 +88,13 @@ export function BrandMockup() {
           ))}
           <div className="rounded-xl border border-dashed bg-muted/40 px-4 py-3 text-sm">
             <p className="font-medium">3 creator applications waiting</p>
-            <div className="mt-2 flex -space-x-2" aria-hidden>
-              {["bg-violet-400", "bg-sky-400", "bg-indigo-400"].map((c) => (
-                <span key={c} className={cn("size-7 rounded-full border-2 border-card", c)} />
-              ))}
+            <div className="mt-2 flex items-center" aria-hidden>
+              <span className="flex -space-x-2.5">
+                {APPLICANTS.map((a) => (
+                  <Image key={a} src={`/images/marketing/avatars/${a}.webp`} alt="" width={36} height={36} className="size-9 rounded-full border-2 border-card object-cover shadow-sm" />
+                ))}
+              </span>
+              <span className="ml-3 text-xs text-muted-foreground">Review and approve</span>
             </div>
           </div>
         </div>
