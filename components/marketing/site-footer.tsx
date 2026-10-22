@@ -55,10 +55,10 @@ export function SiteFooter() {
         {groups.map((g) => (
           <div key={g.title}>
             <h3 className="mb-3 text-sm font-semibold">{g.title}</h3>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {g.links.map((l) => (
                 <li key={l.href + l.label}>
-                  <Link href={l.href} className="text-sm text-muted-foreground hover:text-foreground">
+                  <Link href={l.href} className="inline-block py-1 text-sm text-muted-foreground hover:text-foreground">
                     {l.label}
                   </Link>
                 </li>

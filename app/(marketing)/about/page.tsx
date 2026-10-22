@@ -332,6 +332,23 @@ export default function AboutPage() {
           </div>
         </div>
       </section>
+
+      {/* Photo credits — the Pexels licence needs none, but credit is encouraged. */}
+      <section aria-labelledby="photo-credits" className="pb-16">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <h2 id="photo-credits" className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Photo credits
+          </h2>
+          <p className="mt-2 max-w-3xl text-xs leading-5 text-muted-foreground">
+            Lifestyle photos on our homepage are by Thangaraj Editor, SKG Photography, Kampus Production, Ben Khatry, Manik Mandal, Yan Krukau,
+            Vansh Graphic&apos;s, Sanket Mishra, Garley Gibson, Satyam Pixels and Mizuno K via{" "}
+            <a href="https://www.pexels.com" className="underline-offset-2 hover:underline" rel="noopener noreferrer" target="_blank">
+              Pexels
+            </a>
+            . The people shown are models, not Refnivo customers, and do not endorse Refnivo.
+          </p>
+        </div>
+      </section>
     </>
   );
 }

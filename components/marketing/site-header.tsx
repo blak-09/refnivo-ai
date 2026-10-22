@@ -10,16 +10,16 @@ const links: NavLink[] = [
   { href: "/#product", label: "Product" },
   { href: "/#brands", label: "For Brands" },
   { href: "/#creators", label: "For Creators" },
-  { href: "/campaigns", label: "Campaigns" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/community", label: "Community" },
 ];
 
-/** Everything that used to be a top-level link stays one click away under Resources. */
+/** Everything else stays one click away under Resources. */
 const resources: NavLink[] = [
+  { href: "/campaigns", label: "Explore Campaigns" },
   { href: "/how-it-works", label: "How It Works" },
   { href: "/brands", label: "Brand Directory" },
   { href: "/creators", label: "Creator Directory" },
-  { href: "/pricing", label: "Pricing" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -69,7 +69,7 @@ export async function SiteHeader() {
               <Button variant="ghost" className="hidden rounded-lg sm:inline-flex" nativeButton={false} render={<Link href="/auth/login" />}>
                 Log in
               </Button>
-              <Button size="sm" className="rounded-lg sm:h-9 sm:px-4" nativeButton={false} render={<Link href="/auth/register" />}>
+              <Button size="sm" className="bg-gradient-brand rounded-lg font-semibold text-white shadow-sm shadow-indigo-500/25 hover:opacity-95 sm:h-9 sm:px-4" nativeButton={false} render={<Link href="/auth/register" />}>
                 Get Started
               </Button>
             </>
