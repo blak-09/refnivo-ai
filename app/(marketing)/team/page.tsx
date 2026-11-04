@@ -163,7 +163,7 @@ export default function TeamPage() {
               Whether you’re a brand, creator, customer, or potential partner, we’d love to have you be part of the Refnivo journey.
             </p>
             <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <CTAButton href="/auth/register" variant="light">
+              <CTAButton href="/get-started" variant="light">
                 Get Started
               </CTAButton>
               <CTAButton href="/contact" variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/10">

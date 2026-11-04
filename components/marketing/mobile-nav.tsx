@@ -71,7 +71,7 @@ export function MobileNav({
                 <Button variant="outline" nativeButton={false} render={<Link href="/auth/login" onClick={close} />}>
                   Log in
                 </Button>
-                <Button nativeButton={false} render={<Link href="/auth/register" onClick={close} />}>
+                <Button nativeButton={false} render={<Link href="/get-started" onClick={close} />}>
                   Get Started
                 </Button>
               </>

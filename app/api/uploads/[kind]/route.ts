@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { assertBrandOwner, assertRole, assertUser, AuthorizationError } from "@/lib/auth/guards";
+import { prisma } from "@/lib/db/prisma";
 import { recordAudit } from "@/lib/services/audit";
 import { getStorage, imageValidationMessage, MAX_IMAGE_BYTES, uploadsAvailable, validateImage, validateImageBytes } from "@/lib/storage";
 import { isUploadKind, UPLOAD_KINDS, uploadPrefix } from "@/lib/storage/upload-kinds";
@@ -12,6 +13,16 @@ export const runtime = "nodejs";
 const UPLOADS_PER_WINDOW = 30;
 const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
 
+/** A signed-in brand owner who has not created their brand yet (mid-onboarding). */
+async function brandOwnerWithoutBrand(): Promise<boolean> {
+  try {
+    const user = await assertRole("BRAND_OWNER");
+    return !(await prisma.brand.findUnique({ where: { ownerId: user.id }, select: { id: true } }));
+  } catch {
+    return false;
+  }
+}
+
 function json(body: Record<string, unknown>, status: number, headers: Record<string, string> = {}) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store", ...headers } });
 }
@@ -19,7 +30,7 @@ function json(body: Record<string, unknown>, status: number, headers: Record<str
 /**
  * POST /api/uploads/[kind] — the single image upload pipeline.
  *
- *   product-image · brand-logo · brand-cover   brand owner (with a brand)
+ *   product-image · brand-logo · brand-cover   brand owner (with a brand; logo/cover also mid-onboarding)
  *   creator-image                              creator
  *   avatar                                     any signed-in user
  *
@@ -41,7 +52,15 @@ export async function POST(request: Request, ctx: { params: Promise<{ kind: stri
   let actorRole: "BRAND_OWNER" | "CREATOR" | "CUSTOMER" | "ADMIN";
   let entity: { type: string; id: string };
   try {
-    if (spec.scope === "brand") {
+    if (spec.scope === "brand" && kind !== "product-image" && (await brandOwnerWithoutBrand())) {
+      // Onboarding: the logo/cover is uploaded before the brand exists (it is
+      // created on "Complete registration"), so it is stored under the user.
+      const user = await assertRole("BRAND_OWNER");
+      ownerId = `u-${user.id}`;
+      userId = user.id;
+      actorRole = user.role;
+      entity = { type: "User", id: user.id };
+    } else if (spec.scope === "brand") {
       const { user, brand } = await assertBrandOwner();
       ownerId = brand.id;
       userId = user.id;

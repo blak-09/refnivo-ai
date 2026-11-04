@@ -79,7 +79,7 @@ async function main() {
         profile: {
           displayName: "Arjun Reviews Tech",
           username: "arjuntech",
-          category: "Tech & gadgets",
+          category: "Technology",
           location: "Bengaluru, India",
           bio: "Honest gadget reviews for students and first-jobbers. 2 videos a week.",
           instagramHandle: "arjuntech",

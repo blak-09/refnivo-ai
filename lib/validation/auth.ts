@@ -55,9 +55,9 @@ const countField = z
   .or(z.literal(""));
 
 /**
- * Single flat schema for the whole registration form. Role-specific fields are
- * optional at the type level and made required per role in `superRefine`, so the
- * form can post a flat FormData and the server enforces the real rules.
+ * The account step of signup (the role comes from page 1, /get-started). Brand
+ * and creator details are collected afterwards on the onboarding profile step;
+ * the legacy optional detail fields are still accepted for older clients.
  */
 export const registerSchema = z
   .object({
@@ -85,27 +85,6 @@ export const registerSchema = z
   .superRefine((data, ctx) => {
     if (data.password !== data.confirmPassword) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["confirmPassword"], message: "Passwords do not match" });
-    }
-
-    if (data.role === "BRAND_OWNER") {
-      if (!data.brandName?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["brandName"], message: "Brand name is required" });
-      }
-      if (!data.brandCategory?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["brandCategory"], message: "Select a brand category" });
-      }
-      if (data.brandWebsite?.trim() && !/^https?:\/\/.+\..+/.test(data.brandWebsite.trim())) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["brandWebsite"], message: "Enter a valid URL (https://…)" });
-      }
-    }
-
-    if (data.role === "CREATOR") {
-      if (!data.creatorName?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["creatorName"], message: "Creator name is required" });
-      }
-      if (!data.creatorCategory?.trim()) {
-        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["creatorCategory"], message: "Select a content category" });
-      }
     }
   });
 

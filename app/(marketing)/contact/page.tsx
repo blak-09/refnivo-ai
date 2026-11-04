@@ -235,7 +235,7 @@ export default function ContactPage() {
               Whether you’re a brand, creator, customer, or potential partner, we’re always open to meaningful conversations.
             </p>
             <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <CTAButton href="/auth/register" variant="light">
+              <CTAButton href="/get-started" variant="light">
                 Get Started
               </CTAButton>
               <CTAButton href="#message" variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/10">

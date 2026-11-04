@@ -73,6 +73,7 @@ export const NAV: Record<NavKey, NavItem[]> = {
     { href: "/campaigns", label: "Discover Products", icon: CompassIcon },
     { href: "/dashboard/customer/referrals", label: "My Links", icon: LinkIcon },
     { href: "/dashboard/customer/rewards", label: "Rewards", icon: GiftIcon },
+    { href: "/dashboard/customer/profile", label: "Profile", icon: UserCircleIcon },
     { href: "/dashboard/customer/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
     { href: "/dashboard/customer/settings", label: "Settings", icon: SettingsIcon },
   ],

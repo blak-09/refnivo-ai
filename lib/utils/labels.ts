@@ -74,16 +74,16 @@ export const PRODUCT_CATEGORIES = [
 ] as const;
 
 export const CREATOR_CATEGORIES = [
-  "Tech & gadgets",
   "Fashion",
   "Beauty",
+  "Technology",
   "Fitness",
-  "Food",
   "Lifestyle",
+  "Food",
+  "Travel",
+  "Education",
   "Gaming",
   "Finance",
-  "Education",
-  "Travel",
   "Parenting",
   "Comedy & entertainment",
   "Other",

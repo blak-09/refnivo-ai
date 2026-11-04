@@ -111,28 +111,6 @@ export async function listCreatorCampaigns(userId: string) {
   });
 }
 
-export const CREATOR_PROFILE_FIELDS = [
-  "displayName",
-  "username",
-  "bio",
-  "profileImageUrl",
-  "category",
-  "location",
-  "instagramHandle",
-  "youtubeChannel",
-  "twitterHandle",
-  "audienceCategory",
-] as const;
-
-/** Fraction (0–1) of key profile fields that are filled in. */
-export function profileCompletion(p: Record<string, unknown>): number {
-  const filled = CREATOR_PROFILE_FIELDS.filter((f) => {
-    const v = p[f];
-    return typeof v === "string" ? v.trim().length > 0 : v != null;
-  }).length;
-  return Math.round((filled / CREATOR_PROFILE_FIELDS.length) * 100);
-}
-
 export type PublicCreatorCard = {
   displayName: string;
   username: string;

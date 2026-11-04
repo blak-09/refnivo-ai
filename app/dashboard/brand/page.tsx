@@ -20,6 +20,8 @@ import { CircleCallout } from "@/components/community/community-ui";
 import { FunnelChart, ReferralsOverTimeChart, RevenueByCampaignChart } from "@/components/charts/lazy-charts";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
+import { ProfileCompletionCard } from "@/components/onboarding/completion-card";
+import { brandCompletion } from "@/lib/onboarding/completion";
 import { formatMoney } from "@/lib/money";
 import { listCampaigns } from "@/lib/services/campaigns";
 import { getBrandOverview, getCampaignBreakdown, getReferralsOverTime, getTopCreators } from "@/lib/services/metrics";
@@ -67,6 +69,8 @@ export default async function BrandOverviewPage({ searchParams }: { searchParams
           </>
         }
       />
+
+      <ProfileCompletionCard completion={brandCompletion(brand)} editHref="/dashboard/brand/profile" />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Attributed revenue" value={formatMoney(overview.revenue)} hint="From verified orders" icon={BadgeIndianRupeeIcon} />

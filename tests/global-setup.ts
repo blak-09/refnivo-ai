@@ -17,6 +17,8 @@ export default async function setup() {
   try {
     await prisma.auditLog.deleteMany();
     await prisma.emailOutbox.deleteMany(); // userId is SetNull on user delete, so clear explicitly
+    // Restricted on the brand: a single users delete can fail on row order when a run left claims behind.
+    await prisma.orderClaim.deleteMany();
     await prisma.user.deleteMany(); // cascades to brands, products, campaigns, links, referrals, ledgers
   } finally {
     await prisma.$disconnect();

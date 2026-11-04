@@ -26,12 +26,12 @@ const orderNumber = `E2E-ORD-${uniq("o")}`;
 test("brand: signup → onboarding → product → published campaign", async ({ browser }) => {
   const page = await newPage(browser);
 
+  // Get started → account → brand profile → review → Complete registration → dashboard.
   await register(page, "BRAND_OWNER", brand);
-  await expect(page).toHaveURL(/\/auth\/onboarding/);
-  await page.getByLabel("Brand name").fill(brand.brandName);
-  await page.getByLabel("Industry / category").selectOption({ index: 1 });
-  await page.getByRole("button", { name: "Create brand & continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/brand/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/dashboard\/brand/);
+  const owner = await db().user.findUniqueOrThrow({ where: { email: brand.email }, include: { brands: true } });
+  expect(owner.onboardingCompletedAt).not.toBeNull();
+  expect(owner.brands[0]).toMatchObject({ name: brand.brandName, businessEmail: brand.email, contactName: brand.name });
 
   // Product (no image — uploads are covered separately).
   await page.goto("/dashboard/brand/products/new");
@@ -73,12 +73,10 @@ test("brand: signup → onboarding → product → published campaign", async ({
 test("creator: signup → onboarding → applies to the campaign", async ({ browser }) => {
   const page = await newPage(browser);
   await register(page, "CREATOR", creator);
-  await expect(page).toHaveURL(/\/auth\/onboarding/);
-  await page.getByLabel("Display name").fill(creator.name);
-  await page.getByLabel("Username").fill(creator.username);
-  await page.getByLabel("Creator category").selectOption({ index: 1 });
-  await page.getByRole("button", { name: "Create profile & continue" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/creator/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/\/dashboard\/creator/);
+  const profile = await db().creatorProfile.findFirstOrThrow({ where: { user: { email: creator.email } } });
+  expect(profile.username).toBe(creator.username);
+  expect(profile.profileImageUrl).toMatch(/^\/uploads\/creators\//);
 
   // The campaign was published with the default "creators need approval" rule.
   await page.goto(`/campaigns/${campaignSlug}`);

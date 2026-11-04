@@ -115,7 +115,7 @@ export default function AboutPage() {
               Refnivo is a referral and partnership platform that connects brands, creators and customers through performance-driven referrals.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <CTAButton href="/auth/register">Get Started</CTAButton>
+              <CTAButton href="/get-started">Get Started</CTAButton>
               <CTAButton href="#for-brands" variant="outline">
                 For Brands
               </CTAButton>
@@ -322,7 +322,7 @@ export default function AboutPage() {
             <h2 className="relative text-2xl font-bold tracking-tight sm:text-4xl">Brands, creators and customers — in one place</h2>
             <p className="relative mx-auto mt-3 max-w-xl text-white/85">Create a free account and start with a single campaign or a single referral link.</p>
             <div className="relative mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <CTAButton href="/auth/register" variant="light">
+              <CTAButton href="/get-started" variant="light">
                 Get Started
               </CTAButton>
               <CTAButton href="/how-it-works" variant="outline" className="border-white/40 bg-transparent text-white hover:bg-white/10">

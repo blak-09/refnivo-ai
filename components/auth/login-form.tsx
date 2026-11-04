@@ -95,7 +95,7 @@ export function LoginForm({
                 Check registration status →
               </Link>
             ) : statusCode === "NO_ACCOUNT" ? (
-              <Link href="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
+              <Link href="/get-started" className="font-medium text-primary underline-offset-4 hover:underline">
                 Create an account →
               </Link>
             ) : statusCode === "NO_PASSWORD" ? (
@@ -144,7 +144,7 @@ export function LoginForm({
           </Link>
           <span>
             New here?{" "}
-            <Link href="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href="/get-started" className="font-medium text-primary underline-offset-4 hover:underline">
               Create an account
             </Link>
           </span>

@@ -51,27 +51,14 @@ describe("auth validation", () => {
     });
     expect(r.success).toBe(false);
   });
-  it("requires role-specific fields", () => {
-    // Brand owner without brand name / category is rejected.
+  it("asks only for the account at signup — role details come on the onboarding profile step", () => {
+    for (const role of ["BRAND_OWNER", "CREATOR", "CUSTOMER"]) {
+      expect(registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", confirmPassword: "Password1", role }).success).toBe(true);
+    }
+    // Older clients that still post brand details are accepted.
     expect(
-      registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", confirmPassword: "Password1", role: "BRAND_OWNER" }).success,
-    ).toBe(false);
-    // With them it passes.
-    expect(
-      registerSchema.safeParse({
-        name: "Rohan",
-        email: "r@x.com",
-        password: "Password1",
-        confirmPassword: "Password1",
-        role: "BRAND_OWNER",
-        brandName: "Soundwave",
-        brandCategory: "Electronics",
-      }).success,
+      registerSchema.safeParse({ name: "Rohan", email: "r@x.com", password: "Password1", confirmPassword: "Password1", role: "BRAND_OWNER", brandName: "Soundwave", brandCategory: "Electronics" }).success,
     ).toBe(true);
-    // Creator needs a creator name + category.
-    expect(
-      registerSchema.safeParse({ name: "Sana", email: "s@x.com", password: "Password1", confirmPassword: "Password1", role: "CREATOR" }).success,
-    ).toBe(false);
   });
   it("rejects weak passwords, bad emails and admin self-registration", () => {
     expect(registerSchema.safeParse({ name: "R", email: "x", password: "short", confirmPassword: "short", role: "CUSTOMER" }).success).toBe(false);

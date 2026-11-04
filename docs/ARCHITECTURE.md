@@ -44,10 +44,11 @@ Brand lists products → creates a product campaign (commission + customer rewar
   no stored tokens: `lib/services/oauth.ts` maps the Google `sub` to a local user through `oauth_accounts` (link by verified e-mail,
   or create with the role chosen on the register page), and the `jwt` callback mints the same claims as a password login.
   `users.passwordHash` is nullable for Google-only accounts.
-- `proxy.ts` redirects unauthenticated users away from `/dashboard/**` and `/auth/onboarding`, sends logged-in users
+- `proxy.ts` redirects unauthenticated users away from `/dashboard/**` and `/onboarding/**`, sends logged-in users
   away from login/register, and enforces that `/dashboard/<segment>` matches the user's role.
 - Every page/layout re-checks server-side via `lib/auth/guards.ts`:
-  - `requireUser()` / `requireRole()` / `requireBrand()` / `requireCreator()` — redirect (pages; brand/creator also require onboarding).
+  - `requireUser()` / `requireRole()` / `requireBrand()` / `requireCreator()` / `requireCustomer()` — redirect (pages; every role's dashboard requires `users.onboardingCompletedAt`, else → `/onboarding/profile`).
+  - Onboarding: `/get-started` (role) → `/auth/register?role=` (account, or Google) → `/onboarding/profile` (draft in `users.onboardingDraft`) → `/onboarding/review` → complete (`lib/services/onboarding.ts`). Profile completion % is computed by `lib/onboarding/completion.ts`.
   - `assertUser()` / `assertRole()` / `assertBrandOwner()` / `assertPartner()` — throw `AuthorizationError` (server actions).
 - Manual verification: new accounts are created **PENDING** and cannot sign in until an admin approves them
   (`/dashboard/admin/registrations`). Login distinguishes no-account / pending / rejected / suspended; only

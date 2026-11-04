@@ -99,7 +99,7 @@ export default async function LandingPage() {
             the brand confirms.
           </p>
           <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-            <ActionLink href="/auth/register">
+            <ActionLink href="/get-started">
               Get Started <ArrowRightIcon className="size-4" aria-hidden />
             </ActionLink>
             <ActionLink href="/campaigns" variant="outline">
@@ -442,7 +442,7 @@ export default async function LandingPage() {
             </h2>
             <p className="text-lede relative mx-auto mt-4 max-w-xl text-white/75">Launch a campaign, find brands to promote, or share products you love. Free during early access.</p>
             <div className="relative mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-              <ActionLink href="/auth/register" variant="light">
+              <ActionLink href="/get-started" variant="light">
                 Get Started <ArrowRightIcon className="size-4" aria-hidden />
               </ActionLink>
               <ActionLink href="/campaigns" variant="ghost-light">

@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { PartnerLinksList } from "@/components/links/partner-links-list";
-import { requireRole } from "@/lib/auth/guards";
+import { requireCustomer } from "@/lib/auth/guards";
+import { ProfileCompletionCard } from "@/components/onboarding/completion-card";
+import { profileCompletionFor } from "@/lib/services/onboarding";
 import { prisma } from "@/lib/db/prisma";
 import { formatMoney } from "@/lib/money";
 import { getPartnerStats } from "@/lib/services/metrics";
@@ -16,16 +18,26 @@ const CLAIM_LABEL: Record<string, string> = { PENDING: "Waiting for the brand", 
 
 export const metadata: Metadata = { title: "My rewards" };
 
-export default async function CustomerOverviewPage() {
-  const user = await requireRole("CUSTOMER");
-  const [stats, links, claims] = await Promise.all([
+export default async function CustomerOverviewPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
+  const user = await requireCustomer();
+  const { welcome } = await searchParams;
+  const [stats, links, claims, completion] = await Promise.all([
     getPartnerStats(user.id),
     prisma.referralLink.count({ where: { ownerId: user.id, status: "ACTIVE" } }),
     listCustomerClaims(user.id),
+    profileCompletionFor(user.id, "CUSTOMER"),
   ]);
 
   return (
     <div className="space-y-6">
+      {welcome ? (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+          <p className="font-medium">Welcome to Refnivo, {user.name.split(" ")[0]} 🎉</p>
+          <p className="text-muted-foreground">
+            Next: <Link href="/campaigns" className="underline underline-offset-4">discover products</Link> and share the ones you like with friends.
+          </p>
+        </div>
+      ) : null}
       <PageHeader
         title={`Hi ${user.name.split(" ")[0]}`}
         description="Share products you like. When a friend buys through your link, you earn the reward."
@@ -35,6 +47,7 @@ export default async function CustomerOverviewPage() {
           </Button>
         }
       />
+      <ProfileCompletionCard completion={completion} editHref="/dashboard/customer/profile" />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="My links" value={links} icon={LinkIcon} />
         <KpiCard label="Clicks on my links" value={stats.clicks} hint={`${stats.qrScans} via QR`} icon={MousePointerClickIcon} />

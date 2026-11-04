@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { securityEvent } from "@/lib/utils/security-log";
 import { roleHome } from "./roles";
+import { ONBOARDING_PROFILE_PATH } from "@/lib/onboarding/paths";
 import { DELETED_SUSPENSION_REASON } from "@/lib/services/account-deletion";
 import { classifySession, signedOutPath, type SessionProblem } from "./session-state";
 
@@ -16,7 +17,7 @@ export class AuthorizationError extends Error {
   }
 }
 
-export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status" | "mustChangePassword" | "avatarUrl">;
+export type SessionUser = Pick<User, "id" | "name" | "email" | "role" | "status" | "mustChangePassword" | "avatarUrl" | "onboardingCompletedAt">;
 
 export type SessionState = { user: SessionUser; problem: null } | { user: null; problem: SessionProblem };
 
@@ -36,7 +37,7 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   if (!id) return { user: null, problem: "no-session" };
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true, avatarUrl: true, suspendedAt: true, suspensionReason: true },
+    select: { id: true, name: true, email: true, role: true, status: true, mustChangePassword: true, sessionVersion: true, avatarUrl: true, onboardingCompletedAt: true, suspendedAt: true, suspensionReason: true },
   });
   const problem = classifySession(
     { id, sessionVersion: session?.user?.sessionVersion },
@@ -47,7 +48,7 @@ export const getSessionState = cache(async (): Promise<SessionState> => {
   }
   if (problem || !user) return { user: null, problem: problem ?? "not-found" };
   return {
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword, avatarUrl: user.avatarUrl },
+    user: { id: user.id, name: user.name, email: user.email, role: user.role, status: user.status, mustChangePassword: user.mustChangePassword, avatarUrl: user.avatarUrl, onboardingCompletedAt: user.onboardingCompletedAt },
     problem: null,
   };
 });
@@ -82,22 +83,29 @@ export async function requireRole(role: UserRole): Promise<SessionUser> {
 }
 
 /**
- * Brand owners must complete onboarding before using the dashboard.
- * Returns the owner and their brand (v1 supports one brand per owner).
+ * Brand owners must complete onboarding (role → profile → review) before using
+ * the dashboard. Returns the owner and their brand (v1: one brand per owner).
  */
 export async function requireBrand(): Promise<{ user: SessionUser; brand: Brand }> {
   const user = await requireRole("BRAND_OWNER");
   const brand = await brandForOwner(user.id);
-  if (!brand) redirect("/auth/onboarding");
+  if (!brand || !user.onboardingCompletedAt) redirect(ONBOARDING_PROFILE_PATH);
   return { user, brand };
 }
 
-/** Creators must complete their profile before using the dashboard. */
+/** Creators must complete onboarding (their public profile) before using the dashboard. */
 export async function requireCreator(): Promise<{ user: SessionUser; profile: CreatorProfile }> {
   const user = await requireRole("CREATOR");
   const profile = await creatorProfileFor(user.id);
-  if (!profile) redirect("/auth/onboarding");
+  if (!profile || !user.onboardingCompletedAt) redirect(ONBOARDING_PROFILE_PATH);
   return { user, profile };
+}
+
+/** Customers finish their (short) profile before the dashboard opens. */
+export async function requireCustomer(): Promise<SessionUser> {
+  const user = await requireRole("CUSTOMER");
+  if (!user.onboardingCompletedAt) redirect(ONBOARDING_PROFILE_PATH);
+  return user;
 }
 
 // ---------------------------------------------------------------------------

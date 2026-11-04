@@ -21,7 +21,7 @@ export function HeroSection() {
             Refnivo helps brands launch referral campaigns, connect with creators, track conversions and manage performance from one platform.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <CTAButton href="/auth/register">Get Started</CTAButton>
+            <CTAButton href="/get-started">Get Started</CTAButton>
             <CTAButton href="/campaigns" variant="outline">
               Explore Campaigns
             </CTAButton>

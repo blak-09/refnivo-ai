@@ -1,43 +1,12 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
-import { LANDING_CACHE_TAG } from "@/lib/services/landing";
-import { redirect } from "next/navigation";
-import { assertPartner, assertRole } from "@/lib/auth/guards";
-import { CreatorError, getCreatorProfile, upsertCreatorProfile } from "@/lib/services/creators";
+import { revalidatePath } from "next/cache";
+import { assertPartner } from "@/lib/auth/guards";
+import { getCreatorProfile } from "@/lib/services/creators";
 import { joinCampaign, PartnerError, withdrawApplication, type JoinResult } from "@/lib/services/partners";
-import { applyToCampaignSchema, creatorProfileSchema } from "@/lib/validation/creator";
+import { applyToCampaignSchema } from "@/lib/validation/creator";
 import { withdrawApplicationSchema } from "@/lib/validation/partner";
-import { fail, firstError, formValues, ok, safeErrorMessage, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
-
-export async function saveCreatorProfileAction(_prev: ActionResult | null, formData: FormData): Promise<ActionResult> {
-  let user;
-  try {
-    user = await assertRole("CREATOR");
-  } catch (err) {
-    return fail(safeErrorMessage(err));
-  }
-
-  const parsed = creatorProfileSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) {
-    const fieldErrors = zodFieldErrors(parsed.error);
-    return fail(firstError(fieldErrors), fieldErrors, formValues(formData));
-  }
-
-  const isNew = !(await getCreatorProfile(user.id));
-  try {
-    await upsertCreatorProfile(user.id, parsed.data);
-  } catch (err) {
-    if (err instanceof CreatorError) return fail(err.message, { username: err.message }, formValues(formData));
-    console.error("[saveCreatorProfile] failed", err instanceof Error ? err.message : err);
-    return fail("Could not save your profile. Please try again.");
-  }
-  revalidatePath("/dashboard/creator", "layout");
-  revalidatePath(`/creators/${parsed.data.username}`);
-  revalidateTag(LANDING_CACHE_TAG, "max");
-  if (isNew) redirect("/dashboard/creator?welcome=1");
-  return ok(undefined);
-}
+import { fail, ok, safeErrorMessage, type ActionResult } from "@/lib/utils/action-result";
 
 /** Creator applies / customer joins. Returns the referral code when approved instantly. */
 export async function joinCampaignAction(input: unknown): Promise<ActionResult<JoinResult>> {

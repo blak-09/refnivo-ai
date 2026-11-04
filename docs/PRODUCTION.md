@@ -302,7 +302,7 @@ only to prove identity; the session is the same JWT as a password login.
 - No account yet → the register page's role choice is carried in a 10-minute httpOnly cookie (`refnivo.oauth-role`); a new
   user is created with that role, `passwordHash = NULL`, Google name/avatar, and follows `SIGNUP_APPROVAL` exactly like a
   password signup (auto → dashboard/onboarding; manual → `/registration-pending`). Clicking Google on the *login* page
-  without an account sends the visitor to `/auth/register?error=google-no-account` to choose a role — never a silent default.
+  without an account sends the visitor to `/get-started?error=google-no-account` to choose a role — never a silent default.
 - PENDING / REJECTED / SUSPENDED accounts are refused with the same messages as the password flow.
 - Password-less accounts see "This account signs in with Google" on the password form and can add a password via *Forgot
   password* (needs `EMAIL_PROVIDER=resend`). Suspension, session revocation and `mustChangePassword` apply unchanged.

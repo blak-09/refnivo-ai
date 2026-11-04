@@ -7,6 +7,8 @@ import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashb
 import { CircleCallout } from "@/components/community/community-ui";
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireCreator } from "@/lib/auth/guards";
+import { ProfileCompletionCard } from "@/components/onboarding/completion-card";
+import { creatorCompletion } from "@/lib/onboarding/completion";
 import { formatMoney } from "@/lib/money";
 import { listCreatorCampaigns } from "@/lib/services/creators";
 import { getPartnerStats } from "@/lib/services/metrics";
@@ -38,6 +40,7 @@ export default async function CreatorOverviewPage({ searchParams }: { searchPara
           </Button>
         }
       />
+      <ProfileCompletionCard completion={creatorCompletion(profile)} editHref="/dashboard/creator/profile" />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Total clicks" value={stats.clicks} hint={`${stats.qrScans} via QR`} icon={MousePointerClickIcon} />
         <KpiCard label="Verified conversions" value={stats.verified} hint={`${stats.purchased} awaiting verification`} icon={ShoppingCartIcon} />

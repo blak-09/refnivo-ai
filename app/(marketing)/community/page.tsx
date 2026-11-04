@@ -98,7 +98,7 @@ export default function CommunityPage() {
               See how the platform works
             </Link>{" "}
             or{" "}
-            <Link href="/auth/register" className="font-medium text-primary underline-offset-4 hover:underline">
+            <Link href="/get-started" className="font-medium text-primary underline-offset-4 hover:underline">
               create a free account
             </Link>
             .

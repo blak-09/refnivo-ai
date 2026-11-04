@@ -69,7 +69,7 @@ export async function SiteHeader() {
               <Button variant="ghost" className="hidden rounded-lg sm:inline-flex" nativeButton={false} render={<Link href="/auth/login" />}>
                 Log in
               </Button>
-              <Button size="sm" className="bg-gradient-brand rounded-lg font-semibold text-white shadow-sm shadow-indigo-500/25 hover:opacity-95 sm:h-9 sm:px-4" nativeButton={false} render={<Link href="/auth/register" />}>
+              <Button size="sm" className="bg-gradient-brand rounded-lg font-semibold text-white shadow-sm shadow-indigo-500/25 hover:opacity-95 sm:h-9 sm:px-4" nativeButton={false} render={<Link href="/get-started" />}>
                 Get Started
               </Button>
             </>

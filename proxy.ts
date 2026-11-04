@@ -32,7 +32,7 @@ const authProxy = auth((req) => {
   const user = req.auth?.user;
 
   const isDashboard = pathname.startsWith("/dashboard");
-  const isOnboarding = pathname.startsWith("/auth/onboarding");
+  const isOnboarding = pathname.startsWith("/auth/onboarding") || pathname.startsWith("/onboarding");
   const isAuthEntry = pathname === "/auth/login" || pathname === "/auth/register";
 
   if ((isDashboard || isOnboarding) && !user) {
@@ -61,7 +61,7 @@ const authProxy = auth((req) => {
   return NextResponse.next();
 });
 
-const PROTECTED = /^\/(dashboard|auth)(\/|$)/;
+const PROTECTED = /^\/(dashboard|auth|onboarding)(\/|$)/;
 
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;

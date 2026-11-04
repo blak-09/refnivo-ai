@@ -1,17 +1,20 @@
 import Link from "next/link";
-import { uploadsAvailable } from "@/lib/storage/availability";
 import type { Metadata } from "next";
 import { ExternalLinkIcon } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader, StatusBadge } from "@/components/dashboard/primitives";
-import { BrandForm } from "@/components/brand/brand-form";
+import { ProfileCompletionCard } from "@/components/onboarding/completion-card";
+import { ProfileForm } from "@/components/onboarding/profile-form";
 import { requireBrand } from "@/lib/auth/guards";
+import { brandCompletion } from "@/lib/onboarding/completion";
+import { getOnboardingContext, profileFormValues } from "@/lib/services/onboarding";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import { VERIFICATION_LABEL } from "@/lib/utils/labels";
 
 export const metadata: Metadata = { title: "Brand profile" };
 
 export default async function BrandProfilePage() {
-  const { brand } = await requireBrand();
+  const { user, brand } = await requireBrand();
+  const ctx = await getOnboardingContext(user.id);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -26,17 +29,8 @@ export default async function BrandProfilePage() {
           </span>
         }
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>{brand.name}</CardTitle>
-          <CardDescription>
-            Public URL: <code className="font-mono">/brands/{brand.slug}</code>. Brand verification is reviewed by the platform team.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <BrandForm mode="edit" brand={brand} uploadsEnabled={uploadsAvailable()} />
-        </CardContent>
-      </Card>
+      <ProfileCompletionCard completion={brandCompletion(brand)} always />
+      <ProfileForm role="BRAND_OWNER" mode="edit" values={profileFormValues(ctx, { preferDraft: false })} uploadsEnabled={uploadsAvailable()} email={ctx.email} />
     </div>
   );
 }

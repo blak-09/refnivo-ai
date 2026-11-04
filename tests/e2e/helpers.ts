@@ -28,25 +28,56 @@ export function db(): PrismaClient {
   return prisma;
 }
 
-/** Signs up through the real register form (e-mail flow, SIGNUP_APPROVAL=auto → lands on a dashboard/onboarding). */
-export async function register(page: Page, role: "BRAND_OWNER" | "CREATOR" | "CUSTOMER", opts: { name: string; email: string; brandName?: string; creatorName?: string }) {
-  await page.goto(`/auth/register?role=${role}`);
+// 1×1 PNG — passes the upload pipeline's magic-byte sniff.
+const TINY_PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+
+const ROLE_CTA = { BRAND_OWNER: "Continue as Brand", CREATOR: "Continue as Creator", CUSTOMER: "Continue as Customer" } as const;
+const ROLE_HOME = { BRAND_OWNER: /\/dashboard\/brand/, CREATOR: /\/dashboard\/creator/, CUSTOMER: /\/dashboard\/customer/ } as const;
+
+type Role = keyof typeof ROLE_CTA;
+type Actor = { name: string; email: string; brandName?: string; username?: string };
+
+/**
+ * Signs up through the real UI: Get started (role card) → account form →
+ * profile form → review → Complete registration → dashboard. Pass
+ * `{ profile: false }` to stop on the profile step (SIGNUP_APPROVAL=auto).
+ */
+export async function register(page: Page, role: Role, opts: Actor, { profile = true }: { profile?: boolean } = {}) {
+  await page.goto("/get-started");
+  await page.locator("a, button", { hasText: ROLE_CTA[role] }).first().click();
+  await expect(page).toHaveURL((url) => url.pathname === "/auth/register" && url.searchParams.get("role") === role, { timeout: 60_000 });
   await page.getByLabel("Full name").fill(opts.name);
   await page.getByLabel("Email").fill(opts.email);
-  // Role-specific required fields captured at signup (brand / creator details).
-  if (role === "BRAND_OWNER") {
-    await page.getByLabel(/^Brand name/).fill(opts.brandName ?? `${opts.name} Brand`);
-    await page.getByLabel(/^Brand category/).selectOption({ index: 1 });
-  }
-  if (role === "CREATOR") {
-    await page.getByLabel(/^Creator name/).fill(opts.creatorName ?? opts.name);
-    await page.getByLabel(/^Content category/).selectOption({ index: 1 });
-  }
   // Required labels render as "Password*" (asterisk aria-hidden) — anchor instead of exact.
   await page.getByLabel(/^Password\*?$/).fill(PASSWORD);
   await page.getByLabel(/^Confirm password/).fill(PASSWORD);
-  await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page).toHaveURL(/\/(dashboard|auth\/onboarding)/, { timeout: 60_000 });
+  await page.getByRole("button", { name: "Create account & continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\/profile/, { timeout: 60_000 });
+  if (profile) await completeProfile(page, role, opts);
+}
+
+/** Fills the role's required profile fields, reviews and completes registration. */
+export async function completeProfile(page: Page, role: Role, opts: Actor) {
+  const handle = opts.username ?? uniq("u").replace(/-/g, "_").toLowerCase().slice(0, 28);
+  if (role === "BRAND_OWNER") {
+    await page.getByLabel(/^Brand name/).fill(opts.brandName ?? `${opts.name} Brand`);
+    await page.getByLabel(/^Industry \/ category/).selectOption({ index: 1 });
+    await page.getByLabel(/^Brand description/).fill("We make everyday products for e2e testing, sold online across India.");
+    // Business email and contact person are pre-filled from the account.
+  } else if (role === "CREATOR") {
+    await page.getByLabel(/^Username/).fill(handle);
+    await page.getByLabel(/^Creator category/).selectOption({ index: 1 });
+    await page.getByLabel(/^Professional bio/).fill("I review gadgets for students, two videos every week.");
+    await page.getByLabel("Upload photo").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: TINY_PNG });
+    await expect(page.getByText(/uploaded/i).first()).toBeVisible({ timeout: 30_000 });
+  } else {
+    await page.getByLabel(/^Username/).fill(handle);
+    await page.getByRole("checkbox", { name: "Fitness", exact: true }).check({ force: true });
+  }
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/onboarding\/review/, { timeout: 60_000 });
+  await page.getByRole("button", { name: "Complete Registration" }).click();
+  await expect(page).toHaveURL(ROLE_HOME[role], { timeout: 60_000 });
 }
 
 export async function login(page: Page, userEmail: string, password = PASSWORD, opts: { expectSuccess?: boolean } = {}) {

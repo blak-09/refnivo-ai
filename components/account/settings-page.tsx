@@ -10,6 +10,20 @@ import { isEmailConfigured } from "@/lib/email";
 import { uploadsAvailable } from "@/lib/storage/availability";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/guards";
+import type { UserRole } from "@prisma/client";
+import { UserCircleIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+const PROFILE_PATH: Partial<Record<UserRole, string>> = {
+  BRAND_OWNER: "/dashboard/brand/profile",
+  CREATOR: "/dashboard/creator/profile",
+  CUSTOMER: "/dashboard/customer/profile",
+};
+const PROFILE_HINT: Partial<Record<UserRole, string>> = {
+  BRAND_OWNER: "Your public brand details, contact, products and collaboration preferences.",
+  CREATOR: "Your public creator profile, social links and collaboration preferences.",
+  CUSTOMER: "Your interests, location and profile picture.",
+};
 
 /** Shared account settings page used by every role's dashboard. */
 export async function SettingsPage({ user, extra }: { user: SessionUser; extra?: React.ReactNode }) {
@@ -87,6 +101,19 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
             This account was created with a temporary password. Choose a new one below — you will be signed out everywhere and asked to log in again.
           </p>
         </div>
+      ) : null}
+      {PROFILE_PATH[user.role] ? (
+        <Card>
+          <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">Profile</p>
+              <p className="text-sm text-muted-foreground">{PROFILE_HINT[user.role]}</p>
+            </div>
+            <Button variant="outline" nativeButton={false} render={<Link href={PROFILE_PATH[user.role]!} />}>
+              <UserCircleIcon aria-hidden /> Edit profile
+            </Button>
+          </CardContent>
+        </Card>
       ) : null}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

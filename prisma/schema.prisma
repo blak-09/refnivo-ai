@@ -391,11 +391,20 @@ model User {
   /// treats the account as gone. See lib/services/account-deletion.ts.
   deletedAt          DateTime?
 
+  // Onboarding (role → profile → review). Null until "Complete registration";
+  // dashboards send the user back to /onboarding until it is set. Existing
+  // accounts with a profile were backfilled by the migration.
+  onboardingCompletedAt DateTime?
+  /// In-progress onboarding form values ({ role, values, savedAt }) — "Save
+  /// progress". Cleared on completion; never holds secrets.
+  onboardingDraft       Json?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   brands              Brand[]
   creatorProfile      CreatorProfile?
+  customerProfile     CustomerProfile?
   partnerApplications PartnerApplication[]
   referralLinks       ReferralLink[]
   referralsMade       Referral[]             @relation("ReferralReferrer")
@@ -459,6 +468,16 @@ model Brand {
   socialLinks        Json?
   supportEmail       String?
   country            String             @default("India")
+  /// Private contact for Refnivo (not shown publicly; supportEmail is the public one).
+  businessEmail      String?
+  contactName        String?
+  state              String?
+  city               String?
+  productCategories  String[]           @default([])
+  targetAudience     String?
+  productDescription String?
+  /// AFFILIATE · PAID · BARTER · UGC · REFERRAL (see lib/onboarding/options.ts).
+  collaborationTypes String[]           @default([])
   verificationStatus VerificationStatus @default(UNVERIFIED)
   status             BrandStatus        @default(ACTIVE)
   createdAt          DateTime           @default(now())
@@ -538,6 +557,21 @@ model CreatorProfile {
   previousCampaigns  String?
   /// Array of public content URLs.
   contentSamples     Json?
+  linkedinUrl        String?
+  facebookUrl        String?
+  /// Array of other public profile URLs.
+  otherLinks         Json?
+  primaryPlatform    String?
+  /// Self-reported audience size bucket (e.g. "10K–50K"); label it as such.
+  audienceSize       String?
+  contentLanguage    String?
+  country            String?
+  state              String?
+  city               String?
+  contentDescription String?
+  /// AFFILIATE · PAID · BARTER · UGC · PRODUCT_REVIEW (see lib/onboarding/options.ts).
+  collaborationPreferences String[]     @default([])
+  interestedCategories     String[]     @default([])
   verificationStatus VerificationStatus @default(UNVERIFIED)
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
@@ -548,6 +582,30 @@ model CreatorProfile {
   @@index([category])
   @@index([verificationStatus])
   @@map("creator_profiles")
+}
+
+/// A customer's profile. The photo, full name and e-mail live on User
+/// (avatarUrl, name, email); this holds the rest. Private — there is no public
+/// customer page.
+model CustomerProfile {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  username            String   @unique
+  bio                 String?
+  country             String   @default("India")
+  state               String?
+  city                String?
+  /// FEMALE · MALE · NON_BINARY · PREFER_NOT_TO_SAY, or null.
+  gender              String?
+  interests           String[] @default([])
+  preferredCategories String[] @default([])
+  favouriteBrands     String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("customer_profiles")
 }
 
 model Campaign {

@@ -1,20 +1,20 @@
 import Link from "next/link";
-import { uploadsAvailable } from "@/lib/storage/availability";
 import type { Metadata } from "next";
 import { ExternalLinkIcon } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader, StatusBadge } from "@/components/dashboard/primitives";
-import { CreatorProfileForm } from "@/components/creators/creator-profile-form";
-import { Progress } from "@/components/ui/progress";
-import { profileCompletion } from "@/lib/services/creators";
+import { ProfileCompletionCard } from "@/components/onboarding/completion-card";
+import { ProfileForm } from "@/components/onboarding/profile-form";
 import { requireCreator } from "@/lib/auth/guards";
+import { creatorCompletion } from "@/lib/onboarding/completion";
+import { getOnboardingContext, profileFormValues } from "@/lib/services/onboarding";
+import { uploadsAvailable } from "@/lib/storage/availability";
 import { VERIFICATION_LABEL } from "@/lib/utils/labels";
 
 export const metadata: Metadata = { title: "Creator profile" };
 
 export default async function CreatorProfilePage() {
-  const { profile } = await requireCreator();
-  const completion = profileCompletion(profile as unknown as Record<string, unknown>);
+  const { user, profile } = await requireCreator();
+  const ctx = await getOnboardingContext(user.id);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -29,29 +29,8 @@ export default async function CreatorProfilePage() {
           </span>
         }
       />
-      <Card>
-        <CardContent className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="text-sm font-medium">Profile completion</p>
-            <p className="text-xs text-muted-foreground">
-              {completion === 100 ? "Your profile looks great to brands." : "A complete profile gets more applications approved."}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 sm:w-64">
-            <Progress value={completion} className="flex-1" aria-label="Profile completion" />
-            <span className="text-sm font-semibold tabular-nums">{completion}%</span>
-          </div>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{profile.displayName}</CardTitle>
-          <CardDescription>Audience numbers are labelled self-reported until a social media API is connected.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CreatorProfileForm profile={profile} uploadsEnabled={uploadsAvailable()} />
-        </CardContent>
-      </Card>
+      <ProfileCompletionCard completion={creatorCompletion(profile)} always />
+      <ProfileForm role="CREATOR" mode="edit" values={profileFormValues(ctx, { preferDraft: false })} uploadsEnabled={uploadsAvailable()} email={ctx.email} />
     </div>
   );
 }

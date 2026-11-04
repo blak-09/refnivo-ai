@@ -80,7 +80,8 @@ const callbacks: NextAuthConfig["callbacks"] = {
         await notifyRegistration("received", { id: resolution.user.id, name: resolution.user.name, email: resolution.user.email, role: resolution.user.role, registrationId: resolution.user.registrationId });
         return `/registration-pending?rid=${encodeURIComponent(resolution.user.registrationId ?? "")}`;
       case "no-account":
-        return `/auth/register?error=${OAUTH_ERROR.noAccount}`;
+        // Choose an account type first; the Google button there carries it.
+        return `/get-started?error=${OAUTH_ERROR.noAccount}`;
       case "email-unverified":
         securityEvent("LOGIN_FAILED", { reason: "OAUTH_EMAIL_UNVERIFIED", provider: GOOGLE_PROVIDER, email: identity.email });
         return `/auth/login?error=${OAUTH_ERROR.emailUnverified}`;
@@ -97,7 +98,23 @@ const callbacks: NextAuthConfig["callbacks"] = {
    * claims are taken from the local account that `signIn` just resolved.
    */
   async jwt(params) {
-    const { token, account } = params;
+    const { token, account, trigger } = params;
+    // `unstable_update()` (role chosen during onboarding): re-read the claims
+    // from the database. The update payload is ignored on purpose — a client
+    // could send anything there (e.g. role: "ADMIN").
+    if (trigger === "update" && typeof token.id === "string") {
+      const fresh = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: { role: true, status: true, name: true, sessionVersion: true, mustChangePassword: true },
+      });
+      if (!fresh || fresh.status !== "APPROVED") return null;
+      token.role = fresh.role;
+      token.status = fresh.status;
+      token.name = fresh.name;
+      token.sv = tokenSessionVersion(fresh.sessionVersion);
+      token.mcp = fresh.mustChangePassword;
+      return token;
+    }
     if (account?.provider === GOOGLE_PROVIDER) {
       const local = await userForGoogleAccount(account.providerAccountId);
       if (!local || local.status !== "APPROVED") return null;
@@ -114,7 +131,7 @@ const callbacks: NextAuthConfig["callbacks"] = {
   },
 };
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
   // Fail at boot (not on first request) if the secret is missing — except during `next build`.
   secret: authSecretAtBoot(),

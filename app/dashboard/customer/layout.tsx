@@ -1,10 +1,10 @@
 import { logoutAction } from "@/app/actions/auth";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { countUnread } from "@/lib/services/notify";
-import { requireRole } from "@/lib/auth/guards";
+import { requireCustomer } from "@/lib/auth/guards";
 
 export default async function CustomerLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireRole("CUSTOMER");
+  const user = await requireCustomer();
   const unreadNotifications = await countUnread(user.id);
   return (
     <DashboardShell

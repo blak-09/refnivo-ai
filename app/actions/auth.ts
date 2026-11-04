@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { signIn, signOut } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { roleHome } from "@/lib/auth/roles";
+import { ONBOARDING_PROFILE_PATH, safeNext, withNext } from "@/lib/onboarding/paths";
 import { setOAuthRoleCookie } from "@/lib/auth/oauth-role-cookie";
 import { googleOAuthEnabled } from "@/lib/config/oauth";
 import { isRegistrableRole } from "@/lib/services/oauth";
@@ -67,7 +68,8 @@ export async function registerAction(
   if (user.status === "APPROVED") {
     // Self-service signup (SIGNUP_APPROVAL): sign the new account in straight away.
     try {
-      await signIn("credentials", { email: parsed.data.email, password: parsed.data.password, redirectTo: roleHome(user.role) });
+      // Straight on to the profile step (page 2 of onboarding).
+      await signIn("credentials", { email: parsed.data.email, password: parsed.data.password, redirectTo: withNext(ONBOARDING_PROFILE_PATH, safeNext(formData.get("next"))) });
     } catch (err) {
       unstable_rethrow(err);
       logServerError("register", err, { stage: "auto-login" });

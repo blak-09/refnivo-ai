@@ -114,7 +114,7 @@ Public      /  /how-it-works  /pricing  /about  /contact  /privacy  /terms
             /campaigns (marketplace + filters)  /campaigns/[slug]
             /products  /products/[slug]   /brands  /brands/[slug]   /creators/[username]
             /r/[code]  (referral entry: records click/QR scan, sets attribution, redirects to campaign page)
-Auth        /auth/login  /auth/register  /auth/forgot-password  /auth/reset-password  /auth/onboarding (brand or creator profile)
+Auth        /get-started (role)  /auth/register?role=…  /onboarding/profile  /onboarding/review  /auth/login  /auth/forgot-password  /auth/reset-password
 Brand       /dashboard/brand  products  campaigns (new/[id]/edit)  creators  orders  payouts  analytics  profile  notifications  settings
             /api/exports/campaigns/[id]  (CSV export, brand-scoped)
 Creator     /dashboard/creator  campaigns  links  conversions  earnings (payout requests)  profile  notifications  settings
