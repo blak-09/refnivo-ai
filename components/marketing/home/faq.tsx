@@ -7,6 +7,10 @@ import { ChevronDownIcon } from "lucide-react";
  */
 export const HOME_FAQ: { q: string; a: string }[] = [
   {
+    q: "What is Refnivo?",
+    a: "A creator commerce platform for product brands. You can run affiliate and referral campaigns that pay commission only on verified orders, post UGC briefs that pay creators a fixed fee for approved content, and keep every creator partnership and its results in one place.",
+  },
+  {
     q: "How does order verification work?",
     a: "When someone buys through a partner's link or QR code, the order is recorded against that partner. The brand then checks it against its own store and confirms or rejects it. Only confirmed orders create a commission or reward — a click on its own never does.",
   },
@@ -24,7 +28,15 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Is Refnivo free?",
-    a: "Brands can launch their first 3 campaigns free. After that, a monthly plan (from ₹999) unlocks unlimited launches. Creators and customers never pay.",
+    a: "Brands can launch their first 3 campaigns free and use Partners on any plan. A plan from ₹999 per 30 days unlocks unlimited launches and UGC collaborations. Creators and customers never pay, and Refnivo takes no cut of their commission or UGC fees.",
+  },
+  {
+    q: "How do UGC collaborations work?",
+    a: "A brand posts a brief with the fee per creator, the deliverables and how it will use the content. Creators apply with a pitch, the brand picks who to work with, reviews the photos and videos (up to two revision rounds) and approves them. The brand then pays the creator directly and marks it paid; the creator confirms. Refnivo takes no cut. UGC briefs are part of the Starter and Growth plans.",
+  },
+  {
+    q: "What does the Partners page show?",
+    a: "Every creator a brand works with — through an approved campaign, an accepted connection or a UGC collaboration — with their clicks, verified sales, commission and content, plus private notes only the brand's team can see. It is included in every plan.",
   },
   {
     q: "Do customers need followers to earn?",

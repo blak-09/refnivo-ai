@@ -6,8 +6,14 @@ import { MobileNav, type NavLink } from "@/components/marketing/mobile-nav";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { roleHome } from "@/lib/auth/roles";
 
+/** The three products (docs/POSITIONING.md), shown as a dropdown on desktop. */
+const products: (NavLink & { hint: string })[] = [
+  { href: "/#affiliate", label: "Affiliate & referrals", hint: "Pay per verified sale" },
+  { href: "/#ugc", label: "UGC collaborations", hint: "Fixed-fee content from creators" },
+  { href: "/#partners", label: "Creator partnerships", hint: "Every creator and their results" },
+];
+
 const links: NavLink[] = [
-  { href: "/#product", label: "Product" },
   { href: "/#brands", label: "For Brands" },
   { href: "/#creators", label: "For Creators" },
   { href: "/pricing", label: "Pricing" },
@@ -35,6 +41,23 @@ export async function SiteHeader() {
         <HeaderLogo />
 
         <nav className="mx-auto hidden items-center gap-0.5 lg:flex" aria-label="Main">
+          <div className="group relative">
+            <button type="button" className={`${linkClass} inline-flex items-center gap-1`} aria-haspopup="true">
+              Products <ChevronDownIcon className="size-3.5 transition-transform group-focus-within:rotate-180 group-hover:rotate-180" aria-hidden />
+            </button>
+            <div className="invisible absolute top-full left-0 z-50 w-72 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
+              <ul className="rounded-xl border bg-popover p-1.5 shadow-lg">
+                {products.map((p) => (
+                  <li key={p.href}>
+                    <Link href={p.href} className="block rounded-lg px-3 py-2 hover:bg-accent">
+                      <span className="block text-sm font-medium text-foreground">{p.label}</span>
+                      <span className="block text-xs text-muted-foreground">{p.hint}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
           {links.map((l) => (
             <Link key={l.href} href={l.href} className={linkClass}>
               {l.label}
@@ -74,7 +97,7 @@ export async function SiteHeader() {
               </Button>
             </>
           )}
-          <MobileNav links={links} resources={resources} signedIn={!!user} dashboardHref={dashboardHref} />
+          <MobileNav links={[...products.map(({ href, label }) => ({ href, label })), ...links]} resources={resources} signedIn={!!user} dashboardHref={dashboardHref} />
         </div>
       </div>
     </header>

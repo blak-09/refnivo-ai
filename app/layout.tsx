@@ -11,7 +11,7 @@ const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"]
 export const metadata: Metadata = {
   title: { default: "Refnivo AI", template: "%s · Refnivo AI" },
   description:
-    "Affiliate and referral infrastructure for product brands. Creators and customers promote your products with unique links and QR codes; you pay only for verified orders.",
+    "Refnivo is the creator commerce platform for Indian product brands: affiliate and referral campaigns that pay on verified sales, UGC at a fixed fee, and every creator partnership in one place.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

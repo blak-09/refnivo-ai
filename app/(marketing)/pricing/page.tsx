@@ -10,7 +10,7 @@ import { getCurrentUser } from "@/lib/auth/guards";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: `Start free with ${FREE_CAMPAIGN_LIMIT} campaign launches. Upgrade to a monthly plan for unlimited campaigns.`,
+  description: `Start free with ${FREE_CAMPAIGN_LIMIT} campaign launches. Upgrade for unlimited campaigns and UGC collaborations.`,
 };
 
 const FREE_FEATURES = [
@@ -33,8 +33,8 @@ export default async function PricingPage() {
       <div className="mx-auto max-w-2xl text-center">
         <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Start free. Upgrade when you grow.</h1>
         <p className="mt-3 text-muted-foreground">
-          Every brand can launch its first {FREE_CAMPAIGN_LIMIT} campaigns for free. After that, a monthly plan unlocks unlimited campaign launches. Creators and
-          customers never pay, and Refnivo takes no cut of the commissions and rewards you pay your partners.
+          Every brand can launch its first {FREE_CAMPAIGN_LIMIT} campaigns for free. After that, a monthly plan unlocks unlimited campaign launches and UGC collaborations; Partners is included on every plan. Creators and
+          customers never pay, and Refnivo takes no cut of the commissions, rewards or UGC fees you pay your partners.
         </p>
       </div>
 

@@ -1,6 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowUpRightIcon, BadgeCheckIcon, CheckIcon, ClockIcon, LinkIcon } from "lucide-react";
+import { BadgeCheckIcon, CheckIcon, ClockIcon, LinkIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
@@ -12,18 +11,19 @@ import { cn } from "@/lib/utils";
  * a name, a result or a testimonial. Credits are listed on /about.
  */
 export const PHOTOS = {
-  creatorRingLight: { src: "/images/marketing/creator-ring-light.webp", w: 1600, h: 1065, alt: "A beauty creator holding make-up brushes, framed by a ring light" },
-  customerPhone: { src: "/images/marketing/customer-phone.webp", w: 1600, h: 1066, alt: "A young woman smiling at a table, holding her smartphone" },
-  brandOwner: { src: "/images/marketing/brand-owner.webp", w: 1600, h: 1066, alt: "A smiling online store owner at her desk, with packed orders and a clothing rack" },
-  creatorStudio: { src: "/images/marketing/studio-creator-laptop.webp", w: 1600, h: 1064, alt: "A creator at a laptop in a studio with a camera and a softbox light" },
-  customerSofa: { src: "/images/marketing/customer-sofa.webp", w: 1600, h: 1066, alt: "A young woman on a sofa, smiling at her phone" },
-  familySelfie: { src: "/images/marketing/family-selfie.webp", w: 1600, h: 1066, alt: "A family in festive clothes taking a selfie together" },
-  creatorVlog: { src: "/images/marketing/creator-vlog.webp", w: 1600, h: 1066, alt: "A creator filming herself with a camera in front of a flower wall" },
-  podcastStudio: { src: "/images/marketing/podcast-studio.webp", w: 1600, h: 900, alt: "A creator recording at a microphone in a modern studio" },
-  creatorGimbal: { src: "/images/marketing/creator-gimbal.webp", w: 1600, h: 1066, alt: "A young videographer filming outdoors with a camera on a gimbal" },
-  creatorDesk: { src: "/images/marketing/creator-desk.webp", w: 1600, h: 1066, alt: "A creator at a desk lit in blue, with cameras and a microphone" },
-  friendsPhoto: { src: "/images/marketing/friends-photo.webp", w: 1600, h: 1066, alt: "A woman photographing her friend in traditional clothes with a smartphone" },
-  creatorPhoneRig: { src: "/images/marketing/creator-phone-rig.webp", w: 1067, h: 1600, alt: "A creator setting up her phone on a tripod next to a ring light" },
+  creatorPodcast: { src: "/images/marketing/creator-podcast-desk.webp", w: 900, h: 1600, alt: "A smiling creator at a white studio desk with a tablet and a microphone" },
+  creatorRingLight: { src: "/images/marketing/creator-ring-light-setup.webp", w: 1067, h: 1600, alt: "A creator setting up a ring light in her living room" },
+  customersSofa: { src: "/images/marketing/customers-sofa-phones.webp", w: 1600, h: 1067, alt: "A couple on a sofa, smiling at something on their phones" },
+  creatorVideoRig: { src: "/images/marketing/creator-video-rig.webp", w: 1067, h: 1600, alt: "A video creator framing a shot on his phone beside a camera on a tripod" },
+  boutique: { src: "/images/marketing/boutique-saree.webp", w: 1600, h: 1067, alt: "A woman trying a saree drape in a clothing boutique" },
+  ugcTryOn: { src: "/images/marketing/ugc-try-on.webp", w: 1067, h: 1600, alt: "A creator holding up a top for the camera, lit by a ring light" },
+  friendsStreet: { src: "/images/marketing/friends-street-phone.webp", w: 1600, h: 1067, alt: "Two friends looking at a phone together on a busy street" },
+  creatorFilming: { src: "/images/marketing/creator-phone-filming.webp", w: 1600, h: 1067, alt: "A creator filming with her phone on a stand, a laptop beside her" },
+  creatorLaptop: { src: "/images/marketing/creator-laptop.webp", w: 1067, h: 1600, alt: "A smiling creator working on her laptop" },
+  creatorTutorial: { src: "/images/marketing/creator-tutorial.webp", w: 1067, h: 1600, alt: "A creator recording a tutorial with her phone and a ring light" },
+  partnersLaptop: { src: "/images/marketing/partners-review.webp", w: 769, h: 922, alt: "Two colleagues reviewing work on a laptop in an office" },
+  brandOwner: { src: "/images/marketing/founder-desk.webp", w: 782, h: 938, alt: "A smiling founder working on a laptop at her desk" },
+  festiveFriends: { src: "/images/marketing/festive-friends-phone.webp", w: 1067, h: 1600, alt: "Two women in festive clothes looking at a phone together" },
 } as const;
 
 export type Photo = (typeof PHOTOS)[keyof typeof PHOTOS];
@@ -59,18 +59,18 @@ type Tile =
   | { kind: "link" | "order" | "earnings" | "campaign" };
 
 const TILES: Tile[] = [
-  { kind: "photo", photo: PHOTOS.creatorRingLight, tag: "Creators", position: "50% 40%" },
+  { kind: "photo", photo: PHOTOS.creatorPodcast, tag: "Creators", position: "50% 30%" },
   { kind: "link" },
-  { kind: "photo", photo: PHOTOS.customerPhone, tag: "Customers share", wide: true, position: "55% 35%" },
-  { kind: "photo", photo: PHOTOS.creatorVlog, tag: "Creators", position: "70% 40%" },
+  { kind: "photo", photo: PHOTOS.customersSofa, tag: "Customers share", wide: true, position: "55% 40%" },
+  { kind: "photo", photo: PHOTOS.creatorVideoRig, tag: "Video creators", position: "45% 40%" },
   { kind: "order" },
-  { kind: "photo", photo: PHOTOS.familySelfie, tag: "Friends & family", wide: true },
-  { kind: "photo", photo: PHOTOS.creatorGimbal, tag: "Video creators", position: "62% 40%" },
+  { kind: "photo", photo: PHOTOS.friendsStreet, tag: "Friends & family", wide: true, position: "35% 50%" },
+  { kind: "photo", photo: PHOTOS.creatorRingLight, tag: "UGC creators", position: "55% 40%" },
   { kind: "earnings" },
-  { kind: "photo", photo: PHOTOS.friendsPhoto, tag: "Share anywhere", wide: true },
-  { kind: "photo", photo: PHOTOS.creatorPhoneRig, tag: "Links & QR codes" },
+  { kind: "photo", photo: PHOTOS.boutique, tag: "Product brands", wide: true, position: "50% 35%" },
+  { kind: "photo", photo: PHOTOS.creatorTutorial, tag: "Reviews & tutorials", position: "45% 40%" },
   { kind: "campaign" },
-  { kind: "photo", photo: PHOTOS.creatorDesk, tag: "Track every click", wide: true },
+  { kind: "photo", photo: PHOTOS.ugcTryOn, tag: "Reels & shorts", wide: true, position: "50% 22%" },
 ];
 
 function CardShell({ children, dark = false }: { children: React.ReactNode; dark?: boolean }) {
@@ -187,67 +187,5 @@ export function HeroShowcase({ qrDataUrl }: { qrDataUrl: string | null }) {
       </ul>
       <p className="sr-only">Stock photos of models alongside illustrative Refnivo cards; every number shown is an example.</p>
     </section>
-  );
-}
-
-/* ── Audience cards: big photo tiles with the role and what it gets ── */
-
-const AUDIENCES = [
-  {
-    photo: PHOTOS.brandOwner,
-    eyebrow: "For brands",
-    title: "Grow with partners who sell",
-    points: ["A campaign per product", "Approve every creator", "Pay only on verified orders"],
-    href: "#brands",
-    position: "50% 35%",
-  },
-  {
-    photo: PHOTOS.creatorRingLight,
-    eyebrow: "For creators",
-    title: "Promote brands you believe in",
-    points: ["Commission shown up front", "Your own link and QR code", "Track every rupee earned"],
-    href: "#creators",
-    position: "50% 40%",
-  },
-  {
-    photo: PHOTOS.customerSofa,
-    eyebrow: "For customers",
-    title: "Share products you love",
-    points: ["No followers needed", "Earn a reward per verified order", "Share on WhatsApp or anywhere"],
-    href: "#creators",
-    position: "60% 40%",
-  },
-] as const;
-
-export function AudienceCards() {
-  return (
-    <ul className="grid gap-5 md:grid-cols-3">
-      {AUDIENCES.map((a) => (
-        <li key={a.eyebrow}>
-          <Link
-            href={a.href}
-            className="group relative block overflow-hidden rounded-[1.75rem] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            <PhotoFrame photo={a.photo} className="aspect-[4/5] rounded-none transition-transform duration-500 group-hover:scale-[1.03]" sizes="(min-width: 768px) 380px, 100vw" position={a.position} />
-            <div aria-hidden className="absolute inset-0 bg-linear-to-t from-ink via-ink/55 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 p-6 text-white">
-              <p className="text-xs font-semibold tracking-[0.14em] text-violet-200 uppercase">{a.eyebrow}</p>
-              <p className="mt-2 flex items-start justify-between gap-3 text-2xl font-semibold tracking-tight">
-                {a.title}
-                <ArrowUpRightIcon className="mt-1 size-5 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden />
-              </p>
-              <ul className="mt-4 space-y-1.5 text-sm text-white/85">
-                {a.points.map((p) => (
-                  <li key={p} className="flex items-center gap-2">
-                    <CheckIcon className="size-4 text-violet-200" aria-hidden />
-                    {p}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
   );
 }

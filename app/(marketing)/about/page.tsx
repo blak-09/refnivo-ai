@@ -25,7 +25,7 @@ import { CTAButton } from "@/components/marketing/cta-button";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Refnivo is a referral and partnership platform that connects brands, creators and customers through performance-driven referrals.",
+  description: "Refnivo is a creator commerce platform for Indian product brands: affiliate and referral campaigns that pay on verified sales, UGC at a fixed fee, and every creator partnership in one place.",
 };
 
 /** Shared entrance animation; disabled for visitors who prefer reduced motion. */
@@ -49,14 +49,14 @@ const AUDIENCES: { id: string; label: string; icon: LucideIcon; title: string; i
     id: "for-brands",
     label: "For Brands",
     icon: MegaphoneIcon,
-    title: "Run referral campaigns without stitching tools together",
+    title: "Work with creators without stitching tools together",
     items: [
       { icon: LayersIcon, text: "Create referral and affiliate campaigns" },
       { icon: Building2Icon, text: "Add products, offers and campaign details" },
       { icon: UsersIcon, text: "Discover and collaborate with creators" },
       { icon: QrCodeIcon, text: "Generate unique referral links and QR codes" },
       { icon: BarChart3Icon, text: "Track clicks, referrals, conversions and performance" },
-      { icon: HandshakeIcon, text: "Build a network of creators and customers" },
+      { icon: HandshakeIcon, text: "Commission UGC at a fixed fee and keep every partner in one place" },
     ],
     cta: { href: "/auth/register?role=BRAND_OWNER", label: "For Brands" },
   },
@@ -70,7 +70,7 @@ const AUDIENCES: { id: string; label: string; icon: LucideIcon; title: string; i
       { icon: CheckCircle2Icon, text: "Apply to relevant campaigns" },
       { icon: LinkIcon, text: "Share unique referral links" },
       { icon: BarChart3Icon, text: "Track campaign performance" },
-      { icon: WalletIcon, text: "Earn rewards or commissions from successful referrals" },
+      { icon: WalletIcon, text: "Earn commission on sales and fixed fees for UGC" },
       { icon: HandshakeIcon, text: "Build long-term relationships with brands" },
     ],
     cta: { href: "/auth/register?role=CREATOR", label: "For Creators" },
@@ -109,10 +109,10 @@ export default function AboutPage() {
               About Refnivo
             </p>
             <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-5xl">
-              Referrals that connect brands, creators and customers.
+              Creator commerce for brands that pay for results.
             </h1>
             <p className="mt-4 max-w-xl text-lg text-muted-foreground">
-              Refnivo is a referral and partnership platform that connects brands, creators and customers through performance-driven referrals.
+              Refnivo is a creator commerce platform for Indian product brands: affiliate and referral campaigns that pay on verified sales, UGC at a fixed fee, and every creator partnership in one place.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <CTAButton href="/get-started">Get Started</CTAButton>
@@ -340,8 +340,9 @@ export default function AboutPage() {
             Photo credits
           </h2>
           <p className="mt-2 max-w-3xl text-xs leading-5 text-muted-foreground">
-            Lifestyle photos on our homepage are by Thangaraj Editor, SKG Photography, Kampus Production, Ben Khatry, Manik Mandal, Yan Krukau,
-            Vansh Graphic&apos;s, Sanket Mishra, Garley Gibson, Satyam Pixels and Mizuno K via{" "}
+            Lifestyle photos on our homepage are by Ben Khatry, MART PRODUCTION, Ketut Subiyanto, Aleson Padilha, Lara Jameson, Liza Summer,
+            Tahir Xəlfəquliyev, Mizuno K, Mikhail Nilov, George Milton, Fahad Puthawala, William Fortunato, Yan Krukau, Ravinder Ravi, Ajay Gill,
+            AA&apos;s Photography, G T, the Amritdev, Simon Niogi, Sinan KRIYA, iam hogir, Miriam Alonso and Ivett M via{" "}
             <a href="https://www.pexels.com" className="underline-offset-2 hover:underline" rel="noopener noreferrer" target="_blank">
               Pexels
             </a>

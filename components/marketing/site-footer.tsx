@@ -16,14 +16,16 @@ const groups = [
   {
     title: "For Brands",
     links: [
-      { href: "/#brands", label: "Brand features" },
+      { href: "/#affiliate", label: "Affiliate & referrals" },
+      { href: "/#ugc", label: "UGC collaborations" },
+      { href: "/#partners", label: "Creator partnerships" },
       { href: "/auth/register?role=BRAND_OWNER", label: "List your brand" },
     ],
   },
   {
     title: "For Creators",
     links: [
-      { href: "/#creators", label: "Earn commissions" },
+      { href: "/#creators", label: "Earn commission & UGC fees" },
       { href: "/auth/register?role=CREATOR", label: "Join as creator" },
       { href: "/auth/register?role=CUSTOMER", label: "Join as customer" },
     ],
@@ -49,7 +51,7 @@ export function SiteFooter() {
         <div className="space-y-3">
           <FooterLogo />
           <p className="max-w-xs text-sm text-muted-foreground">
-            Affiliate and referral infrastructure for product brands, creators and customers. India-first.
+            The creator commerce platform for Indian product brands. Grow with creators — pay only for results.
           </p>
         </div>
         {groups.map((g) => (

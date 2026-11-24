@@ -1,15 +1,18 @@
 import Image from "next/image";
-import { ArrowUpRightIcon, CheckIcon, CircleDollarSignIcon, ClockIcon } from "lucide-react";
+import { ArrowUpRightIcon, CheckIcon, CircleDollarSignIcon, ClockIcon, PlayIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /*
  * Product mockups built in code (no screenshots). Every figure is invented
  * sample data and each mockup is captioned "Example", so nothing here can be
- * read as real platform or customer numbers. The applicant faces are cropped
- * from the licensed stock photos in photos.tsx — models, not Refnivo creators.
+ * read as real platform or customer numbers. The faces and the UGC reel
+ * thumbnails are licensed Pexels stock photos — models, not Refnivo creators.
  */
 
-const APPLICANTS = ["avatar-ring-light", "avatar-podcast", "avatar-smile"] as const;
+const APPLICANTS = ["avatar-red-kurta", "avatar-turban", "avatar-studio"] as const;
+
+/** The UGC delivery: 1 vertical video + 3 photos, matching the brief in the mockup. */
+const REELS = ["reel-earbud-wear", "reel-unboxing", "reel-outdoor", "reel-hand-case"] as const;
 
 function Window({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
@@ -133,6 +136,106 @@ export function CreatorMockup() {
             <span className="text-xs text-white/70">12% per verified sale · joined</span>
           </span>
           <ArrowUpRightIcon className="size-4 text-white/70" aria-hidden />
+        </div>
+      </div>
+    </Window>
+  );
+}
+
+/** UGC: a brief with fixed terms and a delivery waiting for approval. */
+export function UgcMockup() {
+  return (
+    <Window title="UGC brief · Example">
+      <div className="space-y-4 p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-semibold tracking-tight">Unboxing reel · wireless earbuds</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">1 vertical video (30–45 s) + 3 photos</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Open</span>
+        </div>
+        <dl className="grid grid-cols-3 gap-2 text-sm">
+          {[
+            ["Fee", "₹2,500"],
+            ["Creators", "3 of 5"],
+            ["Usage", "3 months"],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-xl border bg-background p-3">
+              <dt className="text-[11px] text-muted-foreground">{k}</dt>
+              <dd className="mt-0.5 font-semibold">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="rounded-xl border bg-background p-3">
+          <div className="flex items-center gap-2.5">
+            <Image src="/images/marketing/avatars/avatar-curls.webp" alt="" width={32} height={32} className="size-8 rounded-full object-cover" />
+            <p className="min-w-0 flex-1 truncate text-sm font-medium">Revision 1 delivered</p>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">To review</span>
+          </div>
+          <div className="mt-3 grid grid-cols-4 gap-1.5" aria-hidden>
+            {REELS.map((r, i) => (
+              <span key={r} className="relative aspect-[9/16] overflow-hidden rounded-lg bg-muted">
+                <Image src={`/images/marketing/reels/${r}.webp`} alt="" fill sizes="96px" className="object-cover" />
+                <span className="absolute inset-0 bg-linear-to-t from-black/50 via-transparent to-transparent" />
+                {i === 0 ? (
+                  <span className="absolute top-1.5 left-1.5 flex size-5 items-center justify-center rounded-full bg-white/90 text-ink shadow-sm">
+                    <PlayIcon className="size-2.5 fill-current" />
+                  </span>
+                ) : null}
+                <span className="absolute bottom-1.5 left-1.5 text-[10px] font-semibold text-white">{i === 0 ? "0:32" : `Photo ${i}`}</span>
+              </span>
+            ))}
+          </div>
+          <div className="mt-3 flex justify-end gap-2 text-xs font-semibold">
+            <span className="rounded-lg border px-3 py-1.5">Request changes</span>
+            <span className="rounded-lg bg-gradient-brand px-3 py-1.5 text-white">Approve</span>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">You pay the creator directly after you approve. Refnivo takes no cut.</p>
+      </div>
+    </Window>
+  );
+}
+
+const PARTNERS = [
+  { avatar: "avatar-saree", name: "Ananya", via: "Campaign + UGC", sales: "38", value: "₹94,620" },
+  { avatar: "avatar-yellow-kurta", name: "Rahul", via: "Campaign", sales: "21", value: "₹41,980" },
+  { avatar: "avatar-pink", name: "Priya", via: "UGC", sales: "—", value: "2 videos" },
+] as const;
+
+/** Partners: every creator the brand works with and what each produced. */
+export function PartnersMockup() {
+  return (
+    <Window title="Partners · Example">
+      <div className="space-y-4 p-5 sm:p-6">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ["Partners", "24"],
+            ["Verified sales", "312"],
+            ["Sales value", "₹7.8L"],
+          ].map(([k, v]) => (
+            <div key={k} className="rounded-xl border bg-background p-3">
+              <p className="text-base font-bold tabular-nums sm:text-lg">{v}</p>
+              <p className="text-[11px] text-muted-foreground">{k}</p>
+            </div>
+          ))}
+        </div>
+        <ul className="divide-y rounded-xl border bg-background">
+          {PARTNERS.map((p) => (
+            <li key={p.name} className="flex items-center gap-3 px-3 py-2.5 text-sm">
+              <Image src={`/images/marketing/avatars/${p.avatar}.webp`} alt="" width={32} height={32} className="size-8 rounded-full object-cover" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{p.name}</span>
+                <span className="block truncate text-[11px] text-muted-foreground">{p.via}</span>
+              </span>
+              <span className="hidden w-10 text-right text-xs text-muted-foreground tabular-nums sm:block">{p.sales}</span>
+              <span className="w-20 text-right font-semibold tabular-nums">{p.value}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="rounded-xl bg-ink px-4 py-3 text-sm text-ink-foreground">
+          <p className="text-[11px] font-semibold tracking-wide text-violet-200 uppercase">Private note</p>
+          <p className="mt-1 text-white/85">Replies fast, great on camera. Send the new launch first.</p>
         </div>
       </div>
     </Window>
