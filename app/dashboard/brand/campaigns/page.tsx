@@ -9,6 +9,8 @@ import { describeCreatorCommission, describeCustomerReward, describeDuration } f
 import { ProductThumb } from "@/components/products/product-thumb";
 import { requireBrand } from "@/lib/auth/guards";
 import { listCampaigns } from "@/lib/services/campaigns";
+import { getCampaignAllowance } from "@/lib/services/plan-limits";
+import { CampaignAllowanceBanner } from "@/components/billing/campaign-allowance";
 import { campaignVisibility } from "@/lib/domain/campaign-rules";
 import { CAMPAIGN_STATUS_LABEL } from "@/lib/utils/labels";
 import { cn } from "@/lib/utils";
@@ -28,7 +30,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
   const { brand } = await requireBrand();
   const { status } = await searchParams;
   const filter = FILTERS.some((f) => f.value === status) ? (status as CampaignStatus | "ALL") : "ALL";
-  const campaigns = await listCampaigns(brand.id, filter);
+  const [campaigns, allowance] = await Promise.all([listCampaigns(brand.id, filter), getCampaignAllowance(brand.id)]);
 
   return (
     <div className="space-y-6">
@@ -41,6 +43,8 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
           </Button>
         }
       />
+
+      <CampaignAllowanceBanner allowance={allowance} />
 
       <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="Filter by status">
         {FILTERS.map((f) => (

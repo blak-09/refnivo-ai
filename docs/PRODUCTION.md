@@ -117,6 +117,23 @@ records every event by id (so a replay grants nothing twice) and is the authorit
 marked PAID from a verified provider response, never from the browser.
 
 Plans and prices live in `lib/config/plans.ts` (server-side); the client only ever sends a plan key.
+
+**Free tier.** Every brand can launch `FREE_CAMPAIGN_LIMIT` (3) campaigns free; a launch is the first publish
+(`Campaign.publishedAt`). Further launches need a plan in its paid period (`ACTIVE`, or `CANCELLED` until
+`currentPeriodEnd`). Enforced in `transitionCampaign` under a row lock on the brand (`lib/services/plan-limits.ts`);
+drafts, edits, pause/resume and already-live campaigns are never blocked. Always on; `PLAN_LIMITS=off`
+disables the limit and the Growth locks (the vitest config sets it). Keep Razorpay enabled in production, or
+brands past the limit can only upgrade by contacting you.
+
+**Buying at any time.** A brand can buy from Billing whenever it likes. Same plan = renewal, added after the
+current period. Different plan = starts now, and the unused value of the old plan is converted into extra days
+of the new one (`newPeriodEnd` in `lib/services/payments.ts`).
+
+**Growth-only features** (`Plan.includes` in `lib/config/plans.ts`, checked by `getBrandEntitlements`):
+the analytics dashboard (`/dashboard/brand/analytics`), CSV exports (`/api/exports/campaigns/[id]`
+returns 403 otherwise) and priority support (contact-form e-mails from Growth brands are prefixed
+`[PRIORITY]`). Analytics and exports are open to everyone only with `PLAN_LIMITS=off`; priority support
+always needs a real Growth plan. Razorpay is the only payment provider.
 A deployment running test keys in production is allowed but warned about at boot.
 
 Checkout is Razorpay's hosted window, so brands can pay by **UPI, card, netbanking or wallet**; Refnivo never sees

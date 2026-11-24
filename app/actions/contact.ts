@@ -5,6 +5,8 @@ import { transaction } from "@/lib/db/prisma";
 import { enqueueEmail } from "@/lib/email/outbox";
 import { contactInbox } from "@/lib/config/contact";
 import { getCurrentUser } from "@/lib/auth/guards";
+import { prisma } from "@/lib/db/prisma";
+import { getBrandEntitlements } from "@/lib/services/plan-limits";
 import { contactMessageSchema, CONTACT_ROLE_LABEL } from "@/lib/validation/contact";
 import { fail, firstError, formValues, ok, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 import { clientIp, rateLimit } from "@/lib/utils/rate-limit";
@@ -46,6 +48,15 @@ export async function sendContactMessageAction(_prev: ActionResult | null, formD
   }
 
   const user = await getCurrentUser();
+  // Growth brands get priority support: their messages are flagged for the team.
+  let plan: { name: string; priority: boolean } | null = null;
+  if (user?.role === "BRAND_OWNER") {
+    const brand = await prisma.brand.findUnique({ where: { ownerId: user.id }, select: { id: true } });
+    if (brand) {
+      const ent = await getBrandEntitlements(brand.id);
+      plan = { name: ent.planName ?? "Free", priority: ent.features.prioritySupport };
+    }
+  }
   // One message per identical submission per hour: a double click or a retry
   // after a network blip cannot deliver the same message twice.
   const hour = Math.floor(Date.now() / (60 * 60 * 1000));
@@ -58,6 +69,7 @@ export async function sendContactMessageAction(_prev: ActionResult | null, formD
     `Email:   ${data.email}`,
     `Role:    ${CONTACT_ROLE_LABEL[data.role]}`,
     `Account: ${user ? `signed in (${user.role})` : "not signed in"}`,
+    ...(plan ? [`Plan:    ${plan.name}${plan.priority ? " — PRIORITY SUPPORT" : ""}`] : []),
     `Subject: ${data.subject}`,
     "",
     data.message,
@@ -70,7 +82,7 @@ export async function sendContactMessageAction(_prev: ActionResult | null, formD
       enqueueEmail(tx, {
         idempotencyKey,
         to: contactInbox(),
-        subject: `[Contact · ${CONTACT_ROLE_LABEL[data.role]}] ${data.subject}`,
+        subject: `${plan?.priority ? "[PRIORITY] " : ""}[Contact · ${CONTACT_ROLE_LABEL[data.role]}] ${data.subject}`,
         text,
         userId: user?.id ?? null,
       }),

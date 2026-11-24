@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, BadgeIndianRupeeIcon, ExternalLinkIcon, MousePointerClickIcon, QrCodeIcon, ShoppingCartIcon, UsersIcon, WalletIcon, DownloadIcon } from "lucide-react";
+import { ArrowLeftIcon, BadgeIndianRupeeIcon, ExternalLinkIcon, MousePointerClickIcon, QrCodeIcon, ShoppingCartIcon, UsersIcon, WalletIcon, DownloadIcon, LockIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
@@ -12,6 +12,8 @@ import { requireBrand } from "@/lib/auth/guards";
 import { isCampaignLive, publishProblems } from "@/lib/domain/campaign-rules";
 import { formatMoney } from "@/lib/money";
 import { getCampaignWithStats } from "@/lib/services/campaigns";
+import { getBrandEntitlements, getCampaignAllowance } from "@/lib/services/plan-limits";
+import { CampaignAllowanceBanner } from "@/components/billing/campaign-allowance";
 import { formatDateTime } from "@/lib/utils/dates";
 
 export const metadata: Metadata = { title: "Campaign" };
@@ -19,13 +21,15 @@ export const metadata: Metadata = { title: "Campaign" };
 export default async function CampaignDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { brand } = await requireBrand();
   const { id } = await params;
-  const result = await getCampaignWithStats(brand.id, id);
+  const [result, allowance, entitlements] = await Promise.all([getCampaignWithStats(brand.id, id), getCampaignAllowance(brand.id), getBrandEntitlements(brand.id)]);
   if (!result) notFound();
   const { campaign, stats } = result;
 
   const problems = publishProblems(campaign);
   if (campaign.product.status !== "ACTIVE") problems.push("The promoted product must be active.");
   const live = isCampaignLive(campaign);
+  // Publishing a never-launched campaign uses a free launch (or needs a plan).
+  const planRequired = !campaign.publishedAt && !allowance.canLaunch;
 
   return (
     <div className="space-y-6">
@@ -53,13 +57,21 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         }
         actions={
           <span className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" nativeButton={false} render={<a href={`/api/exports/campaigns/${campaign.id}`} download />}>
-              <DownloadIcon /> Export CSV
-            </Button>
-            <CampaignActions campaignId={campaign.id} status={campaign.status} problems={problems} />
+            {entitlements.features.exports ? (
+              <Button size="sm" variant="outline" nativeButton={false} render={<a href={`/api/exports/campaigns/${campaign.id}`} download />}>
+                <DownloadIcon /> Export CSV
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" nativeButton={false} title="CSV exports are part of the Growth plan" render={<Link href="/dashboard/brand/billing" />}>
+                <LockIcon /> Export CSV · Growth
+              </Button>
+            )}
+            <CampaignActions campaignId={campaign.id} status={campaign.status} problems={problems} planRequired={planRequired} />
           </span>
         }
       />
+
+      {!campaign.publishedAt ? <CampaignAllowanceBanner allowance={allowance} /> : null}
 
       {campaign.status === "DRAFT" && problems.length ? (
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">

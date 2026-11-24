@@ -24,7 +24,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Is Refnivo free?",
-    a: "Yes, during early access. Paid plans will be announced in advance, and nothing changes for existing brands without their agreement.",
+    a: "Brands can launch their first 3 campaigns free. After that, a monthly plan (from ₹999) unlocks unlimited launches. Creators and customers never pay.",
   },
   {
     q: "Do customers need followers to earn?",

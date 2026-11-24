@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArchiveIcon, Loader2Icon, PauseIcon, PencilIcon, PlayIcon, RocketIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import { ArchiveIcon, CrownIcon, Loader2Icon, PauseIcon, PencilIcon, PlayIcon, RocketIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import type { CampaignStatus } from "@prisma/client";
 import { campaignStatusAction, deleteDraftCampaignAction } from "@/app/actions/campaigns";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,18 @@ const ACTION_META: Record<
   },
 };
 
-export function CampaignActions({ campaignId, status, problems }: { campaignId: string; status: CampaignStatus; problems: string[] }) {
+export function CampaignActions({
+  campaignId,
+  status,
+  problems,
+  planRequired = false,
+}: {
+  campaignId: string;
+  status: CampaignStatus;
+  problems: string[];
+  /** The free launches are used up and there is no plan: publishing goes through Billing first. */
+  planRequired?: boolean;
+}) {
   const router = useRouter();
   const [pending, setPending] = React.useState<CampaignAction | "DELETE" | null>(null);
   const [dialog, setDialog] = React.useState<CampaignAction | "DELETE" | null>(null);
@@ -107,6 +118,13 @@ export function CampaignActions({ campaignId, status, problems }: { campaignId: 
       ) : null}
       {actions.map((a) => {
         const m = ACTION_META[a];
+        if (a === "PUBLISH" && planRequired) {
+          return (
+            <Button key={a} className="bg-gradient-brand text-white hover:opacity-95" nativeButton={false} render={<Link href="/dashboard/brand/billing" />}>
+              <CrownIcon /> Choose a plan to publish
+            </Button>
+          );
+        }
         const disabled = (a === "PUBLISH" || a === "RESUME") && blocked;
         return (
           <Button

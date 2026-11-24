@@ -309,13 +309,32 @@ async function grantTopup(tx: Prisma.TransactionClient, row: PaymentTransaction)
   );
 }
 
-/** Grants or extends the brand's plan. Renewals extend from whichever is later: now, or the unused remainder. */
+/**
+ * When a paid plan is bought, where does the new period end?
+ *  - no plan running (or it expired): `periodDays` from now;
+ *  - same plan still running (renewal): added after the unused remainder;
+ *  - a different plan still running (upgrade or downgrade): the new plan starts
+ *    now, and the unused value of the old plan (in money) is converted into
+ *    extra days of the new one — nobody loses paid-for time when switching.
+ * Pure; unit-tested.
+ */
+export function newPeriodEnd(plan: Plan, existing: { planKey: string; status: string; currentPeriodEnd: Date } | null, now: Date): Date {
+  const running = !!existing && (existing.status === "ACTIVE" || existing.status === "CANCELLED") && existing.currentPeriodEnd > now;
+  if (!running) return periodEnd(plan, now);
+  if (existing.planKey === plan.key) return periodEnd(plan, existing.currentPeriodEnd);
+  const old = getPlan(existing.planKey);
+  if (!old) return periodEnd(plan, now);
+  const remainingMs = existing.currentPeriodEnd.getTime() - now.getTime();
+  const carryMs = Math.floor((remainingMs * (old.amount / old.periodDays)) / (plan.amount / plan.periodDays));
+  return new Date(periodEnd(plan, now).getTime() + carryMs);
+}
+
+/** Grants, renews or switches the brand's plan (see newPeriodEnd for how time is credited). */
 async function grantPlan(tx: Prisma.TransactionClient, row: PaymentTransaction, now: Date) {
   const plan = getPlan(row.planKey);
   if (!plan || !row.brandId) return;
   const existing = await tx.brandSubscription.findUnique({ where: { brandId: row.brandId } });
-  const from = existing && existing.status === "ACTIVE" && existing.currentPeriodEnd > now ? existing.currentPeriodEnd : now;
-  const end = periodEnd(plan, from);
+  const end = newPeriodEnd(plan, existing, now);
 
   await tx.brandSubscription.upsert({
     where: { brandId: row.brandId },

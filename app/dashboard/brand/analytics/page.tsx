@@ -11,11 +11,27 @@ import { formatMoney } from "@/lib/money";
 import { getBrandOverview, getBrandSeries, getCampaignBreakdown, getPartnerTypeSplit, getReferralsOverTime, getTopCreators, getTopProducts, parseRange, RANGE_OPTIONS } from "@/lib/services/metrics";
 import { brandSourcePerformance } from "@/lib/services/channel-links";
 import { SourcePerformanceTable } from "@/components/links/source-performance";
+import { UpgradeGate } from "@/components/billing/upgrade-gate";
+import { getBrandEntitlements } from "@/lib/services/plan-limits";
 
 export const metadata: Metadata = { title: "Analytics" };
 
 export default async function AnalyticsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const { brand } = await requireBrand();
+  // The analytics dashboard is a Growth feature (lib/config/plans.ts).
+  if (!(await getBrandEntitlements(brand.id)).features.analytics) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Analytics" description="Campaign, creator, product and channel performance from recorded clicks and verified orders." />
+        <UpgradeGate
+          feature="analytics"
+          title="See what is really driving your sales"
+          description="The analytics dashboard turns your clicks, orders and verified conversions into trends and rankings, so you know which creators, products and channels to invest in."
+          bullets={["Revenue and referrals over time", "Top creators by verified sales", "Top products and campaign breakdown", "Channel and source performance", "Click → order funnel", "Commission and reward cost per campaign"]}
+        />
+      </div>
+    );
+  }
   const days = parseRange((await searchParams).range);
   const rangeLabel = RANGE_OPTIONS.find((o) => Number(o.value) === days)?.label ?? `${days} days`;
   const [overview, breakdown, series, split, topCreators, topProducts, sources, performance] = await Promise.all([

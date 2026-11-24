@@ -9,9 +9,12 @@ import { EmptyState, KpiCard, PageHeader, StatusBadge } from "@/components/dashb
 import { CheckoutButton } from "@/components/payments/checkout-button";
 import { PaymentMethodsStrip } from "@/components/payments/payment-methods";
 import { requireBrand } from "@/lib/auth/guards";
-import { getPlan, PLAN_LIST } from "@/lib/config/plans";
+import { FREE_CAMPAIGN_LIMIT, getPlan, PLAN_LIST } from "@/lib/config/plans";
+import { getCampaignAllowance } from "@/lib/services/plan-limits";
+import { CampaignAllowanceBanner } from "@/components/billing/campaign-allowance";
 import { paymentsConfig } from "@/lib/payments";
-import { getBrandSubscription, listUserTransactions, subscriptionIsCurrent } from "@/lib/services/payments";
+import { getBrandSubscription, listUserTransactions, newPeriodEnd } from "@/lib/services/payments";
+import { planEntitles } from "@/lib/services/plan-limits";
 import { PAYMENT_STATUS_LABEL, paymentStatusTone } from "@/lib/utils/payment-labels";
 import { formatMoney } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/utils/dates";
@@ -21,8 +24,10 @@ export const metadata: Metadata = { title: "Billing & plan" };
 export default async function BillingPage() {
   const { user, brand } = await requireBrand();
   const config = paymentsConfig();
-  const [subscription, transactions] = await Promise.all([getBrandSubscription(brand.id), listUserTransactions(user.id)]);
-  const current = subscriptionIsCurrent(subscription);
+  const [subscription, transactions, allowance] = await Promise.all([getBrandSubscription(brand.id), listUserTransactions(user.id), getCampaignAllowance(brand.id)]);
+  const now = new Date();
+  // A cancelled plan still counts until the end of the period it was paid for.
+  const current = planEntitles(subscription, now);
   const currentPlan = getPlan(subscription?.planKey);
 
   return (
@@ -41,10 +46,12 @@ export default async function BillingPage() {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <KpiCard label="Current plan" value={current && currentPlan ? currentPlan.name : "No active plan"} hint={current && subscription ? `Renews ${formatDate(subscription.currentPeriodEnd)}` : "Early access — nothing to pay yet"} icon={CreditCardIcon} />
+        <KpiCard label="Current plan" value={current && currentPlan ? currentPlan.name : "Free"} hint={current && subscription ? `Paid through ${formatDate(subscription.currentPeriodEnd)}` : `Free plan · ${Math.min(allowance.used, FREE_CAMPAIGN_LIMIT)} of ${FREE_CAMPAIGN_LIMIT} campaign launches used`} icon={CreditCardIcon} />
         <KpiCard label="Payments made" value={transactions.filter((t) => t.status === "PAID" || t.status === "PARTIALLY_REFUNDED").length} icon={ReceiptIcon} />
         <KpiCard label="Billing status" value={config.enabled ? (config.mode === "live" ? "Live" : "Test mode") : "Not enabled"} hint={config.enabled ? "Payments are processed by Razorpay" : "Checkout is switched off on this deployment"} icon={LockIcon} />
       </div>
+
+      <CampaignAllowanceBanner allowance={allowance} showWhenSubscribed showAction={false} />
 
       {config.enabled ? <PaymentMethodsStrip /> : null}
 
@@ -53,10 +60,13 @@ export default async function BillingPage() {
           <CardContent className="flex items-start gap-3 py-2 text-sm">
             <InfoIcon className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
             <div>
-              <p className="font-medium">Paid plans are not switched on yet</p>
+              <p className="font-medium">Online payment is not set up yet</p>
               <p className="mt-1 text-muted-foreground">
-                Refnivo is free during early access, so there is nothing to pay. The plans below are what paid access will look like — you will be told well before
-                anything changes, and no payment can be taken until billing is enabled on this deployment.
+                Razorpay checkout is not switched on for this deployment, so plans cannot be bought here right now.{" "}
+                <Link href="/contact" className="text-primary hover:underline">
+                  Contact us
+                </Link>{" "}
+                and we will upgrade your brand.
               </p>
             </div>
           </CardContent>
@@ -78,9 +88,37 @@ export default async function BillingPage() {
       ) : null}
 
       {/* Plans */}
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center gap-2">
+              <CardTitle className="text-lg">Free</CardTitle>
+              {!current ? <Badge>Your plan</Badge> : null}
+            </div>
+            <CardDescription>Try Refnivo with your first campaigns.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-xl border bg-muted/30 p-3 text-sm">
+              <div className="flex justify-between font-semibold">
+                <span>Price</span>
+                <span className="tabular-nums">{formatMoney(0)}</span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">No card needed.</p>
+            </div>
+            <ul className="space-y-2">
+              {[`${FREE_CAMPAIGN_LIMIT} campaign launches`, "Unlimited drafts and products", "Creator discovery and applications", "Referral links and QR codes", "Order verification and ledger"].map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm">
+                  <CheckIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
+                  <span className="text-muted-foreground">{f}</span>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
         {PLAN_LIST.map((plan) => {
           const isCurrent = current && subscription?.planKey === plan.key;
+          const switching = current && !isCurrent;
+          const endsIfBoughtNow = newPeriodEnd(plan, subscription, now);
           return (
             <Card key={plan.key} className={plan.highlight ? "ring-2 ring-primary/30" : undefined}>
               <CardHeader>
@@ -120,16 +158,25 @@ export default async function BillingPage() {
                   <CheckoutButton
                     planKey={plan.key}
                     planName={plan.name}
-                    label={isCurrent ? "Renew plan" : `Proceed to payment`}
+                    label={isCurrent ? "Renew plan" : switching ? `Switch to ${plan.name}` : `Buy ${plan.name}`}
                     payer={{ name: user.name, email: user.email }}
                     className="w-full justify-center"
                     variant={plan.highlight ? "default" : "outline"}
                   />
                 ) : (
-                  <Button className="w-full justify-center" variant="outline" disabled>
-                    Not available yet
+                  <Button className="w-full justify-center" variant="outline" nativeButton={false} render={<Link href="/contact" />}>
+                    Contact us to upgrade
                   </Button>
                 )}
+                {config.enabled ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  {isCurrent
+                    ? `Renewing adds ${plan.periodDays} days after your current period: active until ${formatDate(endsIfBoughtNow)}.`
+                    : switching
+                      ? `Starts today. The unused value of your current plan is added as extra days: active until ${formatDate(endsIfBoughtNow)}.`
+                      : `Starts as soon as Razorpay confirms the payment · active until ${formatDate(endsIfBoughtNow)}.`}
+                </p>
+                ) : null}
               </CardContent>
             </Card>
           );

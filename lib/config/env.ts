@@ -72,15 +72,8 @@ export type EnvReport = { errors: string[]; warnings: string[] };
 
 export const AUTH_SECRET_MIN_LENGTH = 32;
 const PLACEHOLDER_SECRET = /replace-with|test-secret|localgrowth|changeme|example/i;
+// Razorpay is the only payment provider.
 const PAYMENT_KEY_VARS = [
-  "PHONEPE_MERCHANT_ID",
-  "PHONEPE_SALT_KEY",
-  "PHONEPE_SALT_INDEX",
-  "PAYTM_MID",
-  "PAYTM_MERCHANT_KEY",
-  "PAYTM_WEBSITE",
-  "UPI_MANUAL_VPA",
-  "PAYMENT_WEBHOOK_SECRET",
   "RAZORPAY_KEY_ID",
   "RAZORPAY_KEY_SECRET",
   "RAZORPAY_WEBHOOK_SECRET",

@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, Loader2Icon, PackageIcon, RocketIcon, SaveIcon } from "lucide-react";
+import { CheckIcon, ChevronLeftIcon, CrownIcon, ChevronRightIcon, Loader2Icon, PackageIcon, RocketIcon, SaveIcon } from "lucide-react";
 import type { Campaign } from "@prisma/client";
 import { campaignStatusAction, saveCampaignAction } from "@/app/actions/campaigns";
 import { Button } from "@/components/ui/button";
@@ -148,7 +148,12 @@ const STEPS = [
   { key: "publish", title: "Launch", schema: null },
 ] as const;
 
-type Props = ({ mode: "create" } | { mode: "edit"; campaign: Campaign }) & { products: WizardProduct[]; initialProductId?: string };
+type Props = ({ mode: "create" } | { mode: "edit"; campaign: Campaign }) & {
+  products: WizardProduct[];
+  initialProductId?: string;
+  /** Free launches used up and no plan: the campaign can be saved as a draft but not launched. */
+  planRequired?: boolean;
+};
 
 export function CampaignWizard(props: Props) {
   const router = useRouter();
@@ -576,7 +581,14 @@ export function CampaignWizard(props: Props) {
                     ))}
                 </ul>
               )}
-              {canPublishNow ? (
+              {canPublishNow && props.planRequired ? (
+                <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+                  <p className="font-medium">You&apos;ve used your free campaign launches</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Save this campaign as a draft now, then choose a plan in Billing to launch it. Nothing you entered is lost.
+                  </p>
+                </div>
+              ) : canPublishNow ? (
                 <label className="flex items-start gap-3 rounded-lg border p-3">
                   <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
                   <span className="text-sm">
@@ -609,6 +621,15 @@ export function CampaignWizard(props: Props) {
                 <Button type="button" onClick={next} disabled={!!saving || (step === 0 && !activeProducts.length)}>
                   Continue <ChevronRightIcon />
                 </Button>
+              ) : canPublishNow && props.planRequired ? (
+                <>
+                  <Button type="button" variant="outline" onClick={() => save("draft")} disabled={!!saving}>
+                    {saving === "draft" ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} Save as draft
+                  </Button>
+                  <Button type="button" className="bg-gradient-brand text-white hover:opacity-95" nativeButton={false} render={<Link href="/dashboard/brand/billing" />}>
+                    <CrownIcon /> Choose a plan
+                  </Button>
+                </>
               ) : canPublishNow ? (
                 <Button type="button" onClick={() => save("publish")} disabled={!!saving || !confirmed || problems.length > 0}>
                   {saving === "publish" ? <Loader2Icon className="animate-spin" /> : <RocketIcon />} Launch Campaign

@@ -5,11 +5,21 @@ import { toCampaignData, type CampaignAction, type CampaignFormValues } from "@/
 import { recordAudit } from "./audit";
 import { notify } from "./notify";
 import { uniqueSlug } from "./brands";
+import { allowanceForLaunch, PLAN_REQUIRED_MESSAGE, planLimitEnforced } from "./plan-limits";
 
 export class CampaignError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "CampaignError";
+  }
+}
+
+/** The brand has used its free launches and has no plan (see lib/services/plan-limits.ts). */
+export class CampaignPlanRequiredError extends CampaignError {
+  readonly code = "PLAN_REQUIRED";
+  constructor() {
+    super(PLAN_REQUIRED_MESSAGE);
+    this.name = "CampaignPlanRequiredError";
   }
 }
 
@@ -159,9 +169,10 @@ export async function transitionCampaign(
   userId: string,
   campaignId: string,
   action: CampaignAction,
-  opts: { confirmed?: boolean; now?: Date } = {},
+  opts: { confirmed?: boolean; now?: Date; enforcePlanLimit?: boolean } = {},
 ) {
   const now = opts.now ?? new Date();
+  const enforcePlanLimit = opts.enforcePlanLimit ?? planLimitEnforced();
   return transaction(async (tx) => {
     const existing = await tx.campaign.findFirst({ where: { id: campaignId, brandId }, include: { product: { select: { status: true } } } });
     if (!existing) throw new CampaignError("Campaign not found.");
@@ -175,6 +186,12 @@ export async function transitionCampaign(
       if (existing.product.status !== "ACTIVE") problems.push("The promoted product must be active.");
       if (problems.length) throw new CampaignError(problems.join(" "));
       if (action === "PUBLISH" && !opts.confirmed) throw new CampaignError("Please confirm the campaign rules before publishing.");
+    }
+
+    // A first launch uses a free slot unless the brand has a plan. Resuming is not a launch.
+    if (action === "PUBLISH" && !existing.publishedAt) {
+      const allowance = await allowanceForLaunch(tx, brandId, enforcePlanLimit, now);
+      if (!allowance.canLaunch) throw new CampaignPlanRequiredError();
     }
 
     const to = TRANSITIONS[action].to;

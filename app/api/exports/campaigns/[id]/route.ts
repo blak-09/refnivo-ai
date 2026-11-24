@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { assertBrandOwner } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { recordAudit } from "@/lib/services/audit";
+import { getBrandEntitlements } from "@/lib/services/plan-limits";
 import { toCsv } from "@/lib/utils/csv";
 import { rateLimit } from "@/lib/utils/rate-limit";
 
@@ -19,6 +20,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     owner = await assertBrandOwner();
   } catch {
     return NextResponse.json({ ok: false, error: "You must be signed in as a brand owner." }, { status: 401 });
+  }
+  // CSV exports are a Growth feature (lib/config/plans.ts).
+  if (!(await getBrandEntitlements(owner.brand.id)).features.exports) {
+    return NextResponse.json({ ok: false, error: "CSV exports are part of the Growth plan. Upgrade in Billing & Plan." }, { status: 403 });
   }
   const limit = await rateLimit(`export:${owner.user.id}`, 20, 10 * 60 * 1000);
   if (!limit.ok) return NextResponse.json({ ok: false, error: "Too many exports. Try again later." }, { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } });

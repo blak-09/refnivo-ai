@@ -27,7 +27,7 @@ export function HeroSection() {
             </CTAButton>
           </div>
           <ul className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            {["Free during early access", "Commission on verified conversions", "Links & QR codes"].map((t) => (
+            {["3 campaigns free", "Commission on verified conversions", "Links & QR codes"].map((t) => (
               <li key={t} className="inline-flex items-center gap-1.5">
                 <CheckIcon className="size-4 text-emerald-600" aria-hidden />
                 {t}

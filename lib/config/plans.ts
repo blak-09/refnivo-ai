@@ -10,6 +10,26 @@
  */
 export type PlanKey = "starter" | "growth";
 
+/**
+ * Every brand can launch this many campaigns without a plan. "Launched" means
+ * published at least once (`Campaign.publishedAt`), so ending, archiving or
+ * pausing a campaign never gives a launch back. Drafts are always free, and
+ * resuming a paused campaign is not a new launch.
+ */
+export const FREE_CAMPAIGN_LIMIT = 3;
+
+/**
+ * Paid-only features. Every paid plan unlocks unlimited campaign launches; these
+ * are what a plan adds on top. Checked server-side (lib/services/plan-limits.ts).
+ */
+export type PlanFeature = "analytics" | "exports" | "prioritySupport";
+
+export const PLAN_FEATURE_LABEL: Record<PlanFeature, string> = {
+  analytics: "Analytics dashboard",
+  exports: "CSV exports",
+  prioritySupport: "Priority support",
+};
+
 export type Plan = {
   key: PlanKey;
   name: string;
@@ -22,6 +42,8 @@ export type Plan = {
   features: string[];
   /** Shown as the suggested option on the billing page. */
   highlight?: boolean;
+  /** Paid-only features this plan unlocks (enforced, not just marketing copy). */
+  includes: PlanFeature[];
 };
 
 export const PLANS: Record<PlanKey, Plan> = {
@@ -32,7 +54,16 @@ export const PLANS: Record<PlanKey, Plan> = {
     currency: "INR",
     periodDays: 30,
     tagline: "For a brand running its first campaigns.",
-    features: ["One brand workspace", "Unlimited products and campaigns", "Referral links and QR codes", "Order verification and ledger", "E-mail support"],
+    features: [
+      "One brand workspace",
+      "Unlimited campaign launches",
+      "Unlimited products",
+      "Creator discovery and applications",
+      "Referral links and QR codes",
+      "Order verification and ledger",
+      "E-mail support",
+    ],
+    includes: [],
   },
   growth: {
     key: "growth",
@@ -41,8 +72,14 @@ export const PLANS: Record<PlanKey, Plan> = {
     currency: "INR",
     periodDays: 30,
     tagline: "For brands working with creators every month.",
-    features: ["Everything in Starter", "Creator discovery and applications", "Campaign and creator analytics", "CSV exports", "Priority support"],
+    features: [
+      "Everything in Starter",
+      "Analytics dashboard: campaign, creator, product and channel performance",
+      "CSV exports of partners, clicks and orders",
+      "Priority support",
+    ],
     highlight: true,
+    includes: ["analytics", "exports", "prioritySupport"],
   },
 };
 
@@ -55,6 +92,11 @@ export function isPlanKey(value: unknown): value is PlanKey {
 /** Server-side price lookup. Returns null for anything that is not a known plan. */
 export function getPlan(key: unknown): Plan | null {
   return isPlanKey(key) ? PLANS[key] : null;
+}
+
+/** The cheapest plan that includes `feature` (for "Upgrade to …" prompts). */
+export function planFor(feature: PlanFeature): Plan {
+  return PLAN_LIST.filter((p) => p.includes.includes(feature)).sort((a, b) => a.amount - b.amount)[0];
 }
 
 /** End of the period a payment made at `from` pays for. */

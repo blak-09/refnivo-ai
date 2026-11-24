@@ -215,9 +215,9 @@ describe("validateProductionEnv", () => {
   });
 
   it("warns (does not fail) about payment keys present while payments are disabled, naming variables only", () => {
-    const r = validateProductionEnv({ ...valid, PHONEPE_SALT_KEY: "live-salt-value-123" });
+    const r = validateProductionEnv({ ...valid, RAZORPAY_KEY_SECRET: "live-salt-value-123" });
     expect(r.errors).toEqual([]);
-    expect(r.warnings.join(" ")).toContain("PHONEPE_SALT_KEY");
+    expect(r.warnings.join(" ")).toContain("RAZORPAY_KEY_SECRET");
     expect(r.warnings.join(" ")).not.toContain("live-salt-value-123");
   });
 

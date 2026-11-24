@@ -68,7 +68,8 @@ const TRUST = [
 ];
 
 const INCLUDED = [
-  "Unlimited products, campaigns and partners",
+  "3 campaign launches free, then unlimited on a plan",
+  "Unlimited products, drafts and partners",
   "Unique referral links and QR codes",
   "Order verification and a commission ledger",
   "Creator discovery, applications and analytics",
@@ -107,7 +108,7 @@ export default async function LandingPage() {
             </ActionLink>
           </div>
           <ul className="mt-7 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
-            {["Free during early access", "Commission only on verified orders", "Links and QR codes"].map((t) => (
+            {["3 campaigns free", "Commission only on verified orders", "Links and QR codes"].map((t) => (
               <li key={t} className="inline-flex items-center gap-1.5">
                 <CheckIcon className="size-4 text-emerald-600" aria-hidden />
                 {t}
@@ -402,15 +403,15 @@ export default async function LandingPage() {
             eyebrow="Pricing"
             title={
               <>
-                <Emph>Free</Emph> during early access.
+                Start <Emph>free</Emph>.
               </>
             }
-            lede="Everything the platform does today, for every brand. Paid plans will be announced in advance, and nothing changes without your agreement."
+            lede="Launch your first 3 campaigns free. When you need more, a monthly plan from ₹999 unlocks unlimited campaign launches."
           />
           <div className="rounded-3xl border bg-card p-6 sm:p-8">
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold tracking-tight">₹0</span>
-              <span className="text-muted-foreground">during early access</span>
+              <span className="text-muted-foreground">for your first 3 campaigns</span>
             </div>
             <CheckList items={INCLUDED} className="mt-6" />
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -440,7 +441,7 @@ export default async function LandingPage() {
             <h2 id="cta-heading" className="text-headline relative mx-auto max-w-3xl text-white">
               One platform. Real connections. <span className="bg-linear-to-r from-violet-300 to-sky-300 bg-clip-text text-transparent">Measurable growth.</span>
             </h2>
-            <p className="text-lede relative mx-auto mt-4 max-w-xl text-white/75">Launch a campaign, find brands to promote, or share products you love. Free during early access.</p>
+            <p className="text-lede relative mx-auto mt-4 max-w-xl text-white/75">Launch a campaign, find brands to promote, or share products you love. Brands start with 3 free campaigns.</p>
             <div className="relative mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <ActionLink href="/get-started" variant="light">
                 Get Started <ArrowRightIcon className="size-4" aria-hidden />

@@ -8,6 +8,9 @@ import { canonicalRedirect } from "@/lib/config/canonical-host";
 
 const { auth } = NextAuth(authConfig);
 
+/** Edge-safe copy of the self-registrable roles (lib/validation/auth.ts REGISTRABLE_ROLES). */
+const REGISTRABLE_ROLES = new Set(["BRAND_OWNER", "CREATOR", "CUSTOMER"]);
+
 /**
  * A misconfigured production deployment (see lib/config/boot-state.ts) must
  * never run application code: answer 503 with a pointer to /api/health, which
@@ -34,6 +37,17 @@ const authProxy = auth((req) => {
   const isDashboard = pathname.startsWith("/dashboard");
   const isOnboarding = pathname.startsWith("/auth/onboarding") || pathname.startsWith("/onboarding");
   const isAuthEntry = pathname === "/auth/login" || pathname === "/auth/register";
+
+  // Signup starts by choosing a role: a register link without one goes to
+  // /get-started as a real 307 (the page-level redirect would stream as a 200).
+  if (pathname === "/auth/register" && !user && !REGISTRABLE_ROLES.has(nextUrl.searchParams.get("role") ?? "")) {
+    const target = new URL("/get-started", nextUrl);
+    const next = nextUrl.searchParams.get("next") ?? nextUrl.searchParams.get("callbackUrl");
+    if (next) target.searchParams.set("next", next);
+    const error = nextUrl.searchParams.get("error");
+    if (error) target.searchParams.set("error", error);
+    return NextResponse.redirect(target);
+  }
 
   if ((isDashboard || isOnboarding) && !user) {
     const login = new URL("/auth/login", nextUrl);

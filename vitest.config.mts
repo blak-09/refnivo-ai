@@ -19,6 +19,8 @@ export default defineConfig({
       // Integration tests exercise the admin-approval flow explicitly; the app default is "auto".
       SIGNUP_APPROVAL: "manual",
       AI_PROVIDER: "mock",
+      // Older tests publish many campaigns per brand; plan tests pass `enforced: true` explicitly.
+      PLAN_LIMITS: "off",
     },
     // DB tests share one database — run files one at a time.
     fileParallelism: false,
