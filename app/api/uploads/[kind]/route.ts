@@ -31,7 +31,7 @@ function json(body: Record<string, unknown>, status: number, headers: Record<str
  * POST /api/uploads/[kind] — the single image upload pipeline.
  *
  *   product-image · brand-logo · brand-cover   brand owner (with a brand; logo/cover also mid-onboarding)
- *   creator-image                              creator
+ *   creator-image · ugc-image                  creator
  *   avatar                                     any signed-in user
  *
  * Order of checks: kind → auth (scope) → storage availability → rate limit →

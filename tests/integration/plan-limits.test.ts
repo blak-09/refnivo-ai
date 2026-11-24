@@ -75,7 +75,7 @@ describe("Growth-only features", () => {
     const sub = await prisma.brandSubscription.create({
       data: { brandId: o.brand.id, planKey: "starter", status: "ACTIVE", currentPeriodEnd: new Date(Date.now() + 86_400_000) },
     });
-    expect((await getBrandEntitlements(o.brand.id, { enforced: true })).features).toMatchObject({ analytics: false, exports: false });
+    expect((await getBrandEntitlements(o.brand.id, { enforced: true })).features).toMatchObject({ ugc: true, analytics: false, exports: false });
     await prisma.brandSubscription.update({ where: { id: sub.id }, data: { planKey: "growth" } });
     expect(await getBrandEntitlements(o.brand.id, { enforced: true })).toMatchObject({
       planName: "Growth",

@@ -22,9 +22,10 @@ export const FREE_CAMPAIGN_LIMIT = 3;
  * Paid-only features. Every paid plan unlocks unlimited campaign launches; these
  * are what a plan adds on top. Checked server-side (lib/services/plan-limits.ts).
  */
-export type PlanFeature = "analytics" | "exports" | "prioritySupport";
+export type PlanFeature = "ugc" | "analytics" | "exports" | "prioritySupport";
 
 export const PLAN_FEATURE_LABEL: Record<PlanFeature, string> = {
+  ugc: "UGC collaborations",
   analytics: "Analytics dashboard",
   exports: "CSV exports",
   prioritySupport: "Priority support",
@@ -59,11 +60,12 @@ export const PLANS: Record<PlanKey, Plan> = {
       "Unlimited campaign launches",
       "Unlimited products",
       "Creator discovery and applications",
+      "UGC collaborations: briefs, applications and content review",
       "Referral links and QR codes",
       "Order verification and ledger",
       "E-mail support",
     ],
-    includes: [],
+    includes: ["ugc"],
   },
   growth: {
     key: "growth",
@@ -79,7 +81,7 @@ export const PLANS: Record<PlanKey, Plan> = {
       "Priority support",
     ],
     highlight: true,
-    includes: ["analytics", "exports", "prioritySupport"],
+    includes: ["ugc", "analytics", "exports", "prioritySupport"],
   },
 };
 

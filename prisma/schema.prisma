@@ -338,6 +338,8 @@ enum NotificationType {
   ACCOUNT_SUSPENDED
   ACCOUNT_REACTIVATED
   VERIFICATION_UPDATED
+  /// A step in a UGC collaboration (application, acceptance, submission, review, payment).
+  UGC_UPDATE
   SYSTEM
 }
 
@@ -426,6 +428,9 @@ model User {
   socialAccounts      SocialAccount[]
   affiliateLinks      CreatorAffiliateLink[] @relation("CreatorAffiliateLinks")
   reviewedPrograms    AffiliateProgram[]     @relation("AffiliateProgramReviewer")
+  ugcCollaborations   UgcCollaboration[]     @relation("UgcCreator")
+  partnerNotesAbout   PartnerNote[]          @relation("PartnerNoteCreator")
+  partnerNotesWritten PartnerNote[]          @relation("PartnerNoteAuthor")
 
   @@index([role])
   @@index([status])
@@ -494,6 +499,8 @@ model Brand {
   wallet            BrandWallet?
   connections       Connection[]
   affiliatePrograms AffiliateProgram[]
+  ugcBriefs         UgcBrief[]
+  partnerNotes      PartnerNote[]
 
   /// v1: one brand per owner (enforced here, not only in the action).
   @@unique([ownerId])
@@ -523,6 +530,7 @@ model Product {
 
   brand     Brand      @relation(fields: [brandId], references: [id], onDelete: Cascade)
   campaigns Campaign[]
+  ugcBriefs UgcBrief[]
 
   @@unique([brandId, sku])
   @@index([brandId])
@@ -532,49 +540,49 @@ model Product {
 }
 
 model CreatorProfile {
-  id                 String             @id @default(cuid())
-  userId             String             @unique
-  displayName        String
-  username           String             @unique
-  bio                String?
-  profileImageUrl    String?
-  category           String?
-  location           String?
+  id                       String             @id @default(cuid())
+  userId                   String             @unique
+  displayName              String
+  username                 String             @unique
+  bio                      String?
+  profileImageUrl          String?
+  category                 String?
+  location                 String?
   // --- Social presence. All numbers are SELF-REPORTED by the creator unless a
   // --- social API is connected; the UI must label them as such.
-  instagramHandle    String?
-  instagramUrl       String?
-  instagramFollowers Int?
-  youtubeChannel     String?
-  youtubeUrl         String?
-  youtubeSubscribers Int?
-  twitterHandle      String?
-  twitterUrl         String?
-  averageViews       Int?
-  engagementRate     Float?
-  audienceCategory   String?
-  audienceLocation   String?
-  previousCampaigns  String?
+  instagramHandle          String?
+  instagramUrl             String?
+  instagramFollowers       Int?
+  youtubeChannel           String?
+  youtubeUrl               String?
+  youtubeSubscribers       Int?
+  twitterHandle            String?
+  twitterUrl               String?
+  averageViews             Int?
+  engagementRate           Float?
+  audienceCategory         String?
+  audienceLocation         String?
+  previousCampaigns        String?
   /// Array of public content URLs.
-  contentSamples     Json?
-  linkedinUrl        String?
-  facebookUrl        String?
+  contentSamples           Json?
+  linkedinUrl              String?
+  facebookUrl              String?
   /// Array of other public profile URLs.
-  otherLinks         Json?
-  primaryPlatform    String?
+  otherLinks               Json?
+  primaryPlatform          String?
   /// Self-reported audience size bucket (e.g. "10K–50K"); label it as such.
-  audienceSize       String?
-  contentLanguage    String?
-  country            String?
-  state              String?
-  city               String?
-  contentDescription String?
+  audienceSize             String?
+  contentLanguage          String?
+  country                  String?
+  state                    String?
+  city                     String?
+  contentDescription       String?
   /// AFFILIATE · PAID · BARTER · UGC · PRODUCT_REVIEW (see lib/onboarding/options.ts).
-  collaborationPreferences String[]     @default([])
-  interestedCategories     String[]     @default([])
-  verificationStatus VerificationStatus @default(UNVERIFIED)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  collaborationPreferences String[]           @default([])
+  interestedCategories     String[]           @default([])
+  verificationStatus       VerificationStatus @default(UNVERIFIED)
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1455,4 +1463,139 @@ model CommunityClick {
   @@index([createdAt])
   @@index([audience, createdAt])
   @@map("community_clicks")
+}
+
+// ---------------------------------------------------------------------------
+// Creator partnerships & UGC collaborations
+// ---------------------------------------------------------------------------
+
+/// A private note a brand keeps about a creator it works with. Never shown to the creator.
+model PartnerNote {
+  id        String   @id @default(cuid())
+  brandId   String
+  creatorId String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  brand   Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  creator User  @relation("PartnerNoteCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  author  User  @relation("PartnerNoteAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([brandId, creatorId, createdAt])
+  @@map("partner_notes")
+}
+
+enum UgcBriefStatus {
+  DRAFT
+  /// Visible to creators and accepting applications.
+  OPEN
+  /// No new applications; accepted collaborations continue.
+  CLOSED
+  ARCHIVED
+}
+
+enum UgcCollabStatus {
+  /// The creator applied; waiting for the brand.
+  APPLIED
+  DECLINED
+  WITHDRAWN
+  /// Accepted: the creator is making the content.
+  IN_PROGRESS
+  SUBMITTED
+  REVISION_REQUESTED
+  /// Content approved: the agreed fee is owed by the brand.
+  APPROVED
+  CANCELLED
+}
+
+/// A brand's request for user-generated content it can use in its own marketing.
+/// The fee is paid by the brand directly to the creator; Refnivo records it.
+model UgcBrief {
+  id             String         @id @default(cuid())
+  brandId        String
+  productId      String?
+  title          String
+  /// What the brand wants: idea, tone, key messages, do's and don'ts.
+  description    String
+  /// Concrete deliverables, e.g. "1 vertical video (30–45 s) + 3 photos".
+  deliverables   String
+  /// Content formats (see lib/ugc/options.ts).
+  contentTypes   String[]       @default([])
+  /// Fee per creator in minor units (paise).
+  feeAmount      Int
+  currency       String         @default("INR")
+  creatorsNeeded Int            @default(1)
+  /// How the brand may use the content (see lib/ugc/options.ts).
+  usageRights    String
+  usageNotes     String?
+  /// The brand ships the product to accepted creators.
+  productShipped Boolean        @default(false)
+  applyBy        DateTime?
+  deliverBy      DateTime?
+  status         UgcBriefStatus @default(DRAFT)
+  publishedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  brand          Brand              @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  product        Product?           @relation(fields: [productId], references: [id], onDelete: SetNull)
+  collaborations UgcCollaboration[]
+
+  @@index([brandId, status])
+  @@index([status, publishedAt])
+  @@map("ugc_briefs")
+}
+
+/// One creator on one brief: application → acceptance → content → approval → payment record.
+model UgcCollaboration {
+  id               String          @id @default(cuid())
+  briefId          String
+  creatorId        String
+  status           UgcCollabStatus @default(APPLIED)
+  /// The creator's pitch: idea and why they fit.
+  pitch            String
+  portfolioLinks   String[]        @default([])
+  /// Fee frozen when the brand accepts (minor units).
+  agreedFee        Int?
+  /// Brand's message on decline / cancel.
+  brandNote        String?
+  acceptedAt       DateTime?
+  approvedAt       DateTime?
+  /// The brand says it has paid the creator directly.
+  paidMarkedAt     DateTime?
+  paymentReference String?
+  /// The creator confirms the payment arrived.
+  paidConfirmedAt  DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  brief       UgcBrief        @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  creator     User            @relation("UgcCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  submissions UgcSubmission[]
+
+  @@unique([briefId, creatorId])
+  @@index([creatorId, status])
+  @@index([briefId, status])
+  @@map("ugc_collaborations")
+}
+
+/// One round of delivered content (photos uploaded to storage, videos as links).
+model UgcSubmission {
+  id              String           @id @default(cuid())
+  collaborationId String
+  round           Int
+  note            String?
+  imageUrls       String[]         @default([])
+  links           String[]         @default([])
+  /// Brand's review: APPROVED or REVISION_REQUESTED, with feedback for revisions.
+  decision        UgcCollabStatus?
+  feedback        String?
+  reviewedAt      DateTime?
+  createdAt       DateTime         @default(now())
+
+  collaboration UgcCollaboration @relation(fields: [collaborationId], references: [id], onDelete: Cascade)
+
+  @@unique([collaborationId, round])
+  @@map("ugc_submissions")
 }

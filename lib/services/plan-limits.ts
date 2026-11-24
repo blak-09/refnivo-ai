@@ -104,6 +104,7 @@ export function computeEntitlements(input: { subscription: SubscriptionLike; enf
     planKey: plan?.key ?? null,
     planName: plan?.name ?? null,
     features: {
+      ugc: !input.enforced || has("ugc"),
       analytics: !input.enforced || has("analytics"),
       exports: !input.enforced || has("exports"),
       prioritySupport: has("prioritySupport"),

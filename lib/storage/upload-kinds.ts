@@ -5,7 +5,7 @@
  * for products, brand logos/covers, creator photos and account avatars.
  * Pure; unit-tested.
  */
-export type UploadKind = "product-image" | "brand-logo" | "brand-cover" | "creator-image" | "avatar";
+export type UploadKind = "product-image" | "brand-logo" | "brand-cover" | "creator-image" | "ugc-image" | "avatar";
 
 export type UploadScope =
   /** Needs an approved brand-owner session with a brand; stored under the brand id. */
@@ -20,6 +20,7 @@ export const UPLOAD_KINDS: Record<UploadKind, { scope: UploadScope; folder: stri
   "brand-logo": { scope: "brand", folder: "brands/logo", label: "brand logo" },
   "brand-cover": { scope: "brand", folder: "brands/cover", label: "brand cover image" },
   "creator-image": { scope: "creator", folder: "creators", label: "creator profile image" },
+  "ugc-image": { scope: "creator", folder: "ugc", label: "UGC photo" },
   avatar: { scope: "user", folder: "avatars", label: "profile photo" },
 };
 

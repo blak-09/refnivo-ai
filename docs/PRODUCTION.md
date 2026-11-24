@@ -417,6 +417,24 @@ session is invalidated (`sessionVersion` bump) and the user is signed out to `/a
   recomputed, the requester is told, and the audit row carries the adjustment. A request whose entries were all
   reversed cannot be approved — reject it so the user sees why.
 
+## 12a. Creator partnerships and UGC collaborations
+
+**Database** — migration `20261124120000_partnerships_ugc` (additive and idempotent: enum value `UGC_UPDATE` on
+`NotificationType`, enums `UgcBriefStatus` / `UgcCollabStatus`, tables `partner_notes`, `ugc_briefs`,
+`ugc_collaborations`, `ugc_submissions`). Apply it **before** deploying the code (`/api/health` reports the missing
+migration otherwise). Through the Supabase SQL editor, run the migration file's contents, then:
+
+```sql
+INSERT INTO "_prisma_migrations" ("id","checksum","finished_at","migration_name","started_at","applied_steps_count") VALUES
+  (gen_random_uuid()::text, '9c5d01f7565f0f39c8db8f21036b52f48f6f5bfb154c73572a23e36d8502ae78', now(), '20261124120000_partnerships_ugc', now(), 1)
+ON CONFLICT DO NOTHING;
+```
+
+Partnerships are on every plan. Publishing a UGC brief needs Starter or Growth (`PLAN_LIMITS=off` lifts this, as for
+campaign launches). UGC photos use the `ugc-image` upload kind (`ugc/<creatorId>/…` in the uploads bucket); when uploads
+are not configured creators can still deliver video/photo links. UGC fees are a record only — no money moves through
+Refnivo.
+
 ## 13. Pre-launch checklist
 
 - [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; payments flags as intended (`PAYMENTS_ENABLED`, `PAYOUT_PROVIDER`, `BRAND_WALLET_ENABLED` — all off by default; see §4b)

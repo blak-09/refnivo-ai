@@ -41,24 +41,25 @@ describe("plan features", () => {
   const starter = { planKey: "starter", status: "ACTIVE", currentPeriodEnd: future };
 
   it("Growth unlocks analytics, CSV exports and priority support", () => {
-    expect(computeEntitlements({ subscription: growth, enforced: true, now }).features).toEqual({ analytics: true, exports: true, prioritySupport: true });
+    expect(computeEntitlements({ subscription: growth, enforced: true, now }).features).toEqual({ ugc: true, analytics: true, exports: true, prioritySupport: true });
     expect(planFor("analytics").key).toBe("growth");
   });
 
   it("Starter and Free do not, and an expired Growth plan stops unlocking them", () => {
-    const locked = { analytics: false, exports: false, prioritySupport: false };
-    expect(computeEntitlements({ subscription: starter, enforced: true, now }).features).toEqual(locked);
+    const locked = { ugc: false, analytics: false, exports: false, prioritySupport: false };
+    expect(computeEntitlements({ subscription: starter, enforced: true, now }).features).toEqual({ ...locked, ugc: true });
     expect(computeEntitlements({ subscription: null, enforced: true, now }).features).toEqual(locked);
     expect(computeEntitlements({ subscription: { ...growth, currentPeriodEnd: past }, enforced: true, now }).features).toEqual(locked);
   });
 
   it("with PLAN_LIMITS=off nothing is locked, but priority support still needs a real Growth plan", () => {
-    expect(computeEntitlements({ subscription: null, enforced: false, now }).features).toEqual({ analytics: true, exports: true, prioritySupport: false });
+    expect(computeEntitlements({ subscription: null, enforced: false, now }).features).toEqual({ ugc: true, analytics: true, exports: true, prioritySupport: false });
   });
 
   it("every advertised paid-only feature is backed by an entitlement", () => {
     expect(PLANS.growth.includes).toEqual(expect.arrayContaining(["analytics", "exports", "prioritySupport"]));
-    expect(PLANS.starter.includes).toEqual([]);
+    expect(PLANS.starter.includes).toEqual(["ugc"]);
+    expect(planFor("ugc").key).toBe("starter");
   });
 });
 
