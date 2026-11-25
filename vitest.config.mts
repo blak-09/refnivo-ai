@@ -21,6 +21,8 @@ export default defineConfig({
       AI_PROVIDER: "mock",
       // Older tests publish many campaigns per brand; plan tests pass `enforced: true` explicitly.
       PLAN_LIMITS: "off",
+      // Older tests expect PUBLISH to go live; review tests pass `reviewMode` explicitly.
+      CAMPAIGN_REVIEW: "off",
     },
     // DB tests share one database — run files one at a time.
     fileParallelism: false,

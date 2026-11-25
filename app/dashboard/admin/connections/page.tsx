@@ -33,7 +33,7 @@ export default async function AdminConnectionsPage({ searchParams }: { searchPar
     <div className="space-y-6">
       <PageHeader title="Connections" description="Direct brand and creator relationships. Requests are private between the two sides; this view is for moderation." />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Accepted" value={counts.ACCEPTED ?? 0} icon={HandshakeIcon} />
         <KpiCard label="Pending" value={counts.PENDING ?? 0} hint="Waiting for a reply" />
         <KpiCard label="Declined" value={counts.DECLINED ?? 0} />

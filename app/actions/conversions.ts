@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { assertBrandOwner } from "@/lib/auth/guards";
+import { assertBrandOwner, assertPartner, assertRole } from "@/lib/auth/guards";
 import { rupeesToPaise } from "@/lib/money";
-import { ConversionError, reverseConversion, recordOrder, rejectConversion, verifyConversion } from "@/lib/services/conversions";
-import { conversionDecisionSchema, conversionReversalSchema, recordOrderSchema } from "@/lib/validation/conversion";
+import { contestConversion, ConversionError, resolveContest, reverseConversion, recordOrder, rejectConversion, verifyConversion } from "@/lib/services/conversions";
+import { contestResolutionSchema, contestSchema, conversionDecisionSchema, conversionReversalSchema, recordOrderSchema } from "@/lib/validation/conversion";
 import { fail, firstError, formValues, ok, safeErrorMessage, zodFieldErrors, type ActionResult } from "@/lib/utils/action-result";
 
 function revalidate() {
@@ -36,6 +36,8 @@ export async function recordOrderAction(_prev: ActionResult | null, formData: Fo
       source: parsed.data.source,
       customerContact: parsed.data.customerContact || null,
       note: parsed.data.note || null,
+      orderedAt: parsed.data.orderDate ? new Date(`${parsed.data.orderDate}T00:00:00Z`) : null,
+      orderedOnDay: !!parsed.data.orderDate,
     });
     revalidate();
     return ok(undefined);
@@ -86,5 +88,49 @@ export async function conversionReversalAction(input: unknown): Promise<ActionRe
     if (err instanceof ConversionError) return fail(err.message);
     console.error("[conversionReversal] failed", err instanceof Error ? err.message : err);
     return fail("Could not record the refund.");
+  }
+}
+
+/** Creator / customer contests a rejected or refunded order; Refnivo reviews it. */
+export async function contestConversionAction(input: unknown): Promise<ActionResult> {
+  let user;
+  try {
+    user = await assertPartner();
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = contestSchema.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid request.");
+  try {
+    await contestConversion(user.id, parsed.data.referralId, parsed.data.reason);
+    revalidate();
+    revalidatePath("/dashboard/admin", "layout");
+    return ok(undefined);
+  } catch (err) {
+    if (err instanceof ConversionError) return fail(err.message);
+    console.error("[contestConversion] failed", err instanceof Error ? err.message : err);
+    return fail("Could not send your contest. Please try again.");
+  }
+}
+
+/** Admin decides a contest. */
+export async function resolveContestAction(input: unknown): Promise<ActionResult> {
+  let admin;
+  try {
+    admin = await assertRole("ADMIN");
+  } catch (err) {
+    return fail(safeErrorMessage(err));
+  }
+  const parsed = contestResolutionSchema.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Invalid request.");
+  try {
+    await resolveContest(admin.id, parsed.data.referralId, parsed.data.outcome, parsed.data.note);
+    revalidate();
+    revalidatePath("/dashboard/admin", "layout");
+    return ok(undefined);
+  } catch (err) {
+    if (err instanceof ConversionError) return fail(err.message);
+    console.error("[resolveContest] failed", err instanceof Error ? err.message : err);
+    return fail("Could not resolve the contest.");
   }
 }

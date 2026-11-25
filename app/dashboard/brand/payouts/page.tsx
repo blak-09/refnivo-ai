@@ -20,7 +20,7 @@ export default async function PayoutsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Commissions & Rewards"
-        description="Everything your brand owes to creators and customers, by status. Entries are created when an order is recorded and approved when you verify it. Payouts are processed by the platform team."
+        description="Everything your brand owes to creators and customers, by status. Entries are created when an order is recorded and approved when you verify it; verifying takes the amount from your Refnivo wallet. Refnivo pays partners after each campaign's refund window."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

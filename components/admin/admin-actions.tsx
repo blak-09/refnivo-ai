@@ -2,6 +2,7 @@
 
 import { BanIcon, CheckIcon, PauseIcon, RotateCcwIcon, ShieldCheckIcon, ShieldOffIcon, SquareIcon, ArchiveIcon, XIcon, WalletIcon, SearchIcon, ZapIcon, RefreshCwIcon } from "lucide-react";
 import { moderateCampaignAction, payoutReviewAction, reactivateUserAction, suspendUserAction, verificationAction } from "@/app/actions/admin";
+import { resolveContestAction } from "@/app/actions/conversions";
 import { refreshAutoPayoutAction, startAutoPayoutAction } from "@/app/actions/payout-accounts";
 import { ConfirmAction } from "@/components/shared/confirm-action";
 
@@ -115,6 +116,39 @@ export function VerificationActions({ target, id, status }: { target: "BRAND" | 
 export function CampaignModeration({ campaignId, status }: { campaignId: string; status: string }) {
   const can = (a: "PAUSE" | "END" | "ARCHIVE") =>
     a === "PAUSE" ? status === "ACTIVE" : a === "END" ? status === "ACTIVE" || status === "PAUSED" : ["DRAFT", "PAUSED", "ENDED"].includes(status);
+  if (status === "PENDING_REVIEW") {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <ConfirmAction
+          label={
+            <>
+              <CheckIcon /> Approve
+            </>
+          }
+          variant="default"
+          title="Approve and publish this campaign?"
+          description="It goes live in the marketplace now and the brand is notified. Check it against the content policy first."
+          confirmLabel="Approve"
+          successMessage="Campaign approved and live."
+          run={() => moderateCampaignAction({ campaignId, action: "APPROVE", reason: "Approved after review" })}
+        />
+        <ConfirmAction
+          label={
+            <>
+              <XIcon /> Send back
+            </>
+          }
+          title="Send this campaign back to the brand?"
+          description="It returns to drafts. The brand sees your reason and can fix it and submit again."
+          input={{ label: "Reason (the brand sees this)", placeholder: "e.g. Land and property listings are not allowed — see the content policy", required: true }}
+          confirmLabel="Send back"
+          variant="destructive"
+          successMessage="Sent back to the brand."
+          run={(reason) => moderateCampaignAction({ campaignId, action: "REJECT", reason })}
+        />
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap gap-2">
       {can("PAUSE") ? (
@@ -163,6 +197,48 @@ export function CampaignModeration({ campaignId, status }: { campaignId: string;
           run={(reason) => moderateCampaignAction({ campaignId, action: "ARCHIVE", reason })}
         />
       ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Partner contests
+// ---------------------------------------------------------------------------
+
+export function ContestResolution({ referralId, status }: { referralId: string; status: string }) {
+  const upheldEffect =
+    status === "REJECTED"
+      ? "The order goes back to the brand as pending verification."
+      : "The order is reinstated as verified; its unpaid commission or reward becomes payable again (and is taken from the brand wallet when the wallet is on)."
+  return (
+    <div className="flex flex-wrap gap-2">
+      <ConfirmAction
+        label={
+          <>
+            <CheckIcon /> Uphold
+          </>
+        }
+        variant="default"
+        title="Uphold the partner's contest?"
+        description={`${upheldEffect} Both sides are notified with your note.`}
+        input={{ label: "Note (both sides see this)", required: true }}
+        confirmLabel="Uphold"
+        successMessage="Contest upheld."
+        run={(note) => resolveContestAction({ referralId, outcome: "UPHELD", note })}
+      />
+      <ConfirmAction
+        label={
+          <>
+            <XIcon /> Dismiss
+          </>
+        }
+        title="Dismiss the contest?"
+        description="The brand's decision stands. Both sides are notified with your note."
+        input={{ label: "Note (both sides see this)", required: true }}
+        confirmLabel="Dismiss"
+        successMessage="Contest dismissed."
+        run={(note) => resolveContestAction({ referralId, outcome: "DISMISSED", note })}
+      />
     </div>
   );
 }

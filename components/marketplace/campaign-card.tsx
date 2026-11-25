@@ -35,10 +35,13 @@ export function CampaignCard({ c }: { c: MarketplaceCampaign }) {
         <div className="flex flex-wrap gap-1.5">
           {creatorsAllowed ? <Badge>Creators earn {shortCommission(c)}</Badge> : null}
           {customersAllowed ? <Badge variant="secondary">Customers get {shortReward(c)}</Badge> : null}
+          {creatorsAllowed ? <Badge variant="outline">{c.requiresApproval ? "Approval needed" : "Instant link"}</Badge> : null}
         </div>
+        {c.offerTitle ? <p className="line-clamp-1 text-xs font-medium text-primary">Shopper offer: {c.offerTitle}</p> : null}
         <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <UsersIcon className="size-3.5" /> {c._count.partnerApplications} creator{c._count.partnerApplications === 1 ? "" : "s"}
+            <UsersIcon className="size-3.5" />{" "}
+            {c._count.partnerApplications > 0 ? `${c._count.partnerApplications} creator${c._count.partnerApplications === 1 ? "" : "s"}` : "Be one of the first"}
           </span>
           <span>{c.endDate ? `Ends ${formatDate(c.endDate)}` : "No end date"}</span>
         </div>

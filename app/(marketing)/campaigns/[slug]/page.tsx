@@ -8,13 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/primitives";
 import { describeCreatorCommission, describeCustomerReward, describeEligibility, describeDuration } from "@/components/campaigns/campaign-summary";
+import { CouponCode } from "@/components/campaigns/coupon-code";
 import { OrderClaimForm } from "@/components/orders/order-claim-form";
 import { BrandLogo, ProductThumb } from "@/components/products/product-thumb";
 import { JoinCampaignPanel } from "@/components/marketplace/join-campaign";
 import { ReferralLinkCard } from "@/components/links/referral-link-card";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
-import { isCampaignLive } from "@/lib/domain/campaign-rules";
+import { acceptsOrderClaims, campaignVisibility, isCampaignLive } from "@/lib/domain/campaign-rules";
 import { formatMoney } from "@/lib/money";
 import { getPublicCampaign } from "@/lib/services/campaigns";
 import { referralQrDataUrl, referralUrl, shareTargets } from "@/lib/services/links";
@@ -41,6 +42,8 @@ export default async function CampaignPage({ params, searchParams }: { params: P
   if (!campaign) notFound();
 
   const live = isCampaignLive(campaign);
+  const visibility = campaignVisibility(campaign);
+  const claimsOpen = acceptsOrderClaims(campaign);
   const user = await getCurrentUser();
 
   // Referred visitor: resolve the code (for "Referred by" + purchase link) and mark the session as visited.
@@ -92,7 +95,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <p className="font-medium">Recommended by {referrer.name}</p>
           <p className="text-muted-foreground">
-            {campaign.offerTitle ? `${campaign.offerTitle}. ` : ""}Buy through the button below, then come back and <a href="#claim" className="font-medium text-primary underline-offset-2 hover:underline">confirm your order number</a> so {campaign.brand.name} can credit {referrer.name}. Your code: <span className="font-mono font-medium">{referrer.code}</span>.
+            {campaign.offerTitle ? `${campaign.offerTitle}${campaign.couponCode ? ` with code ${campaign.couponCode}` : ""}. ` : ""}Buy through the button below, then come back and <a href="#claim" className="font-medium text-primary underline-offset-2 hover:underline">confirm your order number</a> so {campaign.brand.name} can credit {referrer.name}. Your code: <span className="font-mono font-medium">{referrer.code}</span>.
           </p>
         </div>
       ) : null}
@@ -124,7 +127,17 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 Product details
               </Button>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">Orders are placed on the brand&apos;s own store. Referral codes are passed along as ?ref=.</p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              You&apos;ll buy on {campaign.brand.name}&apos;s own store. Already ordered?{" "}
+              {claimsOpen && !linkCard ? (
+                <a href="#claim" className="font-medium text-primary underline-offset-2 hover:underline">
+                  Confirm your order
+                </a>
+              ) : (
+                "Confirm your order"
+              )}{" "}
+              so the person who referred you gets credit.
+            </p>
           </div>
         </div>
 
@@ -134,7 +147,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             <CardHeader>
               <div className="flex flex-wrap items-center gap-2">
                 <CardTitle className="text-lg">{campaign.name}</CardTitle>
-                <StatusBadge status={live ? "ACTIVE" : campaign.status} label={live ? "Live" : undefined} />
+                <StatusBadge status={live ? "ACTIVE" : visibility.state === "SCHEDULED" ? "PENDING_REVIEW" : visibility.state === "EXPIRED" ? "ENDED" : campaign.status} label={visibility.label ?? undefined} />
               </div>
               {campaign.description ? <p className="text-sm text-muted-foreground">{campaign.description}</p> : null}
             </CardHeader>
@@ -159,7 +172,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                 <div className="rounded-lg border bg-muted/30 px-3 py-2">
                   <dt className="text-xs font-medium text-muted-foreground">Creators promoting</dt>
                   <dd className="mt-0.5 inline-flex items-center gap-1 text-sm">
-                    <UsersIcon className="size-3.5" /> {campaign._count.partnerApplications}
+                    <UsersIcon className="size-3.5" /> {campaign._count.partnerApplications > 0 ? campaign._count.partnerApplications : live ? "Be one of the first" : "None yet"}
                   </dd>
                 </div>
               </dl>
@@ -182,6 +195,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
                   <p className="text-xs font-medium text-muted-foreground uppercase">Offer for referred shoppers</p>
                   <p className="mt-1 font-semibold">{campaign.offerTitle}</p>
                   {campaign.offerDescription ? <p className="mt-1 text-sm text-muted-foreground">{campaign.offerDescription}</p> : null}
+                  {campaign.couponCode ? <CouponCode code={campaign.couponCode} brandName={campaign.brand.name} /> : null}
                 </div>
               ) : null}
             </CardContent>
@@ -219,7 +233,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
           </Card>
 
           {/* Order handshake: customers confirm their store order so the brand can attribute it. Hidden for the link owner. */}
-          {live && !linkCard ? (
+          {claimsOpen && !linkCard ? (
             <OrderClaimForm campaignId={campaign.id} brandName={campaign.brand.name} referralCode={referrer?.code ?? claimCode} referrerName={referrer?.name ?? null} />
           ) : null}
 

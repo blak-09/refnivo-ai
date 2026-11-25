@@ -52,7 +52,7 @@ export default async function UgcBriefsPage() {
   return (
     <div className="space-y-6">
       {header}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <KpiCard label="Open briefs" value={briefs.filter((b) => b.status === "OPEN").length} />
         <KpiCard label="Applications to answer" value={applicants} />
         <KpiCard label="Content to review" value={toReview} />

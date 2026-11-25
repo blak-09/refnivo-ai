@@ -12,11 +12,11 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How does order verification work?",
-    a: "When someone buys through a partner's link or QR code, the order is recorded against that partner. The brand then checks it against its own store and confirms or rejects it. Only confirmed orders create a commission or reward — a click on its own never does.",
+    a: "Refnivo does not read the brand's store automatically. An order counts when the brand records it with the partner's referral code, or when the buyer confirms their order number on the campaign page and the brand matches it in its store. Only orders the brand confirms create a commission or reward — a click on its own never does. Partners can see every order that is waiting for the brand, and for how long.",
   },
   {
     q: "When do creators get paid?",
-    a: "Once a brand verifies an order, the commission becomes approved. When your approved balance reaches the minimum shown in your dashboard, you can request a payout. Each request is reviewed and settled to the UPI ID or bank account you choose, and the payment reference is recorded for you to see.",
+    a: "Once a brand verifies an order, the commission is approved and the money is taken from the brand's Refnivo wallet. It becomes payable after the campaign's refund window (shown on every campaign, 14 days by default). When your payable balance reaches the minimum shown in your dashboard, request a payout: Refnivo reviews it, pays it to the UPI ID or bank account you choose and records the payment reference for you to see.",
   },
   {
     q: "What is an attribution window?",
@@ -24,7 +24,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Who pays the commission?",
-    a: "The brand sets the creator commission and the customer reward for each campaign and pays them for verified orders. Creators and customers never pay to join a campaign.",
+    a: "The brand. Brands add money to their Refnivo wallet; when a brand verifies an order, the commission or reward is taken from that wallet, so every approved commission is already funded. Refnivo then pays it to the creator or customer. Creators and customers never pay to join a campaign.",
   },
   {
     q: "Is Refnivo free?",
@@ -44,7 +44,7 @@ export const HOME_FAQ: { q: string; a: string }[] = [
   },
   {
     q: "How are disagreements about an order handled?",
-    a: "Both the brand and the partner see every order and its status. If an order is refunded, the related commission is reversed automatically, and every change to money is recorded in an audit log, so our team can review any disagreement. Just contact us.",
+    a: "Both the brand and the partner see every order and its status. A brand can record a refund only during the campaign's refund window and before the money is paid out. If a partner thinks an order was wrongly rejected or refunded, they can contest it from their dashboard within 30 days; the Refnivo team reviews it and can reopen or reinstate the order. Every change to money is recorded in an audit log.",
   },
   {
     q: "Do creators need to label paid promotions?",

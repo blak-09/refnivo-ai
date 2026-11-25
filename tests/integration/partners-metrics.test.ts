@@ -161,7 +161,7 @@ describe("tracking, orders and ledger", () => {
     await expect(recordOrder(a.brand.id, a.user.id, { code: code!, orderReference: "S-4", amountMinor: 100_000, customerContact: "FRIEND@example.com " })).rejects.toThrow(/duplicate referral/i);
 
     await transitionCampaign(a.brand.id, a.user.id, strict.id, "PAUSE");
-    await expect(recordOrder(a.brand.id, a.user.id, { code: code!, orderReference: "S-5", amountMinor: 100_000 })).rejects.toThrow(/not active/i);
+    await expect(recordOrder(a.brand.id, a.user.id, { code: code!, orderReference: "S-5", amountMinor: 100_000 })).rejects.toThrow(/after the campaign stopped/i);
   });
 
   it("verification respects the campaign budget", async () => {

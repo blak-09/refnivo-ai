@@ -48,7 +48,7 @@ export default async function CustomerOverviewPage({ searchParams }: { searchPar
         }
       />
       <ProfileCompletionCard completion={completion} editHref="/dashboard/customer/profile" />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="My links" value={links} icon={LinkIcon} />
         <KpiCard label="Clicks on my links" value={stats.clicks} hint={`${stats.qrScans} via QR`} icon={MousePointerClickIcon} />
         <KpiCard label="Successful purchases" value={stats.verified} hint={`${stats.purchased} awaiting verification`} icon={ShoppingCartIcon} />

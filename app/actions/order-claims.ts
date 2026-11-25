@@ -81,7 +81,11 @@ export async function orderClaimDecisionAction(input: unknown): Promise<ActionRe
 
   try {
     if (parsed.data.decision === "CONFIRM") {
-      await confirmOrderClaim(ctx.brand.id, ctx.user.id, parsed.data.claimId, { amountMinor: rupeesToPaise(parsed.data.amount), quantity: parsed.data.quantity });
+      await confirmOrderClaim(ctx.brand.id, ctx.user.id, parsed.data.claimId, {
+        amountMinor: rupeesToPaise(parsed.data.amount),
+        quantity: parsed.data.quantity,
+        orderedAt: parsed.data.orderDate ? new Date(`${parsed.data.orderDate}T00:00:00Z`) : null,
+      });
     } else {
       await rejectOrderClaim(ctx.brand.id, ctx.user.id, parsed.data.claimId, parsed.data.reason);
     }

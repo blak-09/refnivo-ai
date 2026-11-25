@@ -45,7 +45,7 @@ export default async function BrandWalletPage() {
         description="Add money once and it pays for your campaigns: when you verify an order, the creator's commission and the customer's reward are taken from this balance. If an order is refunded later, the amount comes back."
       />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <KpiCard label="Available balance" value={formatMoney(summary.balance, summary.currency)} icon={PiggyBankIcon} />
         <KpiCard
           label="Waiting for verification"

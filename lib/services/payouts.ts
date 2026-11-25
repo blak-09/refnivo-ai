@@ -34,22 +34,38 @@ export function payoutMinimumMinor(env: NodeJS.ProcessEnv = process.env): number
 
 const OPEN_STATUSES: PayoutStatus[] = ["REQUESTED", "UNDER_REVIEW", "APPROVED", "PROCESSING"];
 
-/** Ledger rows that can be settled now: approved/available and not part of any payout. */
-export async function eligibleItems(userId: string, kind: PayoutKind, db: Prisma.TransactionClient | typeof prisma = prisma) {
+/** Rows past their hold (or with no hold) are payable. */
+function payableWhere(now: Date) {
+  return { OR: [{ payableAt: null }, { payableAt: { lte: now } }] };
+}
+
+/** Ledger rows that can be settled now: approved/available, past the brand's refund hold, and not part of any payout. */
+export async function eligibleItems(userId: string, kind: PayoutKind, db: Prisma.TransactionClient | typeof prisma = prisma, now = new Date()) {
   if (kind === "COMMISSION") {
     const rows = await db.commission.findMany({
-      where: { creatorId: userId, status: "APPROVED", payoutItem: null },
+      where: { creatorId: userId, status: "APPROVED", payoutItem: null, ...payableWhere(now) },
       select: { id: true, amount: true, currency: true },
       orderBy: { createdAt: "asc" },
     });
     return rows.map((r) => ({ id: r.id, amount: r.amount, currency: r.currency }));
   }
   const rows = await db.reward.findMany({
-    where: { recipientId: userId, status: "AVAILABLE", payoutItem: null },
+    where: { recipientId: userId, status: "AVAILABLE", payoutItem: null, ...payableWhere(now) },
     select: { id: true, amount: true, currency: true },
     orderBy: { createdAt: "asc" },
   });
   return rows.map((r) => ({ id: r.id, amount: r.amount, currency: r.currency }));
+}
+
+/** Approved earnings still inside the brand's refund hold: total and the next date one becomes payable. */
+export async function heldItems(userId: string, kind: PayoutKind, now = new Date()): Promise<{ amount: number; count: number; nextPayableAt: Date | null }> {
+  const where = { payoutItem: null, payableAt: { gt: now } };
+  const rows =
+    kind === "COMMISSION"
+      ? await prisma.commission.findMany({ where: { creatorId: userId, status: "APPROVED", ...where }, select: { amount: true, payableAt: true } })
+      : await prisma.reward.findMany({ where: { recipientId: userId, status: "AVAILABLE", ...where }, select: { amount: true, payableAt: true } });
+  const dates = rows.map((r) => r.payableAt!.getTime());
+  return { amount: rows.reduce((s, r) => s + r.amount, 0), count: rows.length, nextPayableAt: dates.length ? new Date(Math.min(...dates)) : null };
 }
 
 export async function payoutSummary(userId: string, kind: PayoutKind) {
@@ -65,7 +81,8 @@ export async function payoutSummary(userId: string, kind: PayoutKind) {
   ]);
   const eligible = items.reduce((s, i) => s + i.amount, 0);
   const minimum = payoutMinimumMinor();
-  return { eligible, eligibleCount: items.length, minimum, canRequest: !open && eligible >= minimum && eligible > 0, open, history };
+  const onHold = await heldItems(userId, kind);
+  return { eligible, eligibleCount: items.length, minimum, canRequest: !open && eligible >= minimum && eligible > 0, open, history, onHold };
 }
 
 /** Creates a REQUESTED payout for every eligible ledger row of the user. */
@@ -87,7 +104,7 @@ export async function requestPayout(userId: string, kind: PayoutKind, method: Pa
       methodLabel = `${account.type === "UPI" ? "UPI" : "Bank transfer"} · ${account.maskedLabel}`;
     }
 
-    const items = await eligibleItems(userId, kind, tx);
+    const items = await eligibleItems(userId, kind, tx, now);
     if (!items.length) throw new PayoutError("Nothing is eligible for payout yet.");
     const currencies = new Set(items.map((i) => i.currency));
     if (currencies.size > 1) throw new PayoutError("Eligible entries use more than one currency; contact support.");

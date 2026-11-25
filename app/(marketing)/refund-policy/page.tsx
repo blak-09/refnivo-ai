@@ -185,8 +185,8 @@ export default function RefundPolicyPage() {
                   <strong>not refundable</strong>.
                 </li>
                 <li>
-                  If you mark a verified order as refunded, the commission and reward for that order are returned to your wallet balance automatically; that
-                  returned balance can then be refunded like any other unused balance.
+                  If you mark a verified order as refunded during the campaign&apos;s refund window (before the commission or reward is paid out), the amount
+                  for that order is returned to your wallet balance automatically; that returned balance can then be refunded like any other unused balance.
                 </li>
               </ul>
             </Section>

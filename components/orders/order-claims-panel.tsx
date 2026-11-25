@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState, StatusBadge } from "@/components/dashboard/primitives";
 import { OrderClaimDecision } from "@/components/orders/order-claim-decision";
+import { istToday } from "@/lib/domain/campaign-rules";
 import type { BrandOrderClaim } from "@/lib/services/order-claims";
 import { formatDateTime } from "@/lib/utils/dates";
 import { cn } from "@/lib/utils";
@@ -107,12 +108,13 @@ export function OrderClaimsPanel({ claims, showAll, pendingCount }: { claims: Br
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={c.status === "CONFIRMED" ? "VERIFIED" : c.status === "REJECTED" ? "REJECTED" : "PURCHASED"} label={STATUS_LABEL[c.status]} />
+                        {c.status === "PENDING" ? <span className="block text-xs text-muted-foreground">Waiting {relative(c.createdAt, new Date())}</span> : null}
                         {c.status === "REJECTED" && c.rejectionReason ? <span className="block text-xs text-muted-foreground">{c.rejectionReason}</span> : null}
                       </TableCell>
                       <TableCell className="text-right">
                         {c.status === "PENDING" ? (
                           <div className="flex justify-end">
-                            <OrderClaimDecision claimId={c.id} orderReference={c.orderReference} partnerLabel={partnerName} owedLabel={owedLabel} />
+                            <OrderClaimDecision claimId={c.id} orderReference={c.orderReference} partnerLabel={partnerName} owedLabel={owedLabel} claimedOn={istToday(c.createdAt)} />
                           </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">{c.decidedAt ? formatDateTime(c.decidedAt) : "—"}</span>

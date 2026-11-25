@@ -8,6 +8,7 @@ import { PayoutAccountsManager } from "@/components/payouts/payout-accounts";
 import { PayoutRequestButton } from "@/components/payouts/payout-panel";
 import { requireRole } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/utils/dates";
 import { getPartnerStats } from "@/lib/services/metrics";
 import { autoPayoutsEnabled } from "@/lib/services/auto-payouts";
 import { listPayoutAccounts, MAX_PAYOUT_ACCOUNTS, payoutAccountsEnabled } from "@/lib/services/payout-accounts";
@@ -32,7 +33,7 @@ export default async function CustomerRewardsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Rewards" description="Rewards are created when a friend's order is recorded and become available once the brand verifies it." />
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <KpiCard label="Pending" value={formatMoney(stats.rewardsPending)} hint="Awaiting brand verification" icon={GiftIcon} />
         <KpiCard label="Available" value={formatMoney(stats.rewardsAvailable)} hint="Ready to redeem" icon={GiftIcon} />
         <KpiCard label="Redeemed" value={formatMoney(stats.rewardsRedeemed)} icon={GiftIcon} />
@@ -41,7 +42,7 @@ export default async function CustomerRewardsPage() {
         <CardHeader>
           <CardTitle>Redeem rewards</CardTitle>
           <CardDescription>
-            Submit a request once your available balance reaches {formatMoney(payout.minimum)}. The Refnivo AI team reviews it,{" "}
+            Rewards are paid from the brand&apos;s Refnivo wallet and become payable after the campaign&apos;s refund window. Submit a request once your payable balance reaches {formatMoney(payout.minimum)}. The Refnivo AI team reviews it,{" "}
             {automatic ? "then sends it to your saved UPI ID or bank account (or issues a brand voucher)" : "settles it as a payout or brand voucher"} and records the reference here.
           </CardDescription>
         </CardHeader>
@@ -50,6 +51,12 @@ export default async function CustomerRewardsPage() {
             Available now: <span className="font-semibold tabular-nums">{formatMoney(payout.eligible)}</span>
             <span className="text-muted-foreground"> across {payout.eligibleCount} reward{payout.eligibleCount === 1 ? "" : "s"}</span>
           </p>
+          {payout.onHold.amount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              On hold: <span className="font-medium tabular-nums text-foreground">{formatMoney(payout.onHold.amount)}</span> in the brands&apos; refund window
+              {payout.onHold.nextPayableAt ? `; the next becomes payable on ${formatDate(payout.onHold.nextPayableAt)}` : ""}.
+            </p>
+          ) : null}
           <PayoutRequestButton kind="REWARD" canRequest={payout.canRequest} reason={blockedReason} accounts={accounts} />
           <PayoutHistory rows={payout.history} />
         </CardContent>

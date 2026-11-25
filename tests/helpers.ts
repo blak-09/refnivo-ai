@@ -50,6 +50,8 @@ export function campaignValues(productId: string, overrides: Partial<Record<stri
     newCustomerOnly: false,
     minimumPurchaseAmount: "",
     attributionWindowDays: 30,
+    // Older tests expect earnings to be payable on verification; hold tests pass holdDays explicitly.
+    holdDays: 0,
     maxRewardPerCustomer: "",
     budget: "",
     terms: "",

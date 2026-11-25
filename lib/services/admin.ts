@@ -1,6 +1,6 @@
 import type { Prisma, UserRole, UserStatus, VerificationStatus } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
-import { canTransition, TRANSITIONS } from "@/lib/domain/campaign-rules";
+import { canTransition, stoppedAtFor, TRANSITIONS } from "@/lib/domain/campaign-rules";
 import { recordAudit } from "./audit";
 import { notify } from "./notify";
 
@@ -198,17 +198,44 @@ export async function listAllCampaigns(take = 200) {
   });
 }
 
-export type ModerationAction = "PAUSE" | "END" | "ARCHIVE";
+export type ModerationAction = "PAUSE" | "END" | "ARCHIVE" | "APPROVE" | "REJECT";
 
-/** Admin pauses/ends/archives any campaign using the same transition rules as brands; the brand owner is notified. */
-export async function moderateCampaign(adminId: string, campaignId: string, action: ModerationAction, reason: string) {
+/**
+ * Admin moderation. PAUSE / END / ARCHIVE use the same transition rules as
+ * brands. APPROVE / REJECT decide a campaign waiting in PENDING_REVIEW (see
+ * campaignNeedsReview): approved goes live, rejected goes back to draft with
+ * the reason. The brand owner is notified either way; everything is audited.
+ */
+export async function moderateCampaign(adminId: string, campaignId: string, action: ModerationAction, reason: string, now = new Date()) {
   return transaction(async (tx) => {
-    const campaign = await tx.campaign.findUnique({ where: { id: campaignId }, select: { id: true, name: true, status: true, brand: { select: { ownerId: true } } } });
+    const campaign = await tx.campaign.findUnique({ where: { id: campaignId }, select: { id: true, name: true, slug: true, status: true, stoppedAt: true, publishedAt: true, brand: { select: { ownerId: true } } } });
     if (!campaign) throw new AdminError("Campaign not found.");
-    const verb: Record<ModerationAction, string> = { PAUSE: "paused", END: "ended", ARCHIVE: "archived" };
+    if (action === "APPROVE" || action === "REJECT") {
+      if (campaign.status !== "PENDING_REVIEW") throw new AdminError("This campaign is not waiting for review.");
+      const to = action === "APPROVE" ? "ACTIVE" : "DRAFT";
+      await tx.campaign.update({ where: { id: campaignId }, data: { status: to, ...(action === "APPROVE" && !campaign.publishedAt ? { publishedAt: now } : {}) } });
+      await notify(
+        {
+          userId: campaign.brand.ownerId,
+          type: action === "APPROVE" ? "CAMPAIGN_PUBLISHED" : "CAMPAIGN_PAUSED",
+          idempotencyKey: `campaign-review:${campaignId}:${action}:${now.getTime()}`,
+          title: action === "APPROVE" ? `Campaign approved and live: ${campaign.name}` : `Campaign needs changes: ${campaign.name}`,
+          body: action === "APPROVE" ? "Refnivo reviewed your campaign. It is now live in the marketplace." : `Refnivo could not approve this campaign yet. It is back in drafts. Reason: ${reason}`,
+          href: `/dashboard/brand/campaigns/${campaignId}`,
+          email: true,
+        },
+        tx,
+      );
+      await recordAudit(
+        { userId: adminId, actorRole: "ADMIN", action: `ADMIN_CAMPAIGN_${action}`, entityType: "Campaign", entityId: campaignId, metadata: { from: campaign.status, to, reason } },
+        tx,
+      );
+      return;
+    }
+    const verb: Record<"PAUSE" | "END" | "ARCHIVE", string> = { PAUSE: "paused", END: "ended", ARCHIVE: "archived" };
     if (!canTransition(campaign.status, action)) throw new AdminError(`This campaign cannot be ${verb[action]} from status ${campaign.status}.`);
     const to = TRANSITIONS[action].to;
-    await tx.campaign.update({ where: { id: campaignId }, data: { status: to } });
+    await tx.campaign.update({ where: { id: campaignId }, data: { status: to, ...stoppedAtFor(action, campaign.stoppedAt, now) } });
     await notify(
       {
         userId: campaign.brand.ownerId,

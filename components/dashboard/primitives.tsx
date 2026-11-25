@@ -49,13 +49,13 @@ export function KpiCard({
   className?: string;
 }) {
   return (
-    <Card size="sm" className={cn("gap-2", className)}>
-      <CardContent className="flex flex-col gap-2">
+    <Card size="sm" className={cn("min-w-0 gap-2", className)}>
+      <CardContent className="flex min-w-0 flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs font-medium text-muted-foreground">{label}</p>
           {Icon ? <Icon className="size-4 text-muted-foreground" aria-hidden /> : null}
         </div>
-        <p className="text-2xl font-semibold tracking-tight tabular-nums">{value}</p>
+        <p className="text-xl font-semibold tracking-tight break-words tabular-nums sm:text-2xl">{value}</p>
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
       </CardContent>
     </Card>

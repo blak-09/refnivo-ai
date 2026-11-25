@@ -1,9 +1,9 @@
 import { Prisma, type Campaign, type CampaignStatus } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
-import { canEdit, canTransition, isCampaignLive, publishProblems, TRANSITIONS } from "@/lib/domain/campaign-rules";
+import { campaignNeedsReview, campaignReviewMode, canEdit, canTransition, isCampaignLive, publishProblems, stoppedAtFor, TRANSITIONS } from "@/lib/domain/campaign-rules";
 import { toCampaignData, type CampaignAction, type CampaignFormValues } from "@/lib/validation/campaign";
 import { recordAudit } from "./audit";
-import { notify } from "./notify";
+import { adminUserIds, notify, notifyMany } from "./notify";
 import { uniqueSlug } from "./brands";
 import { allowanceForLaunch, PLAN_REQUIRED_MESSAGE, planLimitEnforced } from "./plan-limits";
 
@@ -169,9 +169,10 @@ export async function transitionCampaign(
   userId: string,
   campaignId: string,
   action: CampaignAction,
-  opts: { confirmed?: boolean; now?: Date; enforcePlanLimit?: boolean } = {},
+  opts: { confirmed?: boolean; now?: Date; enforcePlanLimit?: boolean; reviewMode?: "off" | "first" | "all" } = {},
 ) {
   const now = opts.now ?? new Date();
+  const reviewMode = opts.reviewMode ?? campaignReviewMode();
   const enforcePlanLimit = opts.enforcePlanLimit ?? planLimitEnforced();
   return transaction(async (tx) => {
     const existing = await tx.campaign.findFirst({ where: { id: campaignId, brandId }, include: { product: { select: { status: true } } } });
@@ -194,10 +195,38 @@ export async function transitionCampaign(
       if (!allowance.canLaunch) throw new CampaignPlanRequiredError();
     }
 
+    // First launch may need a Refnivo review before it goes live (W6).
+    if (action === "PUBLISH" && !existing.publishedAt) {
+      const [approved, brand] = await Promise.all([
+        tx.campaign.count({ where: { brandId, publishedAt: { not: null } } }),
+        tx.brand.findUnique({ where: { id: brandId }, select: { verificationStatus: true, name: true } }),
+      ]);
+      if (campaignNeedsReview(reviewMode, approved > 0, brand?.verificationStatus === "VERIFIED")) {
+        const pending = await tx.campaign.update({ where: { id: campaignId }, data: { status: "PENDING_REVIEW" } });
+        await notifyMany(
+          await adminUserIds(tx),
+          {
+            type: "SYSTEM",
+            idempotencyKey: `campaign-review-request:${campaignId}:${now.getTime()}`,
+            title: `Campaign to review: ${existing.name}`,
+            body: `${brand?.name ?? "A brand"} submitted a campaign. Check it against the content policy, then approve or send it back.`,
+            href: "/dashboard/admin/campaigns",
+            email: true,
+          },
+          tx,
+        );
+        await recordAudit(
+          { userId, action: "CAMPAIGN_SUBMITTED_FOR_REVIEW", entityType: "Campaign", entityId: campaignId, metadata: { brandId, from: existing.status, to: "PENDING_REVIEW", reviewMode } },
+          tx,
+        );
+        return pending;
+      }
+    }
+
     const to = TRANSITIONS[action].to;
     const campaign = await tx.campaign.update({
       where: { id: campaignId },
-      data: { status: to, ...(action === "PUBLISH" ? { publishedAt: now } : {}) },
+      data: { status: to, ...(action === "PUBLISH" ? { publishedAt: now } : {}), ...stoppedAtFor(action, existing.stoppedAt, now) },
     });
 
     // Partners with a link learn when the campaign stops accepting referrals (and when it resumes).
@@ -257,6 +286,7 @@ export const marketplaceCampaignSelect = {
   creatorCommissionValue: true,
   currency: true,
   requiresApproval: true,
+  offerTitle: true,
   startDate: true,
   endDate: true,
   publishedAt: true,

@@ -8,6 +8,7 @@ import { PayoutAccountsManager } from "@/components/payouts/payout-accounts";
 import { PayoutRequestButton } from "@/components/payouts/payout-panel";
 import { requireCreator } from "@/lib/auth/guards";
 import { formatMoney } from "@/lib/money";
+import { formatDate } from "@/lib/utils/dates";
 import { getPartnerStats } from "@/lib/services/metrics";
 import { autoPayoutsEnabled } from "@/lib/services/auto-payouts";
 import { listPayoutAccounts, MAX_PAYOUT_ACCOUNTS, payoutAccountsEnabled } from "@/lib/services/payout-accounts";
@@ -32,7 +33,7 @@ export default async function CreatorEarningsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Earnings" description="Your commission ledger across all campaigns. Commissions are approved when the brand verifies the order." />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Total earned" value={formatMoney(stats.commissionPending + stats.commissionApproved + stats.commissionPaid)} icon={BadgeIndianRupeeIcon} />
         <KpiCard label="Pending" value={formatMoney(stats.commissionPending)} hint="Awaiting brand verification" icon={WalletIcon} />
         <KpiCard label="Approved" value={formatMoney(stats.commissionApproved)} hint="Eligible for settlement" icon={WalletIcon} />
@@ -42,7 +43,7 @@ export default async function CreatorEarningsPage() {
         <CardHeader>
           <CardTitle>Payouts</CardTitle>
           <CardDescription>
-            Request a payout once your approved commission reaches {formatMoney(payout.minimum)}. The Refnivo AI team reviews every request,{" "}
+            Approved commissions are paid from the brand&apos;s Refnivo wallet and become payable after the campaign&apos;s refund window. Request a payout once your payable balance reaches {formatMoney(payout.minimum)}. The Refnivo AI team reviews every request,{" "}
             {automatic ? "then sends it straight to your saved UPI ID or bank account" : "settles it to your chosen method"} and records the bank reference here.
           </CardDescription>
         </CardHeader>
@@ -51,6 +52,12 @@ export default async function CreatorEarningsPage() {
             Eligible now: <span className="font-semibold tabular-nums">{formatMoney(payout.eligible)}</span>
             <span className="text-muted-foreground"> across {payout.eligibleCount} approved commission{payout.eligibleCount === 1 ? "" : "s"}</span>
           </p>
+          {payout.onHold.amount > 0 ? (
+            <p className="text-sm text-muted-foreground">
+              On hold: <span className="font-medium tabular-nums text-foreground">{formatMoney(payout.onHold.amount)}</span> in the brands&apos; refund window
+              {payout.onHold.nextPayableAt ? `; the next becomes payable on ${formatDate(payout.onHold.nextPayableAt)}` : ""}.
+            </p>
+          ) : null}
           <PayoutRequestButton kind="COMMISSION" canRequest={payout.canRequest} reason={blockedReason} accounts={accounts} />
           <PayoutHistory rows={payout.history} />
         </CardContent>

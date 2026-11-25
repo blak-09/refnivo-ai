@@ -73,6 +73,19 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
       {!campaign.publishedAt ? <CampaignAllowanceBanner allowance={allowance} /> : null}
 
+      {campaign.status === "PENDING_REVIEW" ? (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          <p className="font-medium">Waiting for Refnivo&apos;s review</p>
+          <p className="text-muted-foreground">
+            A brand&apos;s first campaign is checked against the{" "}
+            <Link href="/content-policy" className="font-medium text-primary hover:underline">
+              content policy
+            </Link>{" "}
+            before it goes live, usually within 1 business day. You&apos;ll be notified when it&apos;s live or if something needs to change.
+          </p>
+        </div>
+      ) : null}
+
       {campaign.status === "DRAFT" && problems.length ? (
         <div className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
           <p className="font-medium">Not ready to publish</p>
@@ -84,7 +97,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         </div>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-6">
         <KpiCard label="Clicks" value={campaign._count.referralClicks} icon={MousePointerClickIcon} />
         <KpiCard label="QR scans" value={stats.qrClicks} icon={QrCodeIcon} />
         <KpiCard label="Verified orders" value={stats.verifiedReferrals} hint={`${campaign._count.referrals} referrals`} icon={ShoppingCartIcon} />

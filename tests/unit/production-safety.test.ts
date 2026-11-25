@@ -146,7 +146,8 @@ describe("validateProductionEnv", () => {
   });
 
   it("accepts a complete production configuration", () => {
-    expect(validateProductionEnv(valid)).toEqual({ errors: [], warnings: [] });
+    // The only remaining note is the money model: commissions should be wallet-funded (docs/AUDIT.md W1).
+    expect(validateProductionEnv(valid)).toEqual({ errors: [], warnings: [expect.stringContaining("BRAND_WALLET_ENABLED is off")] });
     expect(validateProductionEnv({ ...valid, NEXTAUTH_URL: undefined, AUTH_URL: "https://app.refnivo.example" }).errors).toEqual([]);
   });
 

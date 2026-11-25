@@ -33,7 +33,7 @@ export default async function AdminHealthPage() {
     <div className="space-y-6">
       <PageHeader title="System health" description="Live checks for this deployment. Configuration values are never displayed — only which provider is active." />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Database" value={db.ok ? "Reachable" : "Unreachable"} hint={`${db.latencyMs} ms`} />
         <KpiCard label="Environment" value={process.env.NODE_ENV ?? "development"} hint={report.errors.length ? `${report.errors.length} error(s)` : "No blocking issues"} />
         <KpiCard label="E-mail provider" value={emailProviderName()} hint={isEmailConfigured() ? "Configured" : "Not configured — in-app only"} />
@@ -45,7 +45,7 @@ export default async function AdminHealthPage() {
         <KpiCard label="Rate limiting" value={rateLimit} hint={rateLimit === "memory" ? "Per instance" : "Shared store"} />
         <KpiCard label="Storage" value={storage} hint={storage === "local" ? "Local disk (dev)" : "Object storage"} />
         <KpiCard label="Payments" value={payments} hint="Disabled in this release" />
-        <KpiCard label="Public health endpoint" value="/api/health" hint="200 when the database answers" />
+        <KpiCard label="Public health endpoint" value="/api/health" hint="Public: ok + database only. Signed-in admins (or x-health-token) also see config details." />
       </div>
 
       <Card>

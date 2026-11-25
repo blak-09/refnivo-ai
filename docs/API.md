@@ -13,6 +13,24 @@ The app uses Next.js Server Actions (no public JSON API yet). Every action valid
 | `completeOnboardingAction(prev, formData)` | `next?` | Re-validates the draft and, in one transaction with audit entries, creates/updates the Brand / CreatorProfile / CustomerProfile (+ user name/avatar for customers), sets `onboardingCompletedAt` and clears the draft. Redirects to `next` or the role dashboard (`?welcome=1`). |
 | `saveProfileAction(prev, formData)` | role profile fields | Settings → Edit profile for any role after onboarding (photo never required here). |
 
+## Orders, holds and contests (`app/actions/conversions.ts`, `lib/services/conversions.ts`)
+
+| Action | Input | Result |
+| --- | --- | --- |
+| `recordOrderAction(prev, formData)` | `referralCode, orderReference, amount, orderDate (yyyy-mm-dd, IST)`, … | Records a PURCHASED order. The order date must fall inside the campaign window and the attribution window; orders can be recorded up to 30 days after a campaign ends or pauses (`checkOrderDate`, `lib/domain/campaign-rules.ts`). |
+| verify (existing) | — | Debits the brand wallet when `BRAND_WALLET_ENABLED`, approves the commission/reward and sets `payableAt = verifiedAt + campaign.holdDays`. |
+| reverse / refund (existing) | — | Refused for PAID/REDEEMED entries, after `payableAt`, or when an admin upheld a contest. |
+| `contestConversionAction(input)` | `referralId, reason (10–1000 chars)` | Partner (creator or customer who owns the link) contests a REJECTED or REFUNDED order within 30 days. Admins are notified; audited (`CONVERSION_CONTESTED`). |
+| `resolveContestAction(input)` | `referralId, outcome (UPHELD/DISMISSED), note (3–1000 chars)` | Admin only. UPHELD on a rejection → back to PURCHASED for the brand to re-decide; UPHELD on a refund → order reinstated as VERIFIED, unpaid entries restored, wallet re-debited. Both sides notified; audited (`CONTEST_RESOLVED`). |
+
+`payoutSummary` returns `onHold` (verified but not yet payable); `requestPayout` only includes payable items.
+
+## Campaign review and coupons
+
+- `transitionCampaign(..., "PUBLISH")` sends the campaign to `PENDING_REVIEW` when `campaignNeedsReview(CAMPAIGN_REVIEW, …)` is true (default: an unverified brand's first campaign). Audited as `CAMPAIGN_SUBMITTED_FOR_REVIEW`; admins notified.
+- Admin `moderateCampaignAction` accepts `APPROVE` (→ ACTIVE, sets `publishedAt`) and `REJECT` (→ DRAFT, reason sent to the brand) for `PENDING_REVIEW` campaigns.
+- Campaign basics accept `couponCode` (A–Z, 0–9, `_`, `-`, ≤ 40, stored upper-case); it is required when a shopper offer is set. Rules accept `holdDays` (0–60, default 14).
+
 ## UGC collaborations (`app/actions/ugc.ts`, `lib/services/ugc.ts`)
 
 Brands need a plan that includes `ugc` (Starter or Growth) to **publish or reopen** a brief; drafts can be written on any plan. Fees are integer paise and are recorded only: the brand pays the creator directly, marks the fee paid, and the creator confirms. Refnivo never holds UGC money. Every mutation writes `UGC_*` audit rows in the same transaction and sends `UGC_UPDATE` notifications.

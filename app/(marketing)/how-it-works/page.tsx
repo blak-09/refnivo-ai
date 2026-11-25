@@ -39,13 +39,13 @@ const AFFILIATE_STEPS = [
     icon: ShoppingCartIcon,
     who: "Brand",
     title: "Record and verify orders",
-    body: "After buying on the brand's store, the customer confirms their order number on the campaign page. The brand matches it in its store and confirms it — that records and verifies the order in one step. Brands can also record orders by hand. Duplicate order numbers, self-referrals and paused campaigns are blocked.",
+    body: "After buying on the brand's store, the customer confirms their order number on the campaign page. The brand matches it in its store and confirms it — that records and verifies the order in one step. Brands can also record orders by hand. Duplicate order numbers and self-referrals are blocked. Orders placed while a campaign was running can still be recorded for 30 days after it ends or is paused.",
   },
   {
     icon: WalletIcon,
     who: "Everyone",
     title: "Commissions and rewards",
-    body: "Verification releases the creator's commission or the customer's reward into the ledger — pending → approved → paid. Payouts are processed by the platform team; every step is audit-logged.",
+    body: "Brands prepay into their Refnivo wallet. Verifying an order takes the commission or reward from that wallet and approves it in the ledger — pending → approved → paid. After the campaign's refund window, Refnivo pays it to the creator or customer. Partners can contest a rejected or refunded order; every step is audit-logged.",
   },
 ];
 

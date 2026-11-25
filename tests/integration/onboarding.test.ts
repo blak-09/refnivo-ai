@@ -109,7 +109,7 @@ describe("completing onboarding", () => {
     const taken = handle();
     await makeCreator({ username: taken });
     const user = await newUser("CREATOR");
-    const values = creatorProfileOnboardingSchema().parse({ displayName: "Copy Cat", username: taken, bio: "Twenty characters of bio text.", category: "Food" });
+    const values = creatorProfileOnboardingSchema().parse({ displayName: "Copy Cat", username: taken, bio: "Forty-plus characters of bio text for the test.", category: "Food" });
     await expect(saveProfile(user.id, { role: "CREATOR", values }, { complete: true })).rejects.toMatchObject({ name: "OnboardingError", field: "username" });
     const row = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
     expect(row.onboardingCompletedAt).toBeNull();
@@ -134,7 +134,7 @@ describe("edit profile", () => {
 
     const creator = await makeCreator(); // has instagramFollowers: 1000
     const profile = await prisma.creatorProfile.findUniqueOrThrow({ where: { userId: creator.id } });
-    const cv = creatorProfileOnboardingSchema().parse({ displayName: "Renamed", username: profile.username, bio: "An updated bio that is long enough.", category: "Gaming" });
+    const cv = creatorProfileOnboardingSchema().parse({ displayName: "Renamed", username: profile.username, bio: "An updated bio that is comfortably long enough.", category: "Gaming" });
     await saveProfile(creator.id, { role: "CREATOR", values: cv }, { complete: false });
     const updated = await prisma.creatorProfile.findUniqueOrThrow({ where: { userId: creator.id } });
     expect(updated).toMatchObject({ displayName: "Renamed", category: "Gaming", instagramFollowers: 1000 });

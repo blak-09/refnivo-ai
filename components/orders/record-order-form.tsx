@@ -9,6 +9,7 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Field, FormError } from "@/components/forms/field";
 import { SubmitButton } from "@/components/forms/submit-button";
 import { useFormAttempt } from "@/components/forms/use-form-attempt";
+import { istToday } from "@/lib/domain/campaign-rules";
 
 export function RecordOrderForm() {
   const [state, action] = useActionState(recordOrderAction, null);
@@ -36,6 +37,15 @@ export function RecordOrderForm() {
         </Field>
         <Field label="Order value (₹)" htmlFor="amount" error={errors.amount} required>
           <Input id="amount" name="amount" type="number" inputMode="decimal" min={1} step="1" defaultValue={values.amount} placeholder="1499" required aria-invalid={!!errors.amount} />
+        </Field>
+        <Field
+          label="Order date"
+          htmlFor="orderDate"
+          error={errors.orderDate}
+          required
+          hint="When the customer placed the order. Orders placed while a campaign ran can be recorded up to 30 days after it ends or is paused."
+        >
+          <Input id="orderDate" name="orderDate" type="date" max={istToday()} defaultValue={values.orderDate ?? istToday()} required aria-invalid={!!errors.orderDate} />
         </Field>
         <Field label="Quantity" htmlFor="quantity" error={errors.quantity}>
           <Input id="quantity" name="quantity" type="number" inputMode="numeric" min={1} defaultValue={values.quantity ?? "1"} />

@@ -26,7 +26,7 @@ export default async function AdminConversionsPage() {
         title="Conversions"
         description="Read-only oversight of every recorded order. Brands verify, reject and refund their own orders; anything suspicious can be followed up in the audit log or by moderating the campaign."
       />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Orders (latest 200)" value={rows.length} />
         <KpiCard label="Pending verification" value={pending} />
         <KpiCard label="Verified revenue" value={formatMoney(revenue)} />

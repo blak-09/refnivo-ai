@@ -14,24 +14,38 @@ import { Label } from "@/components/ui/label";
  * Brand decides a customer's order claim. Confirming asks for the order value
  * (from the brand's store) and records + verifies the order in one step.
  */
-export function OrderClaimDecision({ claimId, orderReference, partnerLabel, owedLabel }: { claimId: string; orderReference: string; partnerLabel: string; owedLabel: string }) {
+export function OrderClaimDecision({
+  claimId,
+  orderReference,
+  partnerLabel,
+  owedLabel,
+  claimedOn,
+}: {
+  claimId: string;
+  orderReference: string;
+  partnerLabel: string;
+  owedLabel: string;
+  /** yyyy-mm-dd (IST) the claim was submitted; the default order date. */
+  claimedOn: string;
+}) {
   const router = useRouter();
   const [dialog, setDialog] = React.useState<"CONFIRM" | "REJECT" | null>(null);
   const [pending, setPending] = React.useState(false);
   const [amount, setAmount] = React.useState("");
   const [quantity, setQuantity] = React.useState("1");
+  const [orderDate, setOrderDate] = React.useState(claimedOn);
   const [reason, setReason] = React.useState("");
 
   async function decide() {
     if (!dialog) return;
     setPending(true);
     try {
-      const res = await orderClaimDecisionAction(dialog === "CONFIRM" ? { claimId, decision: "CONFIRM", amount, quantity } : { claimId, decision: "REJECT", reason });
+      const res = await orderClaimDecisionAction(dialog === "CONFIRM" ? { claimId, decision: "CONFIRM", amount, quantity, orderDate } : { claimId, decision: "REJECT", reason });
       if (!res.ok) {
         toast.error(res.error);
         return;
       }
-      toast.success(dialog === "CONFIRM" ? `Order ${orderReference} confirmed — ${owedLabel} released to ${partnerLabel}.` : `Claim for ${orderReference} rejected.`);
+      toast.success(dialog === "CONFIRM" ? `Order ${orderReference} confirmed — ${owedLabel} approved for ${partnerLabel}.` : `Claim for ${orderReference} rejected.`);
       setDialog(null);
       router.refresh();
     } finally {
@@ -53,13 +67,17 @@ export function OrderClaimDecision({ claimId, orderReference, partnerLabel, owed
           <DialogHeader>
             <DialogTitle>Confirm order {orderReference}</DialogTitle>
             <DialogDescription>
-              Enter the order value from your store. The order is recorded and verified in one step, and {owedLabel} is released to {partnerLabel} immediately.
+              Enter the order value and date from your store. The order is recorded and verified in one step, and {owedLabel} is approved for {partnerLabel}. It becomes payable after the campaign&apos;s refund window.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+          <div className="grid gap-3 sm:grid-cols-[1fr_150px_100px]">
             <div className="space-y-1.5">
               <Label htmlFor="claim-amount">Order value (₹)</Label>
               <Input id="claim-amount" type="number" inputMode="decimal" min={1} step="1" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="1999" autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="claim-date">Order date</Label>
+              <Input id="claim-date" type="date" max={claimedOn} value={orderDate} onChange={(e) => setOrderDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="claim-quantity">Quantity</Label>

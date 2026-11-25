@@ -15,7 +15,7 @@ export const verificationSchema = z.object({
 
 export const moderateCampaignSchema = z.object({
   campaignId: id,
-  action: z.enum(["PAUSE", "END", "ARCHIVE"]),
+  action: z.enum(["PAUSE", "END", "ARCHIVE", "APPROVE", "REJECT"]),
   reason,
 });
 

@@ -29,13 +29,27 @@ export const campaignProductSchema = z.object({
   productId: z.string().min(1, "Select the product this campaign promotes"),
 });
 
-export const campaignBasicsSchema = z.object({
-  name: z.string().trim().min(3, "Campaign name must be at least 3 characters").max(80),
-  description: z.string().trim().max(2000).optional().or(z.literal("")),
-  offerTitle: z.string().trim().max(100).optional().or(z.literal("")),
-  offerDescription: z.string().trim().max(600).optional().or(z.literal("")),
-  campaignType: z.enum(CAMPAIGN_TYPES),
-});
+export const campaignBasicsSchema = z
+  .object({
+    name: z.string().trim().min(3, "Campaign name must be at least 3 characters").max(80),
+    description: z.string().trim().max(2000).optional().or(z.literal("")),
+    offerTitle: z.string().trim().max(100).optional().or(z.literal("")),
+    offerDescription: z.string().trim().max(600).optional().or(z.literal("")),
+    /** The store coupon a referred shopper types at checkout (W7: an offer without a code cannot be claimed). */
+    couponCode: z
+      .string()
+      .trim()
+      .max(40, "Keep the code under 40 characters")
+      .regex(/^[A-Za-z0-9_-]*$/, "Use letters, numbers, - or _ only (no spaces)")
+      .optional()
+      .or(z.literal("")),
+    campaignType: z.enum(CAMPAIGN_TYPES),
+  })
+  .superRefine((v, ctx) => {
+    if (v.offerTitle && !v.couponCode) {
+      ctx.addIssue({ code: "custom", path: ["couponCode"], message: "Add the coupon code shoppers enter at checkout on your store" });
+    }
+  });
 
 export const campaignRewardsSchema = z
   .object({
@@ -73,6 +87,8 @@ export const campaignRulesSchema = z
       .int("Must be a whole number of days")
       .min(1, "At least 1 day")
       .max(90, "At most 90 days"),
+    /** Days a verified commission/reward stays refundable before it can be paid out. */
+    holdDays: z.coerce.number().int("Must be a whole number of days").min(0, "Cannot be negative").max(60, "At most 60 days").default(14),
     /** Cap on the reward for ONE order (column name predates the clarification). */
     maxRewardPerCustomer: optionalRupees("Maximum reward per order"),
     budget: optionalRupees("Budget"),
@@ -112,6 +128,7 @@ export function toCampaignData(v: CampaignFormValues) {
     description: v.description || null,
     offerTitle: v.offerTitle || null,
     offerDescription: v.offerDescription || null,
+    couponCode: v.offerTitle && v.couponCode ? v.couponCode.toUpperCase() : null,
     campaignType: v.campaignType,
     terms: v.terms || null,
     rewardType: v.rewardType,
@@ -129,6 +146,7 @@ export function toCampaignData(v: CampaignFormValues) {
     maxRewardPerCustomer: v.maxRewardPerCustomer === null ? null : rupeesToPaise(v.maxRewardPerCustomer),
     budget: v.budget === null ? null : rupeesToPaise(v.budget),
     attributionWindowDays: v.attributionWindowDays,
+    holdDays: v.holdDays,
     startDate: v.startDate,
     endDate: v.endDate ?? null,
   };

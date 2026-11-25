@@ -21,7 +21,8 @@ export const creatorProfileSchema = z.object({
     .trim()
     .toLowerCase()
     .regex(/^[a-z0-9_]{3,30}$/, "3–30 characters: letters, numbers, underscores"),
-  bio: z.string().trim().max(600).optional().or(z.literal("")),
+  // Brands decide from the bio: a one-liner is not enough (W12). Empty is allowed only for legacy rows.
+  bio: z.string().trim().min(40, "Write at least 40 characters: who you are, what you create and for whom.").max(600).optional().or(z.literal("")),
   profileImageUrl: optionalImageRef,
   category: z.string().trim().max(60).optional().or(z.literal("")),
   location: z.string().trim().max(80).optional().or(z.literal("")),

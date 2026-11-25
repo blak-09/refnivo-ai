@@ -14,6 +14,7 @@ export type CampaignRuleFields = Pick<
   | "newCustomerOnly"
   | "maxRewardPerCustomer"
   | "attributionWindowDays"
+  | "holdDays"
   | "budget"
   | "startDate"
   | "endDate"
@@ -53,6 +54,7 @@ export function describeEligibility(c: CampaignRuleFields): string[] {
   rules.push(c.newCustomerOnly ? "First-time customers only" : "New and returning customers");
   rules.push(c.minimumPurchaseAmount ? `Minimum order ${formatMoney(c.minimumPurchaseAmount, c.currency)}` : "No minimum order value");
   rules.push(`${c.attributionWindowDays}-day attribution window`);
+  rules.push(c.holdDays > 0 ? `Earnings payable ${c.holdDays} days after the brand verifies the order` : "Earnings payable once the brand verifies the order");
   if (c.maxRewardPerCustomer) rules.push(`Max reward ${formatMoney(c.maxRewardPerCustomer, c.currency)} per order`);
   rules.push(c.budget ? `Budget ${formatMoney(c.budget, c.currency)}` : "No budget cap");
   return rules;

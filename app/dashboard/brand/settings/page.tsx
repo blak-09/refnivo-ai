@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SettingsPage } from "@/components/account/settings-page";
 import { requireBrand } from "@/lib/auth/guards";
@@ -33,7 +34,11 @@ export default async function BrandSettingsPage() {
               </div>
             </dl>
             <p className="mt-3 text-xs text-muted-foreground">
-              Automatic order import from Shopify / WooCommerce, team members and billing are on the roadmap and not available yet.
+              Automatic order import from Shopify / WooCommerce and team members are on the roadmap and not available yet. Plans and payments are in{" "}
+              <Link href="/dashboard/brand/billing" className="font-medium text-primary hover:underline">
+                Billing
+              </Link>
+              .
             </p>
           </CardContent>
         </Card>

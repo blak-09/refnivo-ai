@@ -126,7 +126,8 @@ export type PublicCreatorCard = {
 
 /** Directory of creators for brands to discover. Never exposes contact details. */
 export async function listPublicCreators(opts: { q?: string; category?: string; limit?: number } = {}): Promise<PublicCreatorCard[]> {
-  return prisma.creatorProfile.findMany({
+  return prisma.creatorProfile
+    .findMany({
     where: {
       user: { status: "APPROVED" },
       ...(opts.category ? { category: opts.category } : {}),
@@ -141,7 +142,7 @@ export async function listPublicCreators(opts: { q?: string; category?: string; 
         : {}),
     },
     orderBy: [{ verificationStatus: "desc" }, { instagramFollowers: "desc" }, { createdAt: "desc" }],
-    take: opts.limit ?? 60,
+    take: (opts.limit ?? 60) * 2,
     select: {
       displayName: true,
       username: true,
@@ -154,5 +155,18 @@ export async function listPublicCreators(opts: { q?: string; category?: string; 
       engagementRate: true,
       verificationStatus: true,
     },
-  });
+  }).then((rows) => rankCreatorCards(rows).slice(0, opts.limit ?? 60));
+}
+
+/**
+ * Directory order (W12): complete profiles first, very incomplete ones (no
+ * bio, photo or category) hidden. Ordering within a band keeps the query order.
+ */
+export function rankCreatorCards<T extends Pick<PublicCreatorCard, "bio" | "profileImageUrl" | "category">>(rows: T[]): T[] {
+  const score = (c: T) => ((c.bio?.trim().length ?? 0) >= 40 ? 2 : 0) + (c.profileImageUrl ? 1 : 0) + (c.category ? 1 : 0);
+  return rows
+    .map((c, i) => ({ c, i, s: score(c) }))
+    .filter((x) => x.s > 0)
+    .sort((a, b) => b.s - a.s || a.i - b.i)
+    .map((x) => x.c);
 }

@@ -45,6 +45,7 @@ type FormState = {
   description: string;
   offerTitle: string;
   offerDescription: string;
+  couponCode: string;
   campaignType: "CREATOR_AFFILIATE" | "CUSTOMER_REFERRAL" | "HYBRID";
   rewardType: "FIXED_AMOUNT" | "PERCENTAGE" | "VOUCHER" | "DISCOUNT";
   customerRewardValue: string;
@@ -55,6 +56,7 @@ type FormState = {
   newCustomerOnly: boolean;
   minimumPurchaseAmount: string;
   attributionWindowDays: string;
+  holdDays: string;
   maxRewardPerCustomer: string;
   budget: string;
   terms: string;
@@ -68,6 +70,7 @@ const DEFAULT_STATE: FormState = {
   description: "",
   offerTitle: "",
   offerDescription: "",
+  couponCode: "",
   campaignType: "HYBRID",
   rewardType: "FIXED_AMOUNT",
   customerRewardValue: "100",
@@ -78,6 +81,7 @@ const DEFAULT_STATE: FormState = {
   newCustomerOnly: false,
   minimumPurchaseAmount: "",
   attributionWindowDays: "30",
+  holdDays: "14",
   maxRewardPerCustomer: "",
   budget: "",
   terms: "",
@@ -93,6 +97,7 @@ function fromCampaign(c: Campaign): FormState {
     description: c.description ?? "",
     offerTitle: c.offerTitle ?? "",
     offerDescription: c.offerDescription ?? "",
+    couponCode: c.couponCode ?? "",
     campaignType: c.campaignType,
     rewardType: c.rewardType,
     customerRewardValue: c.rewardType === "PERCENTAGE" ? String(basisPointsToPercent(c.customerRewardValue)) : money(c.customerRewardValue),
@@ -104,6 +109,7 @@ function fromCampaign(c: Campaign): FormState {
     newCustomerOnly: c.newCustomerOnly,
     minimumPurchaseAmount: money(c.minimumPurchaseAmount),
     attributionWindowDays: String(c.attributionWindowDays),
+    holdDays: String(c.holdDays),
     maxRewardPerCustomer: money(c.maxRewardPerCustomer),
     budget: money(c.budget),
     terms: c.terms ?? "",
@@ -120,6 +126,7 @@ function toPayload(s: FormState): CampaignFormInput {
     description: s.description,
     offerTitle: s.offerTitle,
     offerDescription: s.offerDescription,
+    couponCode: s.couponCode,
     campaignType: s.campaignType,
     rewardType: s.rewardType,
     customerRewardValue: (s.campaignType === "CREATOR_AFFILIATE" ? "0" : s.customerRewardValue) as unknown as number,
@@ -130,6 +137,7 @@ function toPayload(s: FormState): CampaignFormInput {
     newCustomerOnly: s.newCustomerOnly,
     minimumPurchaseAmount: s.minimumPurchaseAmount as unknown as number,
     attributionWindowDays: s.attributionWindowDays as unknown as number,
+    holdDays: s.holdDays as unknown as number,
     maxRewardPerCustomer: s.maxRewardPerCustomer as unknown as number,
     budget: s.budget as unknown as number,
     terms: s.terms,
@@ -222,13 +230,17 @@ export function CampaignWizard(props: Props) {
         return;
       }
       setCampaignId(res.data.id);
-      if (kind === "publish" && res.data.status !== "ACTIVE") {
+      if (kind === "publish" && res.data.status === "DRAFT") {
         const pub = await campaignStatusAction({ campaignId: res.data.id, action: "PUBLISH", confirmed: true });
         if (!pub.ok) {
           setFormError(pub.error);
           return;
         }
-        toast.success("Campaign launched. It is now live in the campaign marketplace.");
+        toast.success(
+          pub.data.status === "PENDING_REVIEW"
+            ? "Submitted for review. Refnivo checks first campaigns against the content policy, usually within 1 business day. We'll notify you when it's live."
+            : "Campaign launched. It is now live in the campaign marketplace.",
+        );
       } else {
         toast.success(kind === "publish" ? "Campaign saved." : "Draft saved.");
       }
@@ -253,7 +265,8 @@ export function CampaignWizard(props: Props) {
           creatorShare: state.campaignType === "CREATOR_AFFILIATE" ? 1 : state.campaignType === "CUSTOMER_REFERRAL" ? 0 : 0.7,
         })
       : null;
-  const canPublishNow = props.mode === "create" || props.campaign.status === "DRAFT" || props.campaign.status === "PENDING_REVIEW";
+  const canPublishNow = props.mode === "create" || props.campaign.status === "DRAFT";
+  const inReview = props.mode === "edit" && props.campaign.status === "PENDING_REVIEW";
   const activeProducts = props.products.filter((p) => p.status === "ACTIVE" || p.id === state.productId);
 
   return (
@@ -366,8 +379,19 @@ export function CampaignWizard(props: Props) {
               <Field label="Customer offer headline (optional)" htmlFor="offerTitle" error={errors.offerTitle} hint="Shown on the referral landing page, e.g. a coupon shoppers get through the link.">
                 <Input id="offerTitle" value={state.offerTitle} onChange={(e) => set("offerTitle", e.target.value)} placeholder="Get 10% off with a creator link" aria-invalid={!!errors.offerTitle} />
               </Field>
+              {state.offerTitle.trim() ? (
+                <Field
+                  label="Coupon code"
+                  htmlFor="couponCode"
+                  error={errors.couponCode}
+                  required
+                  hint="The code shoppers type at checkout on your store to get this offer. Create it in your store first; it is shown with a copy button on the campaign page."
+                >
+                  <Input id="couponCode" value={state.couponCode} onChange={(e) => set("couponCode", e.target.value.toUpperCase().replace(/\s+/g, ""))} placeholder="CREATOR10" autoCapitalize="characters" aria-invalid={!!errors.couponCode} />
+                </Field>
+              ) : null}
               <Field label="Offer details (optional)" htmlFor="offerDescription" error={errors.offerDescription}>
-                <Textarea id="offerDescription" rows={2} value={state.offerDescription} onChange={(e) => set("offerDescription", e.target.value)} placeholder="Discount applied automatically at checkout on the brand store." />
+                <Textarea id="offerDescription" rows={2} value={state.offerDescription} onChange={(e) => set("offerDescription", e.target.value)} placeholder="Valid on orders above ₹999. One use per customer." />
               </Field>
             </div>
           ) : null}
@@ -468,6 +492,15 @@ export function CampaignWizard(props: Props) {
               </Field>
               <Field label="Attribution window (days)" htmlFor="attributionWindowDays" error={errors.attributionWindowDays} required hint="How long after clicking a link a customer's order confirmation still counts as that click (the click cookie expires after this). Orders you record by hand are attributed by the referral code.">
                 <Input id="attributionWindowDays" type="number" inputMode="numeric" min={1} max={90} value={state.attributionWindowDays} onChange={(e) => set("attributionWindowDays", e.target.value)} aria-invalid={!!errors.attributionWindowDays} />
+              </Field>
+              <Field
+                label="Refund window before payout (days)"
+                htmlFor="holdDays"
+                error={errors.holdDays}
+                required
+                hint="After you verify an order, its commission or reward waits this many days before it can be paid out. You can record a refund only during this window. Match your store's return period (0–60)."
+              >
+                <Input id="holdDays" type="number" inputMode="numeric" min={0} max={60} value={state.holdDays} onChange={(e) => set("holdDays", e.target.value)} aria-invalid={!!errors.holdDays} />
               </Field>
               <Field label="Maximum reward per order (₹)" htmlFor="maxRewardPerCustomer" error={errors.maxRewardPerCustomer} hint="Caps the reward earned on a single order (useful with percentage rewards). Leave empty for no cap.">
                 <Input id="maxRewardPerCustomer" type="number" inputMode="decimal" min={0} value={state.maxRewardPerCustomer} onChange={(e) => set("maxRewardPerCustomer", e.target.value)} placeholder="500" aria-invalid={!!errors.maxRewardPerCustomer} />
@@ -572,6 +605,8 @@ export function CampaignWizard(props: Props) {
                     previewRules ? `Runs ${previewRules.endDate ? "from " + state.startDate + " to " + state.endDate : "from " + state.startDate + " with no end date"}` : "",
                     previewData?.budget ? `Budget ${formatMoney(previewData.budget)}` : "No budget cap",
                     state.requiresApproval ? "Creators will need your approval" : "Creators join instantly",
+                    Number(state.holdDays) > 0 ? `Earnings become payable ${state.holdDays} days after you verify an order` : "Earnings are payable as soon as you verify an order",
+                    state.couponCode ? `Shoppers use coupon ${state.couponCode}` : "",
                   ]
                     .filter(Boolean)
                     .map((t) => (
@@ -589,12 +624,23 @@ export function CampaignWizard(props: Props) {
                   </p>
                 </div>
               ) : canPublishNow ? (
-                <label className="flex items-start gap-3 rounded-lg border p-3">
-                  <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-                  <span className="text-sm">
-                    I confirm the commission, reward and campaign rules above. My brand owes these amounts for every order I verify.
-                  </span>
-                </label>
+                <>
+                  <label className="flex items-start gap-3 rounded-lg border p-3">
+                    <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                    <span className="text-sm">
+                      I confirm the commission, reward and campaign rules above, and that the product follows the{" "}
+                      <Link href="/content-policy" target="_blank" className="font-medium text-primary underline-offset-4 hover:underline">
+                        content policy
+                      </Link>
+                      . My brand owes these amounts for every order I verify.
+                    </span>
+                  </label>
+                  <p className="text-xs text-muted-foreground">A brand&apos;s first campaign is checked by Refnivo before it goes live, usually within 1 business day.</p>
+                </>
+              ) : inReview ? (
+                <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+                  This campaign is waiting for Refnivo&apos;s review. You can still edit it; we&apos;ll notify you when it is live or if something needs to change.
+                </p>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   This campaign is already {props.mode === "edit" ? props.campaign.status.toLowerCase() : ""}. Saving keeps its current status.

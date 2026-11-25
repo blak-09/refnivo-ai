@@ -78,10 +78,13 @@ describe("submitOrderClaim", () => {
     await expect(submitOrderClaim({ campaignId: a.campaign.id, code: a.code, orderReference: "REC-1", contact: "z@example.com" })).rejects.toThrow(/already been recorded/);
   });
 
-  it("refuses claims once the campaign is paused", async () => {
+  it("after a pause, claims are still accepted for 30 days (orders placed before the pause), then refused (W2)", async () => {
     const { owner, campaign, code } = await setup();
     await transitionCampaign(owner.brand.id, owner.user.id, campaign.id, "PAUSE");
-    await expect(submitOrderClaim({ campaignId: campaign.id, code, orderReference: uniq("ORD"), contact: "x@example.com" })).rejects.toBeInstanceOf(OrderClaimError);
+    const late = await submitOrderClaim({ campaignId: campaign.id, code, orderReference: uniq("ORD"), contact: "x@example.com" });
+    expect(late.status).toBe("PENDING");
+    const later = new Date(Date.now() + 31 * 24 * 60 * 60 * 1000);
+    await expect(submitOrderClaim({ campaignId: campaign.id, code, orderReference: uniq("ORD"), contact: "y@example.com" }, later)).rejects.toBeInstanceOf(OrderClaimError);
   });
 });
 

@@ -1,10 +1,10 @@
 import { Prisma, type ConversionSource, type ReferralStatus } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
-import { isCampaignLive } from "@/lib/domain/campaign-rules";
+import { checkOrderDate, payableAtFor } from "@/lib/domain/campaign-rules";
 import { computeCreatorCommission, computeCustomerReward, meetsMinimumPurchase } from "@/lib/domain/rewards";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
-import { creditForReversedOrder, debitForVerifiedOrder, walletEnabled, WalletError } from "./wallet";
+import { creditForReversedOrder, debitForVerifiedOrder, debitWallet, walletEnabled, WalletError } from "./wallet";
 import { adminUserIds, notify, notifyMany } from "./notify";
 import { hashValue } from "./tracking";
 
@@ -27,6 +27,10 @@ export type RecordOrderInput = {
   /** Already-hashed contact (order claims store only the hash); takes precedence over customerContact. */
   customerContactHash?: string | null;
   note?: string | null;
+  /** When the customer placed the order. Defaults to now. Must fall inside the campaign's run. */
+  orderedAt?: Date | null;
+  /** `orderedAt` is a calendar day from a date input (yyyy-mm-dd), not an exact time. */
+  orderedOnDay?: boolean;
 };
 
 type Tx = Prisma.TransactionClient;
@@ -53,7 +57,9 @@ export async function recordOrderInTx(tx: Tx, brandId: string, actorId: string, 
     });
     if (!link || link.campaign.brandId !== brandId) throw new ConversionError("Referral code not found for your brand.");
     if (link.status !== "ACTIVE") throw new ConversionError("This referral link is disabled.");
-    if (!isCampaignLive(link.campaign, now)) throw new ConversionError("This campaign is not active — paused or expired campaigns cannot accept new conversions.");
+    const check = checkOrderDate(link.campaign, input.orderedAt ?? now, now, { wholeDay: !!input.orderedAt && !!input.orderedOnDay });
+    if (check.problem) throw new ConversionError(check.problem);
+    const orderedAt = check.orderedAt;
     if (!meetsMinimumPurchase(link.campaign, input.amountMinor)) {
       throw new ConversionError("Order value is below the campaign's minimum order value.");
     }
@@ -102,6 +108,7 @@ export async function recordOrderInTx(tx: Tx, brandId: string, actorId: string, 
           amount: input.amountMinor,
           quantity: input.quantity ?? 1,
           source: input.source ?? "REFERRAL_CODE",
+          orderedAt,
         },
       });
     } catch (err) {
@@ -142,7 +149,7 @@ export async function recordOrderInTx(tx: Tx, brandId: string, actorId: string, 
         action: "ORDER_RECORDED",
         entityType: "Conversion",
         entityId: conversion.id,
-        metadata: { brandId, campaignId: link.campaignId, code, amount: input.amountMinor, source: conversion.source },
+        metadata: { brandId, campaignId: link.campaignId, code, amount: input.amountMinor, source: conversion.source, orderedAt: orderedAt.toISOString() },
       },
       tx,
     );
@@ -178,7 +185,7 @@ export async function verifyConversionInTx(tx: Tx, brandId: string, actorId: str
       where: { id: referralId, campaign: { brandId } },
       include: {
         conversion: true,
-        campaign: { select: { budget: true, id: true, name: true } },
+        campaign: { select: { budget: true, id: true, name: true, holdDays: true } },
         referralLink: { select: { partnerType: true } },
         commissions: true,
         rewards: true,
@@ -212,22 +219,24 @@ export async function verifyConversionInTx(tx: Tx, brandId: string, actorId: str
 
     await tx.referral.update({ where: { id: referralId }, data: { status: "VERIFIED", verifiedAt: now } });
     await tx.conversion.update({ where: { id: referral.conversion.id }, data: { verifiedById: actorId, verifiedAt: now } });
-    await tx.commission.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "APPROVED" } });
-    await tx.reward.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "AVAILABLE" } });
+    const payableAt = payableAtFor(referral.campaign.holdDays, now);
+    await tx.commission.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "APPROVED", payableAt } });
+    await tx.reward.updateMany({ where: { referralId, status: "PENDING" }, data: { status: "AVAILABLE", payableAt } });
+    const holdNote = payableAt ? ` It can be paid out from ${payableAt.toISOString().slice(0, 10)}, after the brand's ${referral.campaign.holdDays}-day refund window.` : "";
     await notify(
       {
         userId: referral.referrerId,
         type: "CONVERSION_VERIFIED",
         idempotencyKey: `conversion:${referralId}:VERIFIED`,
         title: `Order verified: ${referral.campaign.name}`,
-        body: referral.referralLink.partnerType === "CREATOR" ? "Your commission for this order is now approved." : "Your reward for this order is now available.",
+        body: (referral.referralLink.partnerType === "CREATOR" ? "Your commission for this order is now approved." : "Your reward for this order is now available.") + holdNote,
         href: referral.referralLink.partnerType === "CREATOR" ? "/dashboard/creator/earnings" : "/dashboard/customer/rewards",
         email: true,
       },
       tx,
     );
     await recordAudit(
-      { userId: actorId, action: "CONVERSION_VERIFIED", entityType: "Referral", entityId: referralId, metadata: { brandId, orderReference: referral.conversion.orderReference, owed } },
+      { userId: actorId, action: "CONVERSION_VERIFIED", entityType: "Referral", entityId: referralId, metadata: { brandId, orderReference: referral.conversion.orderReference, owed, payableAt: payableAt?.toISOString() ?? null } },
       tx,
     );
   }
@@ -282,13 +291,25 @@ export async function reverseConversion(brandId: string, actorId: string, referr
         conversion: true,
         campaign: { select: { name: true } },
         referralLink: { select: { partnerType: true } },
-        commissions: { select: { id: true, status: true, amount: true, payoutItem: { select: { payoutRequest: { select: { id: true, status: true } } } } } },
-        rewards: { select: { id: true, status: true, amount: true, payoutItem: { select: { payoutRequest: { select: { id: true, status: true } } } } } },
+        commissions: { select: { id: true, status: true, amount: true, payableAt: true, payoutItem: { select: { payoutRequest: { select: { id: true, status: true } } } } } },
+        rewards: { select: { id: true, status: true, amount: true, payableAt: true, payoutItem: { select: { payoutRequest: { select: { id: true, status: true } } } } } },
       },
     });
     if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
     if (referral.status !== "VERIFIED") throw new ConversionError("Only verified orders can be refunded.");
     if (referral.conversion.reversedAt) throw new ConversionError("This order has already been refunded.");
+    // Partners are protected once money has moved or the refund window has passed:
+    // brands can refund only while the commission/reward is still on hold and unpaid.
+    const entries = [...referral.commissions, ...referral.rewards];
+    if (referral.commissions.some((c) => c.status === "PAID") || referral.rewards.some((r) => r.status === "REDEEMED")) {
+      throw new ConversionError("This order's commission or reward has already been paid out, so it can no longer be refunded here. Contact Refnivo support if the order was returned.");
+    }
+    if (referral.conversion.contestOutcome === "UPHELD") {
+      throw new ConversionError("Refnivo reviewed this order after a partner contest and kept it. Contact Refnivo support to change it.");
+    }
+    if (entries.some((e) => e.payableAt && e.payableAt <= now) || (entries.length > 0 && entries.every((e) => !e.payableAt) && referral.conversion.verifiedAt && referral.conversion.verifiedAt.getTime() < now.getTime() - 60 * 24 * 60 * 60 * 1000)) {
+      throw new ConversionError("The refund window for this order has closed. Contact Refnivo support if the order was returned.");
+    }
 
     const reversedCommissions = referral.commissions.filter((c) => c.status === "APPROVED" || c.status === "PAID");
     const reversedRewards = referral.rewards.filter((r) => r.status === "AVAILABLE" || r.status === "APPROVED" || r.status === "REDEEMED");
@@ -395,6 +416,15 @@ export async function countOrdersByStatus(brandId: string) {
   return Object.fromEntries(rows.map((r) => [r.status, r._count._all])) as Partial<Record<ReferralStatus, number>>;
 }
 
+/** What a partner is still waiting on from brands (W4/W5): recorded orders and buyer claims not yet decided. */
+export async function partnerWaitingSummary(userId: string) {
+  const [orders, claims] = await Promise.all([
+    prisma.referral.count({ where: { referrerId: userId, status: "PURCHASED", conversion: { isNot: null } } }),
+    prisma.orderClaim.count({ where: { status: "PENDING", referralLink: { ownerId: userId } } }),
+  ]);
+  return { orders, claims };
+}
+
 /** Partner-facing conversions: never exposes the referred customer's details. */
 export async function listPartnerConversions(userId: string) {
   return prisma.referral.findMany({
@@ -405,11 +435,211 @@ export async function listPartnerConversions(userId: string) {
       id: true,
       status: true,
       createdAt: true,
+      updatedAt: true,
       verifiedAt: true,
+      qualifyingEvent: true,
       campaign: { select: { name: true, slug: true, brand: { select: { name: true } }, product: { select: { name: true } } } },
-      conversion: { select: { amount: true, currency: true, createdAt: true } },
-      commissions: { select: { amount: true, status: true, currency: true } },
-      rewards: { select: { amount: true, status: true, currency: true } },
+      conversion: {
+        select: {
+          amount: true,
+          currency: true,
+          createdAt: true,
+          orderedAt: true,
+          reversedAt: true,
+          reversalReason: true,
+          contestedAt: true,
+          contestResolvedAt: true,
+          contestOutcome: true,
+          contestNote: true,
+        },
+      },
+      commissions: { select: { amount: true, status: true, currency: true, payableAt: true } },
+      rewards: { select: { amount: true, status: true, currency: true, payableAt: true } },
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Partner contests (docs/AUDIT.md W3): a creator or customer can ask Refnivo to
+// review an order the brand rejected or refunded. An admin decides; every step
+// is notified and audited in the same transaction.
+// ---------------------------------------------------------------------------
+
+/** How long after the brand's decision a partner can contest it. */
+export const CONTEST_WINDOW_DAYS = 30;
+
+export async function contestConversion(userId: string, referralId: string, reason: string, now = new Date()) {
+  const text = reason.trim();
+  if (text.length < 10) throw new ConversionError("Tell Refnivo what went wrong (at least 10 characters).");
+  if (text.length > 1000) throw new ConversionError("Keep the reason under 1,000 characters.");
+  return transaction(async (tx) => {
+    const referral = await tx.referral.findFirst({
+      where: { id: referralId, referrerId: userId },
+      include: { conversion: true, campaign: { select: { name: true, brand: { select: { ownerId: true, name: true } } } } },
+    });
+    if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
+    if (referral.status !== "REJECTED" && referral.status !== "REFUNDED") throw new ConversionError("Only rejected or refunded orders can be contested.");
+    if (referral.conversion.contestedAt) throw new ConversionError("You have already contested this order.");
+    const decidedAt = referral.conversion.reversedAt ?? referral.updatedAt;
+    if (now.getTime() - decidedAt.getTime() > CONTEST_WINDOW_DAYS * 24 * 60 * 60 * 1000) {
+      throw new ConversionError(`Orders can be contested within ${CONTEST_WINDOW_DAYS} days of the brand's decision.`);
+    }
+    await tx.conversion.update({ where: { id: referral.conversion.id }, data: { contestedAt: now, contestReason: text } });
+    await notifyMany(
+      await adminUserIds(tx),
+      {
+        type: "SYSTEM",
+        idempotencyKey: `contest:${referralId}`,
+        title: `Order contested: ${referral.conversion.orderReference}`,
+        body: `A partner disputes the ${referral.status === "REJECTED" ? "rejection" : "refund"} of an order on "${referral.campaign.name}" (${referral.campaign.brand.name}).`,
+        href: "/dashboard/admin/contests",
+        email: true,
+      },
+      tx,
+    );
+    await notify(
+      {
+        userId: referral.campaign.brand.ownerId,
+        type: "SYSTEM",
+        idempotencyKey: `contest-brand:${referralId}`,
+        title: `A partner contested order ${referral.conversion.orderReference}`,
+        body: "Refnivo will review the order and may contact you for proof (for example the refund or cancellation record).",
+        href: "/dashboard/brand/orders",
+      },
+      tx,
+    );
+    await recordAudit(
+      { userId, action: "CONVERSION_CONTESTED", entityType: "Referral", entityId: referralId, metadata: { status: referral.status, reason: text } },
+      tx,
+    );
+  });
+}
+
+export type ContestOutcome = "UPHELD" | "DISMISSED";
+
+/**
+ * Admin decision on a contest.
+ *  - DISMISSED: the brand's decision stands.
+ *  - UPHELD on a REJECTED order: the order goes back to "pending verification"
+ *    (entries back to PENDING) so the brand must look at it again.
+ *  - UPHELD on a REFUNDED order: the order is reinstated as verified; its
+ *    unpaid entries become payable again and, with the wallet on, the amount is
+ *    taken from the brand wallet again (it may go negative: Refnivo decided).
+ */
+export async function resolveContest(adminId: string, referralId: string, outcome: ContestOutcome, note: string, now = new Date()) {
+  const text = note.trim();
+  if (!text) throw new ConversionError("Add a note explaining the decision.");
+  return transaction(async (tx) => {
+    const target = await tx.referral.findUnique({ where: { id: referralId }, select: { campaignId: true } });
+    if (!target) throw new ConversionError("Order not found.");
+    await tx.$queryRaw`SELECT "id" FROM "campaigns" WHERE "id" = ${target.campaignId} FOR UPDATE`;
+    const referral = await tx.referral.findUnique({
+      where: { id: referralId },
+      include: {
+        conversion: true,
+        campaign: { select: { name: true, brandId: true, brand: { select: { ownerId: true } } } },
+        referralLink: { select: { partnerType: true } },
+        commissions: { select: { id: true, status: true, amount: true, payoutItem: { select: { id: true } } } },
+        rewards: { select: { id: true, status: true, amount: true, payoutItem: { select: { id: true } } } },
+      },
+    });
+    if (!referral || !referral.conversion) throw new ConversionError("Order not found.");
+    if (!referral.conversion.contestedAt) throw new ConversionError("This order has not been contested.");
+    if (referral.conversion.contestResolvedAt) throw new ConversionError("This contest has already been resolved.");
+
+    if (outcome === "UPHELD" && referral.status === "REJECTED") {
+      await tx.referral.update({ where: { id: referralId }, data: { status: "PURCHASED" } });
+      await tx.commission.updateMany({ where: { referralId, status: "REJECTED" }, data: { status: "PENDING" } });
+      await tx.reward.updateMany({ where: { referralId, status: "REJECTED" }, data: { status: "PENDING" } });
+    } else if (outcome === "UPHELD" && referral.status === "REFUNDED") {
+      const commissions = referral.commissions.filter((c) => c.status === "REVERSED" && !c.payoutItem);
+      const rewards = referral.rewards.filter((r) => r.status === "REVERSED" && !r.payoutItem);
+      const owed = [...commissions, ...rewards].reduce((s, e) => s + e.amount, 0);
+      if (walletEnabled() && owed > 0) {
+        await debitWallet(tx, {
+          brandId: referral.campaign.brandId,
+          amount: owed,
+          type: "ORDER_DEBIT",
+          idempotencyKey: `order-reinstated:${referralId}`,
+          referralId,
+          note: `Order ${referral.conversion.orderReference} reinstated after review`,
+          actorId: adminId,
+          allowNegative: true,
+        });
+      }
+      await tx.referral.update({ where: { id: referralId }, data: { status: "VERIFIED" } });
+      await tx.conversion.update({ where: { id: referral.conversion.id }, data: { reversedAt: null } });
+      await tx.commission.updateMany({ where: { id: { in: commissions.map((c) => c.id) } }, data: { status: "APPROVED", payableAt: null } });
+      await tx.reward.updateMany({ where: { id: { in: rewards.map((r) => r.id) } }, data: { status: "AVAILABLE", payableAt: null } });
+    } else if (outcome === "UPHELD") {
+      throw new ConversionError("This order is no longer rejected or refunded, so there is nothing to reinstate.");
+    }
+
+    await tx.conversion.update({ where: { id: referral.conversion.id }, data: { contestResolvedAt: now, contestOutcome: outcome, contestNote: text } });
+    const href = referral.referralLink.partnerType === "CREATOR" ? "/dashboard/creator/conversions" : "/dashboard/customer/rewards";
+    const upheldBody = referral.status === "REJECTED" ? "The order is back with the brand for verification." : "The order is reinstated and your earnings are payable again.";
+    await notify(
+      {
+        userId: referral.referrerId,
+        type: "SYSTEM",
+        idempotencyKey: `contest-resolved:${referralId}`,
+        title: `Contest ${outcome === "UPHELD" ? "accepted" : "closed"}: ${referral.campaign.name}`,
+        body: `${outcome === "UPHELD" ? upheldBody : "Refnivo reviewed the order and the brand's decision stands."} Note: ${text}`,
+        href,
+        email: true,
+      },
+      tx,
+    );
+    await notify(
+      {
+        userId: referral.campaign.brand.ownerId,
+        type: "SYSTEM",
+        idempotencyKey: `contest-resolved-brand:${referralId}`,
+        title: `Contest on order ${referral.conversion.orderReference} ${outcome === "UPHELD" ? "accepted" : "closed"}`,
+        body: `${outcome === "UPHELD" ? (referral.status === "REJECTED" ? "Please verify or reject the order again." : "The order was reinstated as verified.") : "Your decision stands."} Note: ${text}`,
+        href: "/dashboard/brand/orders",
+      },
+      tx,
+    );
+    await recordAudit(
+      { userId: adminId, actorRole: "ADMIN", action: "CONTEST_RESOLVED", entityType: "Referral", entityId: referralId, metadata: { outcome, note: text, previousStatus: referral.status } },
+      tx,
+    );
+  });
+}
+
+export async function listContests(state: "OPEN" | "RESOLVED" = "OPEN", take = 100) {
+  return prisma.conversion.findMany({
+    where: { contestedAt: { not: null }, contestResolvedAt: state === "OPEN" ? null : { not: null } },
+    orderBy: { contestedAt: state === "OPEN" ? "asc" : "desc" },
+    take,
+    select: {
+      orderReference: true,
+      amount: true,
+      currency: true,
+      orderedAt: true,
+      createdAt: true,
+      reversalReason: true,
+      contestedAt: true,
+      contestReason: true,
+      contestResolvedAt: true,
+      contestOutcome: true,
+      contestNote: true,
+      brand: { select: { name: true } },
+      referral: {
+        select: {
+          id: true,
+          status: true,
+          qualifyingEvent: true,
+          campaign: { select: { name: true } },
+          referralLink: { select: { code: true, partnerType: true } },
+          referrer: { select: { name: true } },
+        },
+      },
+    },
+  });
+}
+
+export async function countOpenContests() {
+  return prisma.conversion.count({ where: { contestedAt: { not: null }, contestResolvedAt: null } });
 }

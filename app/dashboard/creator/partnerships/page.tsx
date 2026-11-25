@@ -21,7 +21,7 @@ export default async function CreatorPartnershipsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Partnerships" description="The brands you work with and what each partnership has earned you. Only verified sales and approved UGC count." />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Brand partners" value={rows.length} />
         <KpiCard label="Verified sales" value={total.verified} />
         <KpiCard label="Commission earned" value={formatMoney(total.commission)} />

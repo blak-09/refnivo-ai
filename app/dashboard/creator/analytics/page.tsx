@@ -30,7 +30,7 @@ export default async function CreatorAnalyticsPage({ searchParams }: { searchPar
     <div className="space-y-6">
       <PageHeader title="Analytics" description="How your referral links perform. Revenue and commission count verified orders only." actions={<RangeTabs basePath="/dashboard/creator/analytics" days={days} />} />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label={`Clicks · ${rangeLabel}`} value={periodClicks.toLocaleString("en-IN")} icon={MousePointerClickIcon} hint={`${stats.clicks.toLocaleString("en-IN")} all time`} />
         <KpiCard label={`Conversions · ${rangeLabel}`} value={periodConversions.toLocaleString("en-IN")} icon={ReceiptIcon} hint={`${stats.verified.toLocaleString("en-IN")} verified all time`} />
         <KpiCard label="Conversion rate" value={stats.conversionRate === null ? "—" : `${(stats.conversionRate * 100).toFixed(1)}%`} icon={PercentIcon} hint={stats.conversionRate === null ? "No clicks yet" : "Verified ÷ clicks, all time"} />

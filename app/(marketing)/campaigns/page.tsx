@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Discover campaigns", description: "P
 
 const SORTS: { value: MarketplaceSort; label: string }[] = [
   { value: "newest", label: "New campaigns" },
-  { value: "commission", label: "Highest commission" },
+  { value: "commission", label: "Highest commission (est.)" },
   { value: "trending", label: "Trending" },
   { value: "ending", label: "Ending soon" },
 ];

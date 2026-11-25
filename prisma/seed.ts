@@ -268,7 +268,8 @@ async function main() {
       description: "Drive online sales of the Rockerz 450 through tech and lifestyle creators before the festive season.",
       campaignType: "HYBRID",
       offerTitle: "Get 10% off with a creator link",
-      offerDescription: "Discount applied automatically at checkout on the Soundwave store.",
+      offerDescription: "Enter the code at checkout on the Soundwave store.",
+      couponCode: "ROCKERZ10",
       terms: "Commission is paid on delivered, non-returned orders.\nNo paid ads on brand keywords.\nDisclose the partnership (#ad).",
       rewardType: "FIXED_AMOUNT",
       customerRewardValue: 10_000, // ₹100 to the referring customer
@@ -316,6 +317,7 @@ async function main() {
       description: "Customers and beauty creators share the serum; friends get a discount, referrers earn a reward.",
       campaignType: "HYBRID",
       offerTitle: "₹100 off your first GlowLab order",
+      couponCode: "GLOWFRIEND100",
       terms: "First-time GlowLab customers only. One reward per referred customer.",
       rewardType: "FIXED_AMOUNT",
       customerRewardValue: 7_500, // ₹75

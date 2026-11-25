@@ -64,7 +64,7 @@ export function CreatorFields({
               <Options list={CREATOR_CATEGORIES} current={v("category")} placeholder="Select a category" />
             </NativeSelect>
           </Field>
-          <Field label="Professional bio" htmlFor="bio" error={errors.bio} className="sm:col-span-2" hint="Who you are, what you create and for whom." required>
+          <Field label="Professional bio" htmlFor="bio" error={errors.bio} className="sm:col-span-2" hint="At least 40 characters: who you are, what you create and for whom. Brands read this before approving you." required>
             <Textarea id="bio" name="bio" rows={4} defaultValue={v("bio")} placeholder="Honest gadget reviews for students and first-jobbers. Two videos a week." aria-invalid={!!errors.bio} />
           </Field>
         </div>

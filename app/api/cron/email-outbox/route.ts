@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { dispatchPendingEmails, outboxCounts } from "@/lib/email/outbox";
+import { sendPendingReminders } from "@/lib/services/reminders";
 import { logServerError } from "@/lib/utils/server-log";
 import { securityEvent } from "@/lib/utils/security-log";
 
@@ -21,7 +22,8 @@ function authorised(header: string | null, secret: string | undefined): boolean 
  * failures and abandoned claims). Called by Vercel Cron (which sends
  * `Authorization: Bearer $CRON_SECRET` automatically) and/or the GitHub
  * Actions schedule in `.github/workflows/email-outbox.yml`.
- * Returns counts only — never addresses or bodies.
+ * Also sends the daily brand reminders for undecided orders and buyer claims
+ * (lib/services/reminders.ts). Returns counts only — never addresses or bodies.
  */
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET?.trim();
@@ -33,10 +35,15 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401, headers: { "Cache-Control": "no-store" } });
   }
   try {
+    // Daily brand reminders about undecided orders and claims (queued into the outbox, sent just below).
+    const reminders = await sendPendingReminders().catch((err) => {
+      logServerError("cron.reminders", err);
+      return { brands: -1 };
+    });
     const before = await outboxCounts();
     const dispatched = await dispatchPendingEmails({ limit: 200 });
     const after = await outboxCounts();
-    return NextResponse.json({ ok: true, before, dispatched, after, time: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ok: true, reminders, before, dispatched, after, time: new Date().toISOString() }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     const summary = logServerError("cron.email-outbox", err);
     return NextResponse.json({ ok: false, error: summary.code ?? summary.name ?? "failed" }, { status: 500, headers: { "Cache-Control": "no-store" } });

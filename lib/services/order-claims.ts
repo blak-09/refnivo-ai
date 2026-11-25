@@ -1,6 +1,6 @@
 import { Prisma, type ClaimEvidence, type OrderClaimStatus } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
-import { isCampaignLive } from "@/lib/domain/campaign-rules";
+import { acceptsOrderClaims } from "@/lib/domain/campaign-rules";
 import { normalizeReferralCode } from "@/lib/utils/codes";
 import { recordAudit } from "./audit";
 import { ConversionError, recordOrderInTx, verifyConversionInTx } from "./conversions";
@@ -71,11 +71,11 @@ export async function submitOrderClaim(input: SubmitOrderClaimInput, now = new D
   return transaction(async (tx) => {
     const link = await tx.referralLink.findUnique({
       where: { code },
-      include: { campaign: { select: { id: true, brandId: true, name: true, slug: true, status: true, startDate: true, endDate: true, brand: { select: { ownerId: true, name: true } } } }, owner: { select: { email: true, phone: true } } },
+      include: { campaign: { select: { id: true, brandId: true, name: true, slug: true, status: true, startDate: true, endDate: true, stoppedAt: true, brand: { select: { ownerId: true, name: true } } } }, owner: { select: { email: true, phone: true } } },
     });
     if (!link || link.campaign.id !== input.campaignId) throw new OrderClaimError("That referral code does not belong to this campaign. Check the code and try again.");
     if (link.status !== "ACTIVE") throw new OrderClaimError("This referral link is no longer active.");
-    if (!isCampaignLive(link.campaign, now)) throw new OrderClaimError("This campaign is not accepting orders right now.");
+    if (!acceptsOrderClaims(link.campaign, now)) throw new OrderClaimError("This campaign is not accepting orders right now.");
 
     const selfHashes = [link.owner.email, link.owner.phone].filter(Boolean).map((v) => hashValue((v as string).trim().toLowerCase()));
     if (selfHashes.includes(contactHash)) throw new OrderClaimError("You cannot claim an order through your own referral link.");
@@ -145,7 +145,7 @@ export async function submitOrderClaim(input: SubmitOrderClaimInput, now = new D
  * referral) and verified in the same transaction, so the partner's commission
  * or reward is released atomically with the claim's status change.
  */
-export async function confirmOrderClaim(brandId: string, actorId: string, claimId: string, input: { amountMinor: number; quantity?: number }, now = new Date()) {
+export async function confirmOrderClaim(brandId: string, actorId: string, claimId: string, input: { amountMinor: number; quantity?: number; orderedAt?: Date | null }, now = new Date()) {
   return transaction(async (tx) => {
     const claim = await tx.orderClaim.findFirst({ where: { id: claimId, brandId }, include: { referralLink: { select: { code: true } }, campaign: { select: { name: true } } } });
     if (!claim) throw new OrderClaimError("Claim not found.");
@@ -163,6 +163,9 @@ export async function confirmOrderClaim(brandId: string, actorId: string, claimI
         source: "CUSTOMER_CLAIM",
         customerContactHash: claim.contactHash,
         note: claim.evidence === "LAST_CLICK" ? "Customer order claim (clicked link)" : "Customer order claim (code entered)",
+        // The buyer ordered before claiming; the brand can correct the date from its store.
+        orderedAt: input.orderedAt ?? claim.createdAt,
+        orderedOnDay: !!input.orderedAt,
       },
       now,
     );

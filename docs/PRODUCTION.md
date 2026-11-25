@@ -225,7 +225,9 @@ Use the **direct** URL only for `pg_dump`/`migrate` if the pooler rejects DDL.
 
 ## 6. Health check
 
-`GET /api/health` → `200 {"ok":true,"db":"up",…}` or `503 {"ok":false,"db":"down",…}`. It exposes no hostnames, versions, env values or error text. Point your uptime monitor at it.
+`GET /api/health` → `200 {"ok":true,"status":"ok","db":"up","schema":"current","time":…}` or `503 {"ok":false,…}`. The public answer exposes no hostnames, versions, env values, warnings or error text. Point your uptime monitor at it.
+
+Details (configuration warnings, migration name, payment/storage/e-mail status) are returned only to a signed-in admin, or to a request with the header `x-health-token: <HEALTH_TOKEN>` when the optional `HEALTH_TOKEN` env var is set (≥ 16 random characters). `/dashboard/admin/health` always shows the full picture.
 
 ## 7. Admin bootstrap checklist (fresh production database)
 
@@ -435,6 +437,41 @@ campaign launches). UGC photos use the `ugc-image` upload kind (`ugc/<creatorId>
 are not configured creators can still deliver video/photo links. UGC fees are a record only — no money moves through
 Refnivo.
 
+## 12b. Audit fixes (holds, contests, campaign review, coupons)
+
+**Database** — migration `20261125120000_audit_fixes` (additive and idempotent): `campaigns.holdDays` (existing
+campaigns get 0, new ones default to 14), `campaigns.couponCode`, `campaigns.stoppedAt` (back-filled from `updatedAt`
+for paused/ended campaigns), `commissions.payableAt`, `rewards.payableAt`, and on `conversions` the order date and
+contest columns (`orderedAt`, `contestedAt`, `contestReason`, `contestResolvedAt`, `contestOutcome`, `contestNote`).
+Apply it **before** deploying the code. Through the Supabase SQL editor, run the migration file's contents, then:
+
+```sql
+INSERT INTO "_prisma_migrations" ("id","checksum","finished_at","migration_name","started_at","applied_steps_count") VALUES
+  (gen_random_uuid()::text, 'f4604ef5fe1247174ae712e8f54f0cb576bfa7cbeeba2d018c737b4b239394f6', now(), '20261125120000_audit_fixes', now(), 1)
+ON CONFLICT DO NOTHING;
+```
+
+**Money model** — commissions and customer rewards are funded from the brand's Refnivo wallet. Turn on
+`BRAND_WALLET_ENABLED=true` (and `PAYMENTS_ENABLED=true` with Razorpay keys so brands can top up; without payments an
+admin credits wallets by hand at `/dashboard/admin/wallets`). While the wallet is off, `/api/health` (admin view) and
+the admin overview show a warning, because the public copy says verification debits the wallet.
+
+**Behaviour**
+
+- *Hold period* — each campaign has a refund window (`holdDays`, 0–60). A verified commission/reward becomes payable at
+  `verifiedAt + holdDays`; payouts only include payable items. A brand can refund a verified order only until then.
+  Paid/redeemed entries can never be reversed.
+- *Late orders* — orders dated inside the campaign window can be recorded for 30 days after the campaign ends or
+  pauses (`LATE_RECORDING_DAYS`). Buyers can confirm their order on the campaign page during the same period.
+- *Contests* — within 30 days of a rejection or refund the creator/customer can contest it. Admins resolve at
+  `/dashboard/admin/contests`; upholding a refunded order re-debits the brand wallet (may go negative).
+- *Campaign review* — `CAMPAIGN_REVIEW=first` (default): an unverified brand's first campaign goes to
+  `PENDING_REVIEW` and admins approve or send it back at `/dashboard/admin/campaigns`. `all` reviews every launch;
+  `off` disables review. Content rules: `/content-policy`.
+- *Reminders* — the existing cron (`GET /api/cron/email-outbox`) now also sends brands one daily digest when orders or
+  buyer claims reach 3 and 7 days without a decision. The admin overview lists items waiting more than 14 days.
+- *Metrics* — `/dashboard/admin/metrics` computes the business metrics from database rows only.
+
 ## 13. Pre-launch checklist
 
 - [ ] `AUTH_SECRET` (≥ 32 chars), `DATABASE_URL` (pooler, `?pgbouncer=true`), `NEXT_PUBLIC_APP_URL` (https), `NEXTAUTH_URL` (https) set in Vercel → Production; payments flags as intended (`PAYMENTS_ENABLED`, `PAYOUT_PROVIDER`, `BRAND_WALLET_ENABLED` — all off by default; see §4b)
@@ -443,7 +480,9 @@ Refnivo.
 - [ ] Google sign-in (optional): migration `20260918120000_google_oauth` applied, then `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` set with the production redirect URI registered (section 9)
 - [ ] `RATE_LIMIT_PROVIDER=upstash` + Upstash credentials set (or `RATE_LIMIT_ALLOW_MEMORY=1` accepted knowingly)
 - [ ] `EMAIL_PROVIDER=resend` + `RESEND_API_KEY` + verified `EMAIL_FROM` (otherwise password reset is unavailable)
-- [ ] `CRON_SECRET` set in Vercel and, with `CRON_URL`, as GitHub repository secrets (outbox retries)
+- [ ] `CRON_SECRET` set in Vercel and, with `CRON_URL`, as GitHub repository secrets (outbox retries and brand reminders)
+- [ ] `BRAND_WALLET_ENABLED=true` (commissions are funded from the brand wallet — §12b) and `CAMPAIGN_REVIEW` chosen (`first` by default)
+- [ ] Migration `20261125120000_audit_fixes` applied (§12b)
 - [ ] `/api/health` shows no `warnings` you have not consciously accepted (storage, rate limit, e-mail, cron)
 - [ ] Image uploads: `STORAGE_PROVIDER=supabase` + `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (+ a public bucket,
       default `uploads`) and `NEXT_PUBLIC_STORAGE_PUBLIC_URL`; with `local` the forms show "Uploads unavailable" in

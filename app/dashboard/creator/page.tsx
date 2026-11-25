@@ -41,7 +41,7 @@ export default async function CreatorOverviewPage({ searchParams }: { searchPara
         }
       />
       <ProfileCompletionCard completion={creatorCompletion(profile)} editHref="/dashboard/creator/profile" />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Total clicks" value={stats.clicks} hint={`${stats.qrScans} via QR`} icon={MousePointerClickIcon} />
         <KpiCard label="Verified conversions" value={stats.verified} hint={`${stats.purchased} awaiting verification`} icon={ShoppingCartIcon} />
         <KpiCard label="Sales generated" value={formatMoney(stats.sales)} hint="Verified order value" icon={BadgeIndianRupeeIcon} />

@@ -642,6 +642,10 @@ model Campaign {
   /// Minor units. Null = no cap.
   maxRewardPerCustomer   Int?
   attributionWindowDays  Int            @default(30)
+  /// Days a verified commission/reward stays on hold (refundable by the brand) before it can be paid out.
+  holdDays               Int            @default(14)
+  /// Store coupon a referred shopper types at checkout; required when a shopper offer is set.
+  couponCode             String?
   /// When true, creators must be approved by the brand before receiving a link.
   requiresApproval       Boolean        @default(true)
   startDate              DateTime
@@ -650,6 +654,9 @@ model Campaign {
   budget                 Int?
   status                 CampaignStatus @default(DRAFT)
   publishedAt            DateTime?
+  /// When the campaign last stopped taking new referrals (paused or ended early). Orders placed before it
+  /// can still be recorded for a while afterwards; cleared on resume.
+  stoppedAt              DateTime?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
 
@@ -818,21 +825,30 @@ model Referral {
 
 /// An online order attributed to a referral. Recorded by the brand, then verified.
 model Conversion {
-  id             String           @id @default(cuid())
-  referralId     String           @unique
-  brandId        String
-  orderReference String
+  id                String           @id @default(cuid())
+  referralId        String           @unique
+  brandId           String
+  orderReference    String
   /// Order value in minor units.
-  amount         Int
-  quantity       Int              @default(1)
-  currency       String           @default("INR")
-  source         ConversionSource @default(MANUAL)
-  verifiedById   String?
-  verifiedAt     DateTime?
+  amount            Int
+  quantity          Int              @default(1)
+  currency          String           @default("INR")
+  source            ConversionSource @default(MANUAL)
+  verifiedById      String?
+  verifiedAt        DateTime?
   /// Set when a verified order is refunded; ledger entries move to REVERSED.
-  reversedAt     DateTime?
-  reversalReason String?
-  createdAt      DateTime         @default(now())
+  reversedAt        DateTime?
+  reversalReason    String?
+  /// When the customer placed the order (entered by the brand). Null on rows recorded before this field existed.
+  orderedAt         DateTime?
+  /// Partner disputes a rejection or refund; an admin resolves it.
+  contestedAt       DateTime?
+  contestReason     String?
+  contestResolvedAt DateTime?
+  /// UPHELD (partner was right; order reopened or reinstated) or DISMISSED.
+  contestOutcome    String?
+  contestNote       String?
+  createdAt         DateTime         @default(now())
 
   referral   Referral @relation(fields: [referralId], references: [id], onDelete: Cascade)
   brand      Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -840,6 +856,7 @@ model Conversion {
 
   @@unique([brandId, orderReference])
   @@index([brandId, createdAt])
+  @@index([contestedAt])
   @@map("conversions")
 }
 
@@ -852,6 +869,8 @@ model Reward {
   amount      Int
   currency    String       @default("INR")
   status      RewardStatus @default(PENDING)
+  /// Set on verification: verifiedAt + campaign holdDays. Null = payable immediately (pre-hold rows).
+  payableAt   DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -872,6 +891,8 @@ model Commission {
   amount     Int
   currency   String           @default("INR")
   status     CommissionStatus @default(PENDING)
+  /// Set on verification: verifiedAt + campaign holdDays. Null = payable immediately (pre-hold rows).
+  payableAt  DateTime?
   createdAt  DateTime         @default(now())
   updatedAt  DateTime         @updatedAt
 

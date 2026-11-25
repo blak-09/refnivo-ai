@@ -31,7 +31,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
         title="Partners"
         description="Every creator you work with — through campaigns, connections or UGC — and what each partnership produced. Results come from verified sales only."
       />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Creator partners" value={all.length} />
         <KpiCard label="Verified sales" value={total.verified} />
         <KpiCard label="Sales value" value={formatMoney(total.revenue)} />

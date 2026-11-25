@@ -9,7 +9,8 @@ export default function TermsPage() {
     <ProsePage title="Terms of use" intro="Plain-language terms for using Refnivo AI.">
       <h2>Campaigns and rewards</h2>
       <ul>
-        <li>Brands define and fund their own creator commissions and customer referral rewards.</li>
+        <li>Brands define and fund their own creator commissions and customer referral rewards, by adding money to their Refnivo wallet. Verifying an order takes what it owes from the wallet.</li>
+        <li>A verified commission or reward becomes payable after the campaign&apos;s refund window. Brands can record a refund only during that window and before payout. Partners may contest a rejected or refunded order within 30 days; Refnivo&apos;s decision on a contest is final on the platform.</li>
         <li>A referral becomes eligible only after the brand verifies a qualifying order.</li>
         <li>Self-referrals, duplicate referrals and duplicate order references may be rejected.</li>
       </ul>

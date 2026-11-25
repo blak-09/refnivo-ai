@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 // CUSTOMER_CLAIM is set by the order-handshake service only, never chosen in the manual form.
+/** yyyy-mm-dd from a date input; empty means "today". */
+const orderDate = z.preprocess((v) => (v === "" || v === null ? undefined : v), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter the order date").optional());
+
 export const CONVERSION_SOURCES = ["MANUAL", "REFERRAL_CODE", "QR_SCAN", "IMPORT"] as const;
 
 export const recordOrderSchema = z.object({
@@ -12,6 +15,7 @@ export const recordOrderSchema = z.object({
   source: z.enum(CONVERSION_SOURCES).default("REFERRAL_CODE"),
   customerContact: z.string().trim().max(120).optional().or(z.literal("")),
   note: z.string().trim().max(300).optional().or(z.literal("")),
+  orderDate,
 });
 
 export type RecordOrderInput = z.input<typeof recordOrderSchema>;
@@ -52,6 +56,7 @@ export const orderClaimDecisionSchema = z.discriminatedUnion("decision", [
     /** Rupees in the form. */
     amount: z.coerce.number({ message: "Order value must be a number" }).min(1, "Order value must be at least ₹1").max(10_000_000),
     quantity: z.coerce.number().int().min(1).max(1000).default(1),
+    orderDate,
   }),
   z.object({
     claimId: z.string().min(1),
@@ -59,3 +64,15 @@ export const orderClaimDecisionSchema = z.discriminatedUnion("decision", [
     reason: z.string().trim().min(3, "Please say why (the customer sees this).").max(300),
   }),
 ]);
+
+/** Partner disputes a rejected or refunded order (W3). */
+export const contestSchema = z.object({
+  referralId: z.string().min(1),
+  reason: z.string().trim().min(10, "Tell Refnivo what went wrong (at least 10 characters).").max(1000),
+});
+
+export const contestResolutionSchema = z.object({
+  referralId: z.string().min(1),
+  outcome: z.enum(["UPHELD", "DISMISSED"]),
+  note: z.string().trim().min(3, "Add a note explaining the decision.").max(1000),
+});

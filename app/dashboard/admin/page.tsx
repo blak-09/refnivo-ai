@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { BadgeCheckIcon, MegaphoneIcon, UsersIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
+import { AlertTriangleIcon, BadgeCheckIcon, ClockIcon, MegaphoneIcon, ScaleIcon, UsersIcon, UsersRoundIcon, WalletIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard, PageHeader } from "@/components/dashboard/primitives";
@@ -10,6 +10,9 @@ import { requireRole } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
 import { formatMoney } from "@/lib/money";
 import { platformStats } from "@/lib/services/admin";
+import { countOpenContests } from "@/lib/services/conversions";
+import { countStaleAtBrands } from "@/lib/services/platform-metrics";
+import { walletEnabled } from "@/lib/services/wallet";
 import { communityClickSummary } from "@/lib/services/community";
 import { asRegistrationDetails } from "@/lib/services/registrations";
 
@@ -17,7 +20,7 @@ export const metadata: Metadata = { title: "Admin overview" };
 
 export default async function AdminOverviewPage() {
   await requireRole("ADMIN");
-  const [stats, community, pendingUsers] = await Promise.all([
+  const [stats, community, pendingUsers, pendingReview, openContests, staleAtBrands] = await Promise.all([
     platformStats(),
     // A missing table (migration not applied yet) must not take the overview down.
     communityClickSummary(30).catch(() => null),
@@ -40,11 +43,17 @@ export default async function AdminOverviewPage() {
         registrationDetails: true,
       },
     }),
+    prisma.campaign.count({ where: { status: "PENDING_REVIEW" } }),
+    countOpenContests(),
+    countStaleAtBrands(14),
   ]);
 
   const queues = [
     { label: "Registrations awaiting approval", value: stats.byStatus.PENDING, href: "/dashboard/admin/registrations", icon: UsersIcon },
     { label: "Open payout / redemption requests", value: stats.openPayouts, href: "/dashboard/admin/payouts", icon: WalletIcon },
+    { label: "Campaigns waiting for review", value: pendingReview, href: "/dashboard/admin/campaigns", icon: MegaphoneIcon },
+    { label: "Open order contests", value: openContests, href: "/dashboard/admin/contests", icon: ScaleIcon },
+    { label: "Orders / claims waiting > 14 days at brands", value: staleAtBrands, href: "/dashboard/admin/conversions", icon: ClockIcon },
     { label: "Creator applications pending at brands", value: stats.pendingApplications, href: "/dashboard/admin/campaigns", icon: MegaphoneIcon },
     { label: "Verification queue", value: null, href: "/dashboard/admin/verification", icon: BadgeCheckIcon },
   ];
@@ -52,8 +61,18 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Platform overview" description="Live counts from the database." />
+      {!walletEnabled() ? (
+        <p className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm">
+          <AlertTriangleIcon className="mt-0.5 size-4 shrink-0 text-destructive" aria-hidden />
+          <span>
+            <span className="font-medium">The brand wallet is off.</span> The site tells brands and partners that commissions are prepaid from the brand&apos;s Refnivo wallet, but
+            orders are being verified without taking any money. Set <code>BRAND_WALLET_ENABLED=true</code> (with <code>PAYMENTS_ENABLED=true</code> for online top-ups) so every
+            approved commission is funded before you pay it out.
+          </span>
+        </p>
+      ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Total users" value={stats.users} hint={`${stats.byStatus.APPROVED} approved · ${stats.byStatus.SUSPENDED} suspended`} />
         <KpiCard label="Brands" value={stats.brands} />
         <KpiCard label="Creators" value={stats.creators} />

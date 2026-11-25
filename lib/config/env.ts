@@ -232,6 +232,13 @@ export function validateProductionEnv(env: NodeJS.ProcessEnv = process.env): Env
   if ((env.BRAND_WALLET_ENABLED ?? "").trim().toLowerCase() === "true" && !paymentsOn) {
     warnings.push("BRAND_WALLET_ENABLED=true but payments are off: brands cannot top up online, and orders cannot be verified until an admin credits their wallet.");
   }
+  if ((env.BRAND_WALLET_ENABLED ?? "").trim().toLowerCase() !== "true") {
+    warnings.push("BRAND_WALLET_ENABLED is off: the site says commissions are prepaid from the brand wallet, but verified orders take no money. Turn it on before paying commissions.");
+  }
+  {
+    const review = (env.CAMPAIGN_REVIEW ?? "").trim().toLowerCase();
+    if (review && !["off", "first", "all"].includes(review)) warnings.push(`CAMPAIGN_REVIEW "${review}" is not recognised (use off, first or all): using "first".`);
+  }
 
   // Social connections. Each platform is optional and independent; a half-set
   // pair is a warning (that platform stays off) rather than a boot failure.

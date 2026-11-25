@@ -13,6 +13,7 @@ const validCampaign: CampaignFormInput = {
   description: "",
   offerTitle: "₹100 off",
   offerDescription: "",
+  couponCode: "burger100",
   campaignType: "HYBRID",
   rewardType: "FIXED_AMOUNT",
   customerRewardValue: "50" as unknown as number,
@@ -99,6 +100,21 @@ describe("campaign validation", () => {
     expect(data.budget).toBe(1_000_000);
     expect(data.startDate).toBeInstanceOf(Date);
     expect(data.endDate).toBeInstanceOf(Date);
+    expect(data.couponCode).toBe("BURGER100");
+    expect(data.holdDays).toBe(14); // default refund window
+  });
+
+  it("requires a coupon code when a shopper offer is set (W7), and validates the hold", () => {
+    const noCode = campaignFormSchema.safeParse({ ...validCampaign, couponCode: "" });
+    expect(noCode.success).toBe(false);
+    if (!noCode.success) expect(noCode.error.issues.some((i) => i.path.includes("couponCode"))).toBe(true);
+    expect(campaignFormSchema.safeParse({ ...validCampaign, offerTitle: "", couponCode: "" }).success).toBe(true);
+    expect(campaignFormSchema.safeParse({ ...validCampaign, couponCode: "HAS SPACE" }).success).toBe(false);
+    expect(campaignFormSchema.safeParse({ ...validCampaign, holdDays: "61" }).success).toBe(false);
+    expect(campaignFormSchema.safeParse({ ...validCampaign, holdDays: "0" }).success).toBe(true);
+    // A code without an offer is not stored.
+    const r = campaignFormSchema.safeParse({ ...validCampaign, offerTitle: "", couponCode: "ORPHAN" });
+    expect(r.success && toCampaignData(r.data).couponCode).toBeNull();
   });
 
   it("rejects invalid reward values", () => {

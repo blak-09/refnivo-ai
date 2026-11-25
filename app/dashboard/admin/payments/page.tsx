@@ -30,7 +30,7 @@ export default async function AdminPaymentsPage() {
     <div className="space-y-6">
       <PageHeader title="Payments" description="Inbound payments for brand plans. A refund is recorded only once the provider confirms it." />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Net collected" value={formatMoney(collected)} hint="Paid minus refunded" icon={CreditCardIcon} />
         <KpiCard label="Paid transactions" value={paid.length} />
         <KpiCard label="In flight" value={inFlight} hint="Awaiting confirmation" />

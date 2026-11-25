@@ -15,7 +15,10 @@ export const metadata: Metadata = { title: "Campaign moderation" };
 
 export default async function AdminCampaignsPage() {
   await requireRole("ADMIN");
-  const campaigns = await listAllCampaigns();
+  const all = await listAllCampaigns();
+  // Campaigns waiting for review come first (W6).
+  const campaigns = [...all.filter((c) => c.status === "PENDING_REVIEW"), ...all.filter((c) => c.status !== "PENDING_REVIEW")];
+  const pendingReview = all.filter((c) => c.status === "PENDING_REVIEW").length;
 
   return (
     <div className="space-y-6">
@@ -23,6 +26,15 @@ export default async function AdminCampaignsPage() {
         title="Campaigns"
         description="Every campaign across all brands. Pause, end or archive a campaign that breaks platform rules — the brand owner is notified with your reason and the change is audited."
       />
+      {pendingReview ? (
+        <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
+          {pendingReview} campaign{pendingReview === 1 ? " is" : "s are"} waiting for review (shown first). Check each against the{" "}
+          <Link href="/content-policy" className="font-medium text-primary hover:underline">
+            content policy
+          </Link>
+          , then approve or send back with a reason.
+        </p>
+      ) : null}
       {!campaigns.length ? (
         <EmptyState icon={MegaphoneIcon} title="No campaigns yet" />
       ) : (

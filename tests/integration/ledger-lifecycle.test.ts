@@ -151,7 +151,7 @@ describe("refund / reversal", () => {
     expect(await prisma.auditLog.count({ where: { action: "CONVERSION_REVERSED", entityId: o1.referral.id } })).toBe(1);
   });
 
-  it("a reversed commission is excluded from payout eligibility; a paid one is flagged as already settled", async () => {
+  it("a brand cannot refund an order whose commission was already paid out (W3); the paid commission stays PAID", async () => {
     const { owner, campaign } = await liveCampaign();
     const creator = await makeCreator();
     const { code } = await joinCampaign({ id: creator.id, name: creator.name, role: "CREATOR" }, campaign.id);
@@ -161,9 +161,9 @@ describe("refund / reversal", () => {
     const admin = await makeAdmin();
     await reviewPayout(admin.id, request.id, "APPROVE");
     await reviewPayout(admin.id, request.id, "MARK_PAID", { reference: "TXN-1" });
-    const result = await reverseConversion(owner.brand.id, owner.user.id, order.referral.id, "chargeback");
-    expect(result.alreadySettled).toBe(true);
-    expect((await prisma.commission.findFirstOrThrow({ where: { referralId: order.referral.id } })).status).toBe("REVERSED");
+    await expect(reverseConversion(owner.brand.id, owner.user.id, order.referral.id, "chargeback")).rejects.toThrow(/already been paid out/);
+    expect((await prisma.commission.findFirstOrThrow({ where: { referralId: order.referral.id } })).status).toBe("PAID");
+    expect((await prisma.referral.findUniqueOrThrow({ where: { id: order.referral.id } })).status).toBe("VERIFIED");
     expect((await payoutSummary(creator.id, "COMMISSION")).eligible).toBe(0);
   });
 

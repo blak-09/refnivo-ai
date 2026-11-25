@@ -55,7 +55,7 @@ export const planLimitEnforced = (env: NodeJS.ProcessEnv = process.env) => (env.
 
 async function readAllowance(db: Prisma.TransactionClient | typeof prisma, brandId: string, enforced: boolean, now?: Date) {
   const [used, subscription] = await Promise.all([
-    db.campaign.count({ where: { brandId, publishedAt: { not: null } } }),
+    db.campaign.count({ where: { brandId, OR: [{ publishedAt: { not: null } }, { status: "PENDING_REVIEW" }] } }),
     db.brandSubscription.findUnique({ where: { brandId }, select: { planKey: true, status: true, currentPeriodEnd: true } }),
   ]);
   return computeAllowance({ used, subscription, enforced, now });

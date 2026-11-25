@@ -135,7 +135,7 @@ const DEEP: Deep[] = [
 
 const COMPARE = [
   { topic: "Finding creators", before: "Cold DMs and spreadsheets", after: "Creators apply to your campaign with their profile" },
-  { topic: "Proof of sales", before: "Guessing from coupon codes", after: "Every order tied to the partner who sent it" },
+  { topic: "Proof of sales", before: "Guessing from coupon codes", after: "Orders you confirm, credited to the partner who sent them" },
   { topic: "Content", before: "Negotiating each reel in chat", after: "Briefs with a fixed fee and usage rights" },
   { topic: "Paying creators", before: "Unclear amounts, late payouts", after: "A shared ledger with every rupee and status" },
   { topic: "Relationships", before: "Scattered across apps and people", after: "One partner hub with results and notes" },
@@ -269,7 +269,7 @@ export default async function LandingPage() {
           </ul>
           <p className="mt-5 flex items-center justify-center gap-2 rounded-2xl bg-gradient-brand px-5 py-4 text-center text-[15px] font-semibold text-white">
             <BadgeCheckIcon className="size-5 shrink-0" aria-hidden />
-            All three run on verified attribution: links, QR codes, order checks and a shared ledger.
+            All three run on orders you confirm: links, QR codes, buyer order claims and a shared ledger.
           </p>
         </div>
       </section>

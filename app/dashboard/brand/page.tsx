@@ -72,7 +72,7 @@ export default async function BrandOverviewPage({ searchParams }: { searchParams
 
       <ProfileCompletionCard completion={brandCompletion(brand)} editHref="/dashboard/brand/profile" />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Attributed revenue" value={formatMoney(overview.revenue)} hint="From verified orders" icon={BadgeIndianRupeeIcon} />
         <KpiCard label="Verified conversions" value={overview.verifiedConversions} hint={`${overview.pendingVerification} awaiting verification`} icon={ShoppingCartIcon} />
         <KpiCard label="Link clicks" value={overview.totalClicks} hint={`${overview.qrScans} via QR`} icon={MousePointerClickIcon} />

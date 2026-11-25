@@ -154,7 +154,7 @@ export function creatorProfileOnboardingSchema(images: ImageRule = "optional") {
       displayName: required("Full name", 2, 60),
       profileImageUrl: image(images, "Upload a profile picture"),
       username,
-      bio: required("Professional bio", 20, 600),
+      bio: required("Professional bio", 40, 600),
       category: z
         .string({ error: "Select a creator category" })
         .trim()

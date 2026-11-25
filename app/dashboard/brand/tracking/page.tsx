@@ -43,7 +43,7 @@ export default async function TrackingPage({ searchParams }: { searchParams: Pro
     <div className="space-y-6">
       <PageHeader title="Tracking" description="Every referral link on your campaigns and what it produced. Revenue and commission count verified orders only." />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Referral links" value={rows.length} icon={LinkIcon} />
         <KpiCard label="Clicks" value={totals.clicks.toLocaleString("en-IN")} icon={MousePointerClickIcon} />
         <KpiCard label="Verified conversions" value={totals.conversions.toLocaleString("en-IN")} icon={ReceiptIcon} hint={totals.clicks ? `${((totals.conversions / totals.clicks) * 100).toFixed(1)}% of clicks` : undefined} />

@@ -46,7 +46,7 @@ export default async function CreatorsPage({ searchParams }: { searchParams: Pro
     <div className="space-y-6">
       <PageHeader title="Creators & Customers" description="Review creator applications and see everyone promoting your products." />
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <KpiCard label="Pending applications" value={counts.PENDING} />
         <KpiCard label="Active partners" value={counts.APPROVED} hint="Approved across all campaigns" />
         <KpiCard label="Rejected" value={counts.REJECTED} />

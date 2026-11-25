@@ -85,7 +85,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
       <h2 className="text-sm font-semibold text-muted-foreground">All time</h2>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <KpiCard label="Campaigns" value={overview.totalCampaigns} hint={`${overview.activeCampaigns} active`} />
         <KpiCard label="Products" value={overview.totalProducts} />
         <KpiCard label="Creators" value={overview.totalCreators} hint="Approved partners" />

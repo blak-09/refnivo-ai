@@ -82,7 +82,7 @@ export function CampaignActions({
         toast.error(res.error);
         return;
       }
-      toast.success(`Campaign ${res.data.status.toLowerCase()}.`);
+      toast.success(res.data.status === "PENDING_REVIEW" ? "Submitted for review. We'll notify you when it's live." : `Campaign ${res.data.status.toLowerCase()}.`);
       setDialog(null);
       setChecked(false);
       router.refresh();

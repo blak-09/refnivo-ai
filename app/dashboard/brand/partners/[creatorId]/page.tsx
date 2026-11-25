@@ -55,7 +55,7 @@ export default async function PartnerPage({ params }: { params: Promise<{ creato
         ) : null}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Clicks" value={stats.clicks} hint={`${stats.campaigns} campaign${stats.campaigns === 1 ? "" : "s"}`} />
         <KpiCard label="Verified sales" value={stats.verified} hint={`${formatMoney(stats.revenue)} in sales`} />
         <KpiCard label="Commission" value={formatMoney(stats.commission)} hint={`${formatMoney(stats.commissionPaid)} paid out`} />
