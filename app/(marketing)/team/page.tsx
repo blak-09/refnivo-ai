@@ -55,10 +55,10 @@ export default function TeamPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b bg-linear-to-b from-violet-50/70 to-background py-16 sm:py-20">
-        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl" />
+      <section className="relative overflow-hidden border-b bg-linear-to-b from-accent/70 to-background py-16 sm:py-20">
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
         <div className={`relative mx-auto max-w-3xl px-4 text-center sm:px-6 ${RISE}`}>
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white/80 px-3 py-1 text-xs font-medium text-indigo-700 shadow-xs">
+          <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/80 px-3 py-1 text-xs font-medium text-primary shadow-xs">
             <UsersRoundIcon className="size-3.5" aria-hidden />
             Team
           </p>
@@ -86,7 +86,7 @@ export default function TeamPage() {
       </section>
 
       {/* Founder story */}
-      <section className="bg-linear-to-b from-background to-violet-50/50 py-14 sm:py-20">
+      <section className="bg-linear-to-b from-background to-accent/50 py-14 sm:py-20">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Building Refnivo together</h2>
           <div className="mt-4 space-y-4 text-[15px] leading-7 text-muted-foreground">
@@ -109,7 +109,7 @@ export default function TeamPage() {
       <section className="py-14 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-indigo-600">What we’re building</p>
+            <p className="text-sm font-semibold text-primary">What we’re building</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">One platform. Three sides of growth.</h2>
           </div>
           <ul className="mt-8 grid gap-5 md:grid-cols-3">
@@ -117,7 +117,7 @@ export default function TeamPage() {
               <li key={s.title}>
                 <Card className="h-full rounded-2xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
                   <CardContent className="space-y-3">
-                    <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-violet-600 to-blue-500 text-white shadow-md shadow-indigo-500/20">
+                    <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-primary">
                       <s.icon className="size-5" aria-hidden />
                     </span>
                     <h3 className="text-lg font-semibold">{s.title}</h3>
@@ -134,7 +134,7 @@ export default function TeamPage() {
       <section className="pb-14 sm:pb-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="max-w-2xl">
-            <p className="text-sm font-semibold text-indigo-600">Our approach</p>
+            <p className="text-sm font-semibold text-primary">Our approach</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">What we believe</h2>
           </div>
           <ul className="mt-8 grid gap-5 md:grid-cols-3">
@@ -142,7 +142,7 @@ export default function TeamPage() {
               <li key={b.title}>
                 <Card className="h-full rounded-2xl border-dashed transition-colors hover:border-primary/30">
                   <CardContent className="space-y-2">
-                    <b.icon className="size-5 text-indigo-600" aria-hidden />
+                    <b.icon className="size-5 text-primary" aria-hidden />
                     <h3 className="font-semibold">{b.title}</h3>
                     <p className="text-sm leading-6 text-muted-foreground">{b.body}</p>
                   </CardContent>
@@ -156,7 +156,7 @@ export default function TeamPage() {
       {/* CTA */}
       <section className="pb-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-violet-600 to-blue-500 px-8 py-12 text-center text-white shadow-xl shadow-indigo-500/25 sm:px-12 sm:py-16">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-brand px-8 py-12 text-center text-white shadow-xl shadow-primary/25 sm:px-12 sm:py-16">
             <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 size-64 rounded-full bg-white/10 blur-3xl" />
             <h2 className="relative text-2xl font-bold tracking-tight sm:text-4xl">Want to build with us?</h2>
             <p className="relative mx-auto mt-3 max-w-xl text-white/85">

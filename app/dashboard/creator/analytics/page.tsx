@@ -31,7 +31,7 @@ export default async function CreatorAnalyticsPage({ searchParams }: { searchPar
       <PageHeader title="Analytics" description="How your referral links perform. Revenue and commission count verified orders only." actions={<RangeTabs basePath="/dashboard/creator/analytics" days={days} />} />
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiCard label={`Clicks · ${rangeLabel}`} value={periodClicks.toLocaleString("en-IN")} icon={MousePointerClickIcon} hint={`${stats.clicks.toLocaleString("en-IN")} all time`} />
+        <KpiCard label={`Clicks · ${rangeLabel}`} value={periodClicks.toLocaleString("en-IN")} icon={MousePointerClickIcon} hint={`${stats.clicks.toLocaleString("en-IN")} all time · ${stats.qrScans.toLocaleString("en-IN")} via QR`} />
         <KpiCard label={`Conversions · ${rangeLabel}`} value={periodConversions.toLocaleString("en-IN")} icon={ReceiptIcon} hint={`${stats.verified.toLocaleString("en-IN")} verified all time`} />
         <KpiCard label="Conversion rate" value={stats.conversionRate === null ? "—" : `${(stats.conversionRate * 100).toFixed(1)}%`} icon={PercentIcon} hint={stats.conversionRate === null ? "No clicks yet" : "Verified ÷ clicks, all time"} />
         <KpiCard label="Commission" value={formatMoney(stats.commissionApproved + stats.commissionPaid)} icon={WalletIcon} hint={`${formatMoney(stats.commissionPending)} pending`} />
@@ -51,7 +51,7 @@ export default async function CreatorAnalyticsPage({ searchParams }: { searchPar
           <CardHeader>
             <CardTitle>Revenue generated</CardTitle>
             <CardDescription>
-              {rangeLabel} · {formatMoney(periodRevenue)} in verified orders
+              {rangeLabel} · {formatMoney(periodRevenue)} in verified orders · {formatMoney(stats.sales)} all time
             </CardDescription>
           </CardHeader>
           <CardContent>

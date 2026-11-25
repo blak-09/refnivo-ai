@@ -113,12 +113,12 @@ export default async function BrandWalletPage() {
                       <TableCell className="text-xs whitespace-nowrap">{formatDateTime(e.createdAt)}</TableCell>
                       <TableCell>
                         <span className="flex items-center gap-1.5 text-sm">
-                          {e.amount >= 0 ? <ArrowDownLeftIcon className="size-3.5 text-emerald-600" aria-hidden /> : <ArrowUpRightIcon className="size-3.5 text-muted-foreground" aria-hidden />}
+                          {e.amount >= 0 ? <ArrowDownLeftIcon className="size-3.5 text-success" aria-hidden /> : <ArrowUpRightIcon className="size-3.5 text-muted-foreground" aria-hidden />}
                           {ENTRY_LABEL[e.type]}
                         </span>
                         {e.note ? <span className="block max-w-80 truncate text-xs text-muted-foreground" title={e.note}>{e.note}</span> : null}
                       </TableCell>
-                      <TableCell className={cn("text-right tabular-nums", e.amount >= 0 ? "text-emerald-600" : undefined)}>
+                      <TableCell className={cn("text-right tabular-nums", e.amount >= 0 ? "text-success" : undefined)}>
                         {e.amount >= 0 ? "+" : "−"}
                         {formatMoney(Math.abs(e.amount), summary.currency)}
                       </TableCell>

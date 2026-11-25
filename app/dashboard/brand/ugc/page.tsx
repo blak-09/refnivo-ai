@@ -88,7 +88,7 @@ export default async function UgcBriefsPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  {b.applicants ? <span className="rounded-full bg-warning/15 px-2.5 py-1 font-medium text-amber-800 dark:text-amber-200">{b.applicants} to answer</span> : null}
+                  {b.applicants ? <span className="rounded-full bg-warning/15 px-2.5 py-1 font-medium text-warning-strong">{b.applicants} to answer</span> : null}
                   {b.toReview ? <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">{b.toReview} to review</span> : null}
                   <Button size="sm" variant="outline" nativeButton={false} render={<Link href={`/dashboard/brand/ugc/${b.id}`} />}>
                     Open

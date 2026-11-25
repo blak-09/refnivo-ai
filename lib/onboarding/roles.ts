@@ -8,22 +8,22 @@ export const ROLE_CARDS: Record<
   BRAND_OWNER: {
     short: "Brand",
     title: "I'm a Brand",
-    description: "Grow your brand through creator partnerships, referral campaigns and customer engagement.",
-    features: ["Discover creators", "Launch campaigns", "Promote your products", "Track campaign performance"],
+    description: "Grow your business through creator partnerships and referral campaigns.",
+    features: ["Launch affiliate & referral campaigns", "Work with creators", "Pay commission only on verified orders", "Track clicks and sales"],
     cta: "Continue as Brand",
   },
   CREATOR: {
     short: "Creator",
     title: "I'm a Creator",
-    description: "Discover brands, collaborate on campaigns and grow your creator journey.",
-    features: ["Discover brand opportunities", "Collaborate with brands", "Share referral links", "Earn through eligible campaigns"],
+    description: "Discover brands, join campaigns, and earn through referrals.",
+    features: ["Browse brand campaigns", "Get your own referral links", "Earn commission on verified orders", "Apply for paid UGC briefs"],
     cta: "Continue as Creator",
   },
   CUSTOMER: {
     short: "Customer",
     title: "I'm a Customer",
-    description: "Discover exciting brands, explore products and participate in referral campaigns.",
-    features: ["Discover brands", "Explore products", "Participate in campaigns", "Access available rewards"],
+    description: "Discover products and earn rewards by sharing them.",
+    features: ["Explore products from brands", "Share a personal link with friends", "Earn rewards on verified orders", "No followers needed"],
     cta: "Continue as Customer",
   },
 };

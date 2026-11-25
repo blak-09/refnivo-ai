@@ -29,7 +29,10 @@ export function CampaignCard({ c }: { c: MarketplaceCampaign }) {
           <Link href={`/campaigns/${c.slug}`} className="line-clamp-2 text-sm font-semibold hover:underline">
             {c.product.name}
           </Link>
-          <p className="truncate text-xs text-muted-foreground">{c.name}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {c.product.category ? `${c.product.category} · ` : ""}
+            {c.name}
+          </p>
           <p className="mt-1 text-sm font-medium">{formatMoney(c.product.price, c.product.currency)}</p>
         </div>
         <div className="flex flex-wrap gap-1.5">

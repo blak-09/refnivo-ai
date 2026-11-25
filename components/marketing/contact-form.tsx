@@ -29,8 +29,8 @@ export function ContactForm() {
 
   if (state?.ok) {
     return (
-      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-6 text-center" role="status" aria-live="polite">
-        <CheckCircle2Icon className="mx-auto size-8 text-emerald-600" aria-hidden />
+      <div className="rounded-2xl border border-success/30 bg-success/5 p-6 text-center" role="status" aria-live="polite">
+        <CheckCircle2Icon className="mx-auto size-8 text-success" aria-hidden />
         <p className="mt-3 font-semibold">Message sent — thank you</p>
         <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
           It is on its way to our team and we will reply to the address you gave us. If it is urgent, email{" "}

@@ -14,9 +14,9 @@ export function CreatorStatTiles({ profile }: { profile: CreatorStatsFields }) {
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {tiles.map((t) => (
-        <div key={t.label} className="rounded-2xl border border-indigo-100/80 bg-card p-4 shadow-xs">
+        <div key={t.label} className="rounded-2xl border border-primary/15 bg-card p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
               <t.icon className="size-4" aria-hidden />
             </span>
             <p className="text-2xl font-bold tracking-tight text-foreground tabular-nums">{t.value}</p>
@@ -38,7 +38,7 @@ export function CreatorTagChips({ tags }: { tags: (string | null | undefined)[] 
   return (
     <div className="flex flex-wrap gap-2">
       {items.map((t, i) => (
-        <Badge key={t} variant="outline" className={cn("rounded-lg px-2.5 py-1 text-xs font-medium", i === 0 && "border-indigo-200 bg-indigo-50 text-indigo-700")}>
+        <Badge key={t} variant="outline" className={cn("rounded-lg px-2.5 py-1 text-xs font-medium", i === 0 && "border-primary/25 bg-accent text-primary")}>
           {t}
         </Badge>
       ))}
@@ -69,7 +69,7 @@ export function CreatorSocialLinks({ links }: { links: SocialLink[] }) {
           rel="noreferrer"
           className="inline-flex items-center gap-1.5 rounded-lg border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-xs transition-colors hover:bg-accent"
         >
-          <l.icon className="size-4 text-indigo-600" aria-hidden />
+          <l.icon className="size-4 text-primary" aria-hidden />
           {l.label}
         </a>
       ))}
@@ -106,9 +106,9 @@ export function ContentSamples({ samples, limit = 3 }: { samples: string[]; limi
             rel="noreferrer"
             className={cn(
               "group relative flex aspect-[4/5] flex-col items-center justify-center overflow-hidden rounded-xl text-white shadow-md",
-              i % 3 === 0 && "bg-linear-to-br from-violet-600 to-indigo-500",
-              i % 3 === 1 && "bg-linear-to-br from-indigo-500 to-blue-500",
-              i % 3 === 2 && "bg-linear-to-br from-blue-500 to-sky-400",
+              i % 3 === 0 && "bg-linear-to-br from-brand-from to-primary",
+              i % 3 === 1 && "bg-linear-to-br from-primary to-brand-to",
+              i % 3 === 2 && "bg-linear-to-br from-brand-to to-brand-to/70",
             )}
             title={url}
           >

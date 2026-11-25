@@ -31,6 +31,14 @@ export const HOME_FAQ: { q: string; a: string }[] = [
     a: "Brands can launch their first 3 campaigns free and use Partners on any plan. A plan from ₹999 per 30 days unlocks unlimited launches and UGC collaborations. Creators and customers never pay, and Refnivo takes no cut of their commission or UGC fees.",
   },
   {
+    q: "How do I sign up as a brand?",
+    a: "Choose Get Started, pick Brand, and create an account with your email or Google. Then add your brand details (name, business email, contact person, a short description and your industry). From your dashboard, add a product and create your first campaign. A brand's first campaign is checked by the Refnivo team before it goes live, usually within one business day.",
+  },
+  {
+    q: "How do I join as a creator?",
+    a: "Choose Get Started, pick Creator, and create an account. Add your name, username, photo, a short bio, your content category and your social profiles (follower numbers are self-reported). Then browse campaigns: join instantly where the brand allows it, or apply and get your link once the brand approves you.",
+  },
+  {
     q: "How do UGC collaborations work?",
     a: "A brand posts a brief with the fee per creator, the deliverables and how it will use the content. Creators apply with a pitch, the brand picks who to work with, reviews the photos and videos (up to two revision rounds) and approves them. The brand then pays the creator directly and marks it paid; the creator confirms. Refnivo takes no cut. UGC briefs are part of the Starter and Growth plans.",
   },

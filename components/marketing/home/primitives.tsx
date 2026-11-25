@@ -20,21 +20,24 @@ export function SectionHeader({
   title,
   lede,
   align = "left",
+  as: Heading = "h2",
   className,
 }: {
   id: string;
-  eyebrow: string;
+  eyebrow?: string;
   title: React.ReactNode;
   lede?: React.ReactNode;
   align?: "left" | "center";
+  /** Heading level: h2 for page sections, h3 inside a section (e.g. a tab panel). */
+  as?: "h2" | "h3";
   className?: string;
 }) {
   return (
     <div className={cn(align === "center" ? "mx-auto max-w-3xl text-center" : "max-w-3xl", className)}>
-      <p className="eyebrow">{eyebrow}</p>
-      <h2 id={id} className="text-headline mt-3 text-foreground">
+      {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
+      <Heading id={id} className={cn("text-foreground", Heading === "h2" ? "text-headline mt-3" : "text-3xl font-bold tracking-tight text-balance sm:text-4xl")}>
         {title}
-      </h2>
+      </Heading>
       {lede ? <p className="text-lede mt-4 text-muted-foreground">{lede}</p> : null}
     </div>
   );
@@ -56,7 +59,7 @@ export function CheckList({ items, className }: { items: readonly string[]; clas
 }
 
 const STATUS = {
-  live: { label: "Live", className: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900", dot: "bg-emerald-500" },
+  live: { label: "Live", className: "bg-success/10 text-success-strong ring-success/30", dot: "bg-success" },
   early: { label: "Early access", className: "bg-accent text-accent-foreground ring-primary/20", dot: "bg-primary" },
   next: { label: "Coming next", className: "bg-muted text-muted-foreground ring-border", dot: "bg-muted-foreground/60" },
 } as const;
@@ -92,7 +95,7 @@ export function ActionLink({
       render={<Link href={href} />}
       className={cn(
         "h-12 rounded-xl px-6 text-[15px] font-semibold transition-[transform,box-shadow,background-color] focus-visible:ring-3 focus-visible:ring-ring/50 active:translate-y-px",
-        variant === "primary" && "bg-gradient-brand text-white shadow-md shadow-indigo-500/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/30",
+        variant === "primary" && "bg-gradient-brand text-white shadow-md shadow-primary/25 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/30",
         variant === "ink" && "bg-ink text-ink-foreground hover:-translate-y-0.5 hover:bg-ink/90",
         variant === "outline" && "border-border bg-background hover:bg-muted",
         variant === "light" && "bg-white text-ink hover:-translate-y-0.5 hover:bg-white/90",

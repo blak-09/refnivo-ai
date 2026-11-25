@@ -29,7 +29,7 @@ export function FloatingProfile({ creator, className }: { creator: ShowcaseCreat
   return (
     <div
       className={cn(
-        "flex size-14 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-violet-100 to-blue-100 text-sm font-semibold text-indigo-700 ring-4 ring-white shadow-lg shadow-indigo-500/15",
+        "flex size-14 items-center justify-center overflow-hidden rounded-full bg-linear-to-br from-accent to-brand-to/10 text-sm font-semibold text-primary ring-4 ring-white shadow-lg shadow-primary/15",
         className,
       )}
       title={creator.name}
@@ -44,7 +44,7 @@ function FloatingChip({ icon: Icon, className }: { icon: typeof LinkIcon; classN
     <div
       aria-hidden
       className={cn(
-        "hidden size-10 items-center justify-center rounded-xl border border-indigo-100 bg-white text-indigo-600 shadow-md shadow-indigo-500/10 sm:flex",
+        "hidden size-10 items-center justify-center rounded-xl border border-primary/15 bg-white text-primary shadow-md shadow-primary/10 sm:flex",
         className,
       )}
     >
@@ -63,12 +63,12 @@ export function ProductShowcase({ product, brand, commissionLabel, creators, qrD
   return (
     <div className="relative mx-auto aspect-square w-full max-w-md select-none lg:mr-0 lg:ml-auto">
       {/* Soft background shapes */}
-      <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 size-56 rounded-full bg-violet-300/30 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-8 -left-8 size-56 rounded-full bg-blue-300/30 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute inset-[12%] rounded-[2rem] bg-linear-to-br from-violet-100/70 via-white to-blue-100/70" />
+      <div aria-hidden className="pointer-events-none absolute -top-6 -right-6 size-56 rounded-full bg-primary/10 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-8 -left-8 size-56 rounded-full bg-brand-to/20 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute inset-[12%] rounded-[2rem] bg-linear-to-br from-accent/70 via-white to-brand-to/10" />
 
       {/* Referral connection lines (decorative) */}
-      <svg aria-hidden className="pointer-events-none absolute inset-0 hidden size-full text-indigo-300 sm:block" viewBox="0 0 400 400" fill="none">
+      <svg aria-hidden className="pointer-events-none absolute inset-0 hidden size-full text-primary/50 sm:block" viewBox="0 0 400 400" fill="none">
         <path d="M78 96 C 130 96, 150 150, 190 165" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
         <path d="M322 300 C 280 300, 260 250, 220 236" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
         <path d="M110 300 C 150 300, 160 250, 190 236" stroke="currentColor" strokeWidth="2" strokeDasharray="5 6" />
@@ -77,12 +77,12 @@ export function ProductShowcase({ product, brand, commissionLabel, creators, qrD
       {/* Featured product card */}
       <Link
         href={href}
-        className="absolute top-1/2 left-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-indigo-100 bg-white p-3 shadow-xl shadow-indigo-500/15 transition-transform hover:-translate-y-[52%]"
+        className="absolute top-1/2 left-1/2 w-[62%] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-primary/15 bg-white p-3 shadow-xl shadow-primary/15 transition-transform hover:-translate-y-[52%]"
       >
         <ProductThumb
           src={product?.imageUrl}
           name={product?.name ?? "Featured product"}
-          className="aspect-square w-full rounded-xl border-0 bg-linear-to-br from-slate-50 to-indigo-50"
+          className="aspect-square w-full rounded-xl border-0 bg-linear-to-br from-muted to-accent"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 420px"
         />
         <div className="mt-3 flex items-center gap-2">
@@ -98,7 +98,7 @@ export function ProductShowcase({ product, brand, commissionLabel, creators, qrD
       </Link>
 
       {/* Commission badge */}
-      <div className="absolute top-[9%] right-[6%] inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-violet-600 to-blue-500 px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/25">
+      <div className="absolute top-[9%] right-[6%] inline-flex items-center gap-1.5 rounded-full bg-gradient-brand px-3 py-1.5 text-xs font-semibold text-white shadow-lg shadow-primary/25">
         <TagIcon className="size-3.5" aria-hidden />
         {commissionLabel ?? "Earn commission"}
       </div>
@@ -108,7 +108,7 @@ export function ProductShowcase({ product, brand, commissionLabel, creators, qrD
       {c2 ? <FloatingProfile creator={c2} className="absolute right-[6%] bottom-[16%]" /> : null}
 
       {/* Referral QR card */}
-      <div className="absolute bottom-[3%] left-[1%] flex items-center gap-2 rounded-xl border border-indigo-100 bg-white p-2 shadow-lg shadow-indigo-500/15">
+      <div className="absolute bottom-[3%] left-[1%] flex items-center gap-2 rounded-xl border border-primary/15 bg-white p-2 shadow-lg shadow-primary/15">
         {qrDataUrl ? (
           <img src={qrDataUrl} alt="Referral QR code" className="size-16 rounded-md" />
         ) : (

@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { SidebarLogo } from "@/components/brand/logo";
 import { cn } from "@/lib/utils";
 import { isDemoAccount } from "@/lib/utils/demo";
-import { NAV, NAV_SECTION_LABEL, type NavItem, type NavKey } from "./nav";
+import { NAV, NAV_SECTION_LABEL, NAV_SECTION_ORDER, type NavItem, type NavKey } from "./nav";
 
 type ShellProps = {
   navKey: NavKey;
@@ -35,7 +35,7 @@ function isActive(pathname: string, item: NavItem) {
 
 function NavList({ nav, onNavigate, unread = 0 }: { nav: NavItem[]; onNavigate?: () => void; unread?: number }) {
   const pathname = usePathname();
-  const sections = (["main", "manage", "account"] as const)
+  const sections = NAV_SECTION_ORDER
     .map((section) => ({ section, items: nav.filter((i) => (i.section ?? "main") === section) }))
     .filter((g) => g.items.length);
   return (
@@ -172,7 +172,7 @@ function LinkedExistingNotice() {
   const params = useSearchParams();
   if (params.get("notice") !== "linked-existing") return null;
   return (
-    <p role="status" className="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+    <p role="status" className="mb-4 rounded-lg border border-warning/50 bg-warning/10 px-3 py-2 text-sm text-warning-strong">
       This e-mail already had a Refnivo account, so we signed you into it. Account types cannot be changed; to join as a different type, use another e-mail.
     </p>
   );

@@ -29,9 +29,9 @@ export function CTAButton({
       className={cn(
         "rounded-xl font-semibold",
         variant === "gradient" &&
-          "bg-linear-to-r from-violet-600 to-blue-500 text-white shadow-md shadow-indigo-500/25 transition-[box-shadow,transform] hover:shadow-lg hover:shadow-indigo-500/30 active:translate-y-px",
+          "bg-gradient-brand text-white shadow-md shadow-primary/25 transition-[box-shadow,transform] hover:shadow-lg hover:shadow-primary/30 active:translate-y-px",
         variant === "outline" && "border-border bg-background shadow-xs hover:bg-muted",
-        variant === "light" && "bg-white text-indigo-700 shadow-md hover:bg-indigo-50",
+        variant === "light" && "bg-white text-primary shadow-md hover:bg-accent",
         className,
       )}
     >

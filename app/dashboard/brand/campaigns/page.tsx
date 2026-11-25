@@ -102,7 +102,7 @@ export default async function CampaignsPage({ searchParams }: { searchParams: Pr
                       Creator: {describeCreatorCommission(c)} · Customer: {describeCustomerReward(c)} · {describeDuration(c)}
                     </p>
                     {visibility.note ? (
-                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                      <p className="text-xs text-warning-strong">
                         {visibility.note}{" "}
                         <Link href={`/dashboard/brand/campaigns/${c.id}`} className="font-medium underline underline-offset-2">
                           Open campaign

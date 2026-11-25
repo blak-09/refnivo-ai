@@ -15,9 +15,9 @@ export function PaymentMethodsStrip({ className }: { className?: string }) {
       <div className="rounded-2xl border bg-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold">
-            Pay securely with <span className="text-[#0C2451] dark:text-sky-300">Razorpay</span>
+            Pay securely with <span className="text-[#0C2451]">Razorpay</span>
           </p>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-medium text-success-strong">
             <ShieldCheckIcon className="size-3.5" aria-hidden /> PCI-DSS compliant
           </span>
         </div>

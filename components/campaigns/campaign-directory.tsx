@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { EmptyState } from "@/components/dashboard/primitives";
-import { CampaignDirectoryCard } from "@/components/campaigns/campaign-directory-card";
+import { CampaignCard } from "@/components/marketplace/campaign-card";
 import { DIRECTORY_SORTS, listDirectory } from "@/lib/services/directory";
 import { cn } from "@/lib/utils";
 
@@ -94,7 +94,7 @@ export async function CampaignDirectory({ basePath, sp }: { basePath: string; sp
           <ul className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {items.map((i) => (
               <li key={i.key}>
-                <CampaignDirectoryCard campaign={i.campaign} />
+                <CampaignCard c={i.campaign} />
               </li>
             ))}
           </ul>

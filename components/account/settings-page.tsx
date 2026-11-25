@@ -48,7 +48,7 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
     return (
       <div className="mx-auto max-w-lg space-y-6">
         <PageHeader title="Set a new password" description="One step before you can use your dashboard." />
-        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+        <div role="alert" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning-strong">
           <p className="font-medium">This account is using a temporary password.</p>
           <p className="mt-1">
             Enter that temporary password as <strong>Current password</strong> — the one you were given, or typed into the admin set-up script — then choose a
@@ -95,7 +95,7 @@ export async function SettingsPage({ user, extra }: { user: SessionUser; extra?:
     <div className="space-y-6">
       <PageHeader title="Settings" description={`Signed in as ${ROLE_LABEL[user.role].toLowerCase()}.`} />
       {user.mustChangePassword ? (
-        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+        <div role="alert" className="rounded-xl border border-warning/50 bg-warning/10 px-4 py-3 text-sm text-warning-strong">
           <p className="font-medium">Set a new password to continue.</p>
           <p className="mt-1">
             This account was created with a temporary password. Choose a new one below — you will be signed out everywhere and asked to log in again.

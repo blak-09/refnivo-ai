@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/forms/field";
 import { INDIAN_STATES } from "@/lib/onboarding/options";
@@ -29,6 +29,49 @@ export function FormSection({ title, description, children }: { title: string; d
       </div>
       {children}
     </section>
+  );
+}
+
+/**
+ * Optional sections, collapsed during onboarding so the first form only asks
+ * for what a useful profile needs (docs/REDESIGN_PLAN.md U5). The inputs stay
+ * in the form while collapsed, so nothing typed is lost; the group opens by
+ * itself when it holds a value or a validation error, and is open in edit mode.
+ */
+export function MoreDetails({
+  keys,
+  values,
+  errors,
+  defaultOpen = false,
+  description = "Add these now or later from your profile. They help brands and creators get to know you.",
+  children,
+}: {
+  /** Field names inside the group (used to open it on errors or saved values). */
+  keys: readonly string[];
+  values: Values;
+  errors: Errors;
+  defaultOpen?: boolean;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  const hasError = keys.some((k) => !!errors[k]);
+  const hasValue = keys.some((k) => {
+    const v = values[k];
+    return Array.isArray(v) ? v.length > 0 : !!v && v !== "India";
+  });
+  const [userOpen, setUserOpen] = React.useState<boolean | null>(null);
+  const open = hasError || (userOpen ?? (defaultOpen || hasValue));
+  return (
+    <details open={open} onToggle={(e) => setUserOpen(e.currentTarget.open)} className="group/more space-y-5">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 rounded-2xl border border-dashed bg-muted/30 p-5 transition-colors hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:p-6 [&::-webkit-details-marker]:hidden">
+        <span>
+          <span className="block text-base font-semibold tracking-tight">More details (optional)</span>
+          <span className="mt-1 block text-sm text-muted-foreground">{description}</span>
+        </span>
+        <ChevronDownIcon className="size-5 shrink-0 text-muted-foreground transition-transform group-open/more:rotate-180" aria-hidden />
+      </summary>
+      <div className="space-y-5">{children}</div>
+    </details>
   );
 }
 

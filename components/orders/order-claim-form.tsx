@@ -26,9 +26,9 @@ export function OrderClaimForm({ campaignId, brandName, referralCode, referrerNa
 
   if (state?.ok) {
     return (
-      <Card id="claim" className="border-emerald-500/30 bg-emerald-500/5">
+      <Card id="claim" className="border-success/30 bg-success/5">
         <CardContent className="flex items-start gap-3 py-5">
-          <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-emerald-600" aria-hidden />
+          <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-success" aria-hidden />
           <div className="text-sm">
             <p className="font-medium">Order submitted — thank you!</p>
             <p className="mt-1 text-muted-foreground">

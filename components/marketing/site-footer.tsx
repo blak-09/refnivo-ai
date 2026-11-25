@@ -9,7 +9,8 @@ const groups = [
       { href: "/how-it-works", label: "How it works" },
       { href: "/campaigns", label: "Discover campaigns" },
       { href: "/products", label: "Discover products" },
-      { href: "/brands", label: "Discover brands" },
+      { href: "/brands", label: "Brand directory" },
+      { href: "/creators", label: "Creator directory" },
       { href: "/pricing", label: "Pricing" },
     ],
   },
@@ -74,7 +75,7 @@ export function SiteFooter() {
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>© {new Date().getFullYear()} Refnivo AI. All rights reserved.</p>
           <p className="inline-flex items-center gap-1.5">
-            <ShieldCheckIcon className="size-3.5 text-emerald-600" aria-hidden />
+            <ShieldCheckIcon className="size-3.5 text-success" aria-hidden />
             Payments secured by <span className="font-semibold text-foreground">Razorpay</span>
           </p>
         </div>

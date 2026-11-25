@@ -75,7 +75,7 @@ export function ProfilePreview(
     const v = props.values;
     return (
       <article className="overflow-hidden rounded-2xl border bg-card">
-        <div className="h-28 bg-linear-to-r from-violet-200 to-sky-200 sm:h-36 dark:from-violet-900/50 dark:to-sky-900/40">
+        <div className="h-28 bg-linear-to-r from-primary/20 to-brand-to/25 sm:h-36">
           {v.coverImageUrl ? <img src={v.coverImageUrl} alt="" className="size-full object-cover" /> : null}
         </div>
         <div className="px-5 pb-5 sm:px-6">

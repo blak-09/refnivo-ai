@@ -100,11 +100,11 @@ export default function AboutPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b bg-linear-to-b from-violet-50/70 to-background py-16 sm:py-24">
-        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl" />
+      <section className="relative overflow-hidden border-b bg-linear-to-b from-accent/70 to-background py-16 sm:py-24">
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative mx-auto grid max-w-6xl gap-10 px-4 sm:px-6 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:gap-16">
           <div className={RISE}>
-            <p className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white/80 px-3 py-1 text-xs font-medium text-indigo-700 shadow-xs">
+            <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/80 px-3 py-1 text-xs font-medium text-primary shadow-xs">
               <SparklesIcon className="size-3.5" aria-hidden />
               About Refnivo
             </p>
@@ -129,9 +129,9 @@ export default function AboutPage() {
           <ul className="grid gap-3 delay-150 sm:grid-cols-3 lg:grid-cols-1" aria-label="Who Refnivo is for">
             {AUDIENCES.map((a, i) => (
               <li key={a.id} className={RISE} style={{ animationDelay: `${120 + i * 90}ms` }}>
-                <Card className="rounded-2xl border-indigo-100/80 shadow-sm transition-shadow hover:shadow-md">
+                <Card className="rounded-2xl border-primary/15 shadow-sm transition-shadow hover:shadow-md">
                   <CardContent className="flex items-center gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-violet-600 to-blue-500 text-white shadow-md shadow-indigo-500/20">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
                       <a.icon className="size-5" aria-hidden />
                     </span>
                     <div className="min-w-0">
@@ -150,7 +150,7 @@ export default function AboutPage() {
       <section className="py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold text-indigo-600">Why we exist</p>
+            <p className="text-sm font-semibold text-primary">Why we exist</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">The pieces of referral marketing sit in different places</h2>
             <p className="mt-3 text-muted-foreground">
               Brands often struggle to find the right creators, manage referral campaigns, track results, and turn customer recommendations into measurable growth.
@@ -163,13 +163,13 @@ export default function AboutPage() {
               <Card key={f.audience} className="rounded-2xl">
                 <CardContent className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <f.icon className="size-5 text-indigo-600" aria-hidden />
+                    <f.icon className="size-5 text-primary" aria-hidden />
                     <h3 className="font-semibold">{f.audience}</h3>
                   </div>
                   <ul className="space-y-2 text-sm text-muted-foreground">
                     {f.points.map((p) => (
                       <li key={p} className="flex gap-2">
-                        <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-indigo-400" />
+                        <span aria-hidden className="mt-2 size-1.5 shrink-0 rounded-full bg-primary/70" />
                         {p}
                       </li>
                     ))}
@@ -182,10 +182,10 @@ export default function AboutPage() {
       </section>
 
       {/* What Refnivo does */}
-      <section id="what-we-do" className="scroll-mt-20 bg-linear-to-b from-background to-violet-50/50 py-16 sm:py-20">
+      <section id="what-we-do" className="scroll-mt-20 bg-linear-to-b from-background to-accent/50 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="max-w-3xl">
-            <p className="text-sm font-semibold text-indigo-600">What Refnivo does</p>
+            <p className="text-sm font-semibold text-primary">What Refnivo does</p>
             <h2 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">One workflow, three sides</h2>
             <p className="mt-3 text-muted-foreground">
               Refnivo helps brands launch and manage referral-based campaigns while giving creators and customers a simple way to participate and earn rewards.
@@ -196,16 +196,16 @@ export default function AboutPage() {
               <Card key={a.id} id={a.id} className="scroll-mt-24 rounded-2xl transition-shadow hover:shadow-md">
                 <CardContent className="flex h-full flex-col gap-4">
                   <div className="flex items-center gap-3">
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
                       <a.icon className="size-5" aria-hidden />
                     </span>
-                    <p className="text-sm font-semibold tracking-wide text-indigo-600 uppercase">{a.label}</p>
+                    <p className="text-sm font-semibold tracking-wide text-primary uppercase">{a.label}</p>
                   </div>
                   <h3 className="text-lg font-semibold">{a.title}</h3>
                   <ul className="flex-1 space-y-2.5">
                     {a.items.map((item) => (
                       <li key={item.text} className="flex items-start gap-2.5 text-sm">
-                        <item.icon className="mt-0.5 size-4 shrink-0 text-indigo-600" aria-hidden />
+                        <item.icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                         <span className="text-muted-foreground">{item.text}</span>
                       </li>
                     ))}
@@ -225,7 +225,7 @@ export default function AboutPage() {
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
             <div className="space-y-5">
-              <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600">
+              <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
                 <LayersIcon className="size-4" aria-hidden />
                 Why Refnivo
               </p>
@@ -237,7 +237,7 @@ export default function AboutPage() {
               <ul className="grid gap-2 sm:grid-cols-2">
                 {["Unique links and QR codes per partner", "Clicks and referrals tracked in one place", "Orders confirmed before anything is owed", "A shared record both sides can see"].map((item) => (
                   <li key={item} className="flex items-start gap-2 rounded-lg border bg-card px-3 py-2 text-sm shadow-xs">
-                    <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-indigo-600" aria-hidden />
+                    <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
                     <span>{item}</span>
                   </li>
                 ))}
@@ -245,21 +245,21 @@ export default function AboutPage() {
             </div>
 
             {/* The network in one line */}
-            <Card className="rounded-3xl border-indigo-100/80 bg-card/80 shadow-sm">
+            <Card className="rounded-3xl border-primary/15 bg-card/80 shadow-sm">
               <CardContent className="space-y-4 py-2">
-                <p className="text-xs font-semibold tracking-wider text-indigo-500 uppercase">We are building a network where</p>
+                <p className="text-xs font-semibold tracking-wider text-primary uppercase">We are building a network where</p>
                 <ul className="space-y-3">
                   {FLOW.map((f, i) => (
                     <li key={f.who}>
                       <div className="flex items-center gap-3">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-violet-600 to-blue-500 text-white shadow-sm">
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
                           <f.icon className="size-4.5" aria-hidden />
                         </span>
                         <p className="text-sm">
                           <span className="font-semibold">{f.who}</span> <span className="text-muted-foreground">{f.get}</span>
                         </p>
                       </div>
-                      {i < FLOW.length - 1 ? <ArrowRightIcon aria-hidden className="mt-3 ml-4.5 size-4 -translate-x-1/2 rotate-90 text-indigo-300" /> : null}
+                      {i < FLOW.length - 1 ? <ArrowRightIcon aria-hidden className="mt-3 ml-4.5 size-4 -translate-x-1/2 rotate-90 text-primary/50" /> : null}
                     </li>
                   ))}
                 </ul>
@@ -289,7 +289,7 @@ export default function AboutPage() {
           ].map((b) => (
             <Card key={b.label} className="rounded-2xl">
               <CardContent className="space-y-3">
-                <p className="inline-flex items-center gap-2 text-sm font-semibold text-indigo-600">
+                <p className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
                   <b.icon className="size-4" aria-hidden />
                   {b.label}
                 </p>
@@ -304,7 +304,7 @@ export default function AboutPage() {
       <section className="py-10 sm:py-14">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="flex flex-col gap-3 rounded-2xl border border-dashed px-5 py-5 text-sm text-muted-foreground sm:flex-row sm:items-start sm:gap-4">
-            <ShieldCheckIcon className="size-5 shrink-0 text-indigo-600" aria-hidden />
+            <ShieldCheckIcon className="size-5 shrink-0 text-primary" aria-hidden />
             <p>
               <span className="font-medium text-foreground">Where we are today.</span> Refnivo is early and India-first. Orders are confirmed by the brand before
               any commission or reward is released, payouts are processed by our team, and creator audience numbers are self-reported until verified. Every change
@@ -317,7 +317,7 @@ export default function AboutPage() {
       {/* Final CTA */}
       <section className="pb-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-violet-600 to-blue-500 px-8 py-12 text-center text-white shadow-xl shadow-indigo-500/25 sm:px-12 sm:py-16">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-brand px-8 py-12 text-center text-white shadow-xl shadow-primary/25 sm:px-12 sm:py-16">
             <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 size-64 rounded-full bg-white/10 blur-3xl" />
             <h2 className="relative text-2xl font-bold tracking-tight sm:text-4xl">Brands, creators and customers — in one place</h2>
             <p className="relative mx-auto mt-3 max-w-xl text-white/85">Create a free account and start with a single campaign or a single referral link.</p>

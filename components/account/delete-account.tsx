@@ -72,7 +72,7 @@ export function DeleteAccountCard({ preview }: { preview: DeletionPreview }) {
             </ul>
 
             {preview.openPayoutRequest ? (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+              <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-strong">
                 You have a payout request in progress. It must be settled or cancelled before the account can be deleted.
               </p>
             ) : null}

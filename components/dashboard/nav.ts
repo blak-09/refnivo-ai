@@ -27,11 +27,22 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-export type NavSection = "main" | "manage" | "account";
+export type NavSection = "main" | "grow" | "find" | "work" | "share" | "results" | "money" | "manage" | "account";
 export type NavItem = { href: string; label: string; icon: LucideIcon; exact?: boolean; badge?: "notifications"; section?: NavSection };
 
-/** Headings shown above each sidebar group (the main group has none). */
-export const NAV_SECTION_LABEL: Record<NavSection, string | null> = { main: null, manage: "Manage", account: "Account" };
+/** Headings shown above each sidebar group (the main group has none), in display order. */
+export const NAV_SECTION_LABEL: Record<NavSection, string | null> = {
+  main: null,
+  grow: "Grow",
+  find: "Find work",
+  work: "My work",
+  share: "Share & earn",
+  results: "Results",
+  money: "Money",
+  manage: "Manage",
+  account: "Account",
+};
+export const NAV_SECTION_ORDER = Object.keys(NAV_SECTION_LABEL) as NavSection[];
 export type NavKey = "brand" | "creator" | "customer" | "admin";
 
 /**
@@ -41,48 +52,48 @@ export type NavKey = "brand" | "creator" | "customer" | "admin";
 export const NAV: Record<NavKey, NavItem[]> = {
   brand: [
     { href: "/dashboard/brand", label: "Overview", icon: LayoutDashboardIcon, exact: true },
-    { href: "/dashboard/brand/campaigns", label: "Campaigns", icon: MegaphoneIcon },
-    { href: "/creators", label: "Creators", icon: CompassIcon },
-    { href: "/dashboard/brand/creators", label: "Applications", icon: UsersIcon },
-    { href: "/dashboard/brand/partners", label: "Partners", icon: HeartHandshakeIcon },
-    { href: "/dashboard/brand/ugc", label: "UGC Collaborations", icon: ClapperboardIcon },
-    { href: "/dashboard/brand/connections", label: "Connections", icon: HandshakeIcon },
-    { href: "/dashboard/brand/tracking", label: "Tracking", icon: LinkIcon },
-    { href: "/dashboard/brand/analytics", label: "Analytics", icon: BarChart3Icon },
-    { href: "/dashboard/brand/payouts", label: "Payouts", icon: WalletIcon },
-    { href: "/dashboard/brand/products", label: "Products", icon: PackageIcon, section: "manage" },
-    { href: "/dashboard/brand/orders", label: "Orders & Conversions", icon: ShoppingCartIcon, section: "manage" },
-    { href: "/dashboard/brand/profile", label: "Brand Profile", icon: UserCircleIcon, section: "manage" },
-    { href: "/dashboard/brand/wallet", label: "Wallet", icon: PiggyBankIcon, section: "manage" },
-    { href: "/dashboard/brand/billing", label: "Billing & Plan", icon: CreditCardIcon, section: "manage" },
+    { href: "/dashboard/brand/campaigns", label: "Campaigns", icon: MegaphoneIcon, section: "grow" },
+    { href: "/dashboard/brand/products", label: "Products", icon: PackageIcon, section: "grow" },
+    { href: "/creators", label: "Find creators", icon: CompassIcon, section: "grow" },
+    { href: "/dashboard/brand/creators", label: "Applications", icon: UsersIcon, section: "grow" },
+    { href: "/dashboard/brand/partners", label: "Partners", icon: HeartHandshakeIcon, section: "grow" },
+    { href: "/dashboard/brand/connections", label: "Connections", icon: HandshakeIcon, section: "grow" },
+    { href: "/dashboard/brand/ugc", label: "UGC Collaborations", icon: ClapperboardIcon, section: "grow" },
+    { href: "/dashboard/brand/orders", label: "Orders & Conversions", icon: ShoppingCartIcon, section: "results" },
+    { href: "/dashboard/brand/analytics", label: "Analytics", icon: BarChart3Icon, section: "results" },
+    { href: "/dashboard/brand/tracking", label: "Tracking", icon: LinkIcon, section: "results" },
+    { href: "/dashboard/brand/wallet", label: "Wallet", icon: PiggyBankIcon, section: "money" },
+    { href: "/dashboard/brand/payouts", label: "Payouts", icon: WalletIcon, section: "money" },
+    { href: "/dashboard/brand/billing", label: "Billing & Plan", icon: CreditCardIcon, section: "money" },
+    { href: "/dashboard/brand/profile", label: "Brand Profile", icon: UserCircleIcon, section: "account" },
     { href: "/dashboard/brand/notifications", label: "Notifications", icon: BellIcon, badge: "notifications", section: "account" },
     { href: "/dashboard/brand/settings", label: "Settings", icon: SettingsIcon, section: "account" },
   ],
   creator: [
     { href: "/dashboard/creator", label: "Overview", icon: LayoutDashboardIcon, exact: true },
-    { href: "/dashboard/creator/discover", label: "Discover Campaigns", icon: CompassIcon },
-    { href: "/dashboard/creator/campaigns", label: "My Campaigns", icon: MegaphoneIcon },
-    { href: "/dashboard/creator/ugc", label: "UGC Briefs", icon: ClapperboardIcon },
-    { href: "/dashboard/creator/partnerships", label: "Partnerships", icon: HeartHandshakeIcon },
-    { href: "/dashboard/creator/connections", label: "Connections", icon: HandshakeIcon },
-    { href: "/dashboard/creator/links", label: "Referral Links", icon: LinkIcon },
-    { href: "/dashboard/creator/conversions", label: "Conversions", icon: ReceiptIcon },
-    { href: "/dashboard/creator/earnings", label: "Earnings & Payouts", icon: WalletIcon },
-    { href: "/dashboard/creator/analytics", label: "Analytics", icon: BarChart3Icon },
-    { href: "/brands", label: "Brand Directory", icon: StoreIcon, section: "manage" },
-    { href: "/dashboard/creator/social", label: "Social Accounts", icon: Share2Icon, section: "manage" },
+    { href: "/dashboard/creator/discover", label: "Discover Campaigns", icon: CompassIcon, section: "find" },
+    { href: "/dashboard/creator/ugc", label: "UGC Briefs", icon: ClapperboardIcon, section: "find" },
+    { href: "/brands", label: "Brand Directory", icon: StoreIcon, section: "find" },
+    { href: "/dashboard/creator/connections", label: "Connections", icon: HandshakeIcon, section: "find" },
+    { href: "/dashboard/creator/campaigns", label: "My Campaigns", icon: MegaphoneIcon, section: "work" },
+    { href: "/dashboard/creator/partnerships", label: "Partnerships", icon: HeartHandshakeIcon, section: "work" },
+    { href: "/dashboard/creator/links", label: "Referral Links", icon: LinkIcon, section: "work" },
+    { href: "/dashboard/creator/conversions", label: "Conversions", icon: ReceiptIcon, section: "results" },
+    { href: "/dashboard/creator/analytics", label: "Analytics", icon: BarChart3Icon, section: "results" },
+    { href: "/dashboard/creator/earnings", label: "Earnings & Payouts", icon: WalletIcon, section: "results" },
     { href: "/dashboard/creator/profile", label: "Profile", icon: UserCircleIcon, section: "account" },
+    { href: "/dashboard/creator/social", label: "Social Accounts", icon: Share2Icon, section: "account" },
     { href: "/dashboard/creator/notifications", label: "Notifications", icon: BellIcon, badge: "notifications", section: "account" },
     { href: "/dashboard/creator/settings", label: "Settings", icon: SettingsIcon, section: "account" },
   ],
   customer: [
     { href: "/dashboard/customer", label: "Overview", icon: LayoutDashboardIcon, exact: true },
-    { href: "/campaigns", label: "Discover Products", icon: CompassIcon },
-    { href: "/dashboard/customer/referrals", label: "My Links", icon: LinkIcon },
-    { href: "/dashboard/customer/rewards", label: "Rewards", icon: GiftIcon },
-    { href: "/dashboard/customer/profile", label: "Profile", icon: UserCircleIcon },
-    { href: "/dashboard/customer/notifications", label: "Notifications", icon: BellIcon, badge: "notifications" },
-    { href: "/dashboard/customer/settings", label: "Settings", icon: SettingsIcon },
+    { href: "/campaigns", label: "Discover Products", icon: CompassIcon, section: "share" },
+    { href: "/dashboard/customer/referrals", label: "My Links", icon: LinkIcon, section: "share" },
+    { href: "/dashboard/customer/rewards", label: "Rewards", icon: GiftIcon, section: "share" },
+    { href: "/dashboard/customer/profile", label: "Profile", icon: UserCircleIcon, section: "account" },
+    { href: "/dashboard/customer/notifications", label: "Notifications", icon: BellIcon, badge: "notifications", section: "account" },
+    { href: "/dashboard/customer/settings", label: "Settings", icon: SettingsIcon, section: "account" },
   ],
   admin: [
     { href: "/dashboard/admin", label: "Overview", icon: LayoutDashboardIcon, exact: true },

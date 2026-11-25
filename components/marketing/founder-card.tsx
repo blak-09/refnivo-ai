@@ -22,7 +22,7 @@ export function FounderCard({ founder, priority }: { founder: Founder; priority?
   return (
     <Card className="group relative h-full overflow-hidden rounded-3xl transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2">
       <CardContent className="flex h-full flex-col items-center gap-5 py-2 text-center sm:items-start sm:text-left">
-        <div className="relative size-36 shrink-0 overflow-hidden rounded-full ring-2 ring-indigo-100 ring-offset-4 ring-offset-card transition-transform duration-300 group-hover:scale-[1.03] sm:size-40">
+        <div className="relative size-36 shrink-0 overflow-hidden rounded-full ring-2 ring-primary/15 ring-offset-4 ring-offset-card transition-transform duration-300 group-hover:scale-[1.03] sm:size-40">
           <Image
             src={founder.photo}
             alt={founder.alt}
@@ -36,7 +36,7 @@ export function FounderCard({ founder, priority }: { founder: Founder; priority?
 
         <div>
           <h3 className="text-xl font-semibold tracking-tight">{founder.name}</h3>
-          <p className="mt-0.5 text-sm font-medium text-indigo-600">{founder.role}</p>
+          <p className="mt-0.5 text-sm font-medium text-primary">{founder.role}</p>
         </div>
 
         <div className="flex-1 space-y-3">

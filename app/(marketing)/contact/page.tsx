@@ -80,10 +80,10 @@ export default function ContactPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b bg-linear-to-b from-violet-50/70 to-background py-16 sm:py-20">
-        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-violet-300/20 blur-3xl" />
+      <section className="relative overflow-hidden border-b bg-linear-to-b from-accent/70 to-background py-16 sm:py-20">
+        <div aria-hidden className="pointer-events-none absolute -top-32 left-1/2 size-[32rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
         <div className={`relative mx-auto max-w-3xl px-4 text-center sm:px-6 ${RISE}`}>
-          <p className="inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white/80 px-3 py-1 text-xs font-medium text-indigo-700 shadow-xs">
+          <p className="inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/80 px-3 py-1 text-xs font-medium text-primary shadow-xs">
             <MailIcon className="size-3.5" aria-hidden />
             Contact
           </p>
@@ -108,11 +108,11 @@ export default function ContactPage() {
               <li key={o.key} className={RISE} style={{ animationDelay: `${i * 80}ms` }}>
                 <Card className="h-full rounded-2xl transition-shadow hover:shadow-md">
                   <CardContent className="flex h-full flex-col gap-4">
-                    <span className="flex size-11 items-center justify-center rounded-xl bg-linear-to-br from-violet-600 to-blue-500 text-white shadow-md shadow-indigo-500/20">
+                    <span className="flex size-11 items-center justify-center rounded-xl bg-accent text-primary">
                       <o.icon className="size-5" aria-hidden />
                     </span>
                     <div>
-                      <p className="text-xs font-semibold tracking-wide text-indigo-600 uppercase">{o.eyebrow}</p>
+                      <p className="text-xs font-semibold tracking-wide text-primary uppercase">{o.eyebrow}</p>
                       <h2 className="mt-1 text-lg font-semibold">{o.title}</h2>
                     </div>
                     <p className="flex-1 text-sm leading-6 text-muted-foreground">{o.body}</p>
@@ -131,7 +131,7 @@ export default function ContactPage() {
       </section>
 
       {/* Form */}
-      <section id="message" className="scroll-mt-20 bg-linear-to-b from-background to-violet-50/50 py-14 sm:py-16">
+      <section id="message" className="scroll-mt-20 bg-linear-to-b from-background to-accent/50 py-14 sm:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <div className="text-center">
             <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Send us a message</h2>
@@ -161,7 +161,7 @@ export default function ContactPage() {
                 <li key={s.key}>
                   <Card className="h-full rounded-2xl transition-shadow hover:shadow-md">
                     <CardContent className="flex h-full flex-col gap-4 sm:flex-row sm:items-center">
-                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-accent text-primary">
                         <Icon className="size-5" aria-hidden />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -188,10 +188,10 @@ export default function ContactPage() {
       {/* Prefer email */}
       <section className="pb-14 sm:pb-16">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <Card className="rounded-3xl border-indigo-100/80 bg-linear-to-br from-violet-50 to-blue-50/60 dark:from-violet-950/30 dark:to-blue-950/20">
+          <Card className="rounded-3xl border-primary/15 bg-linear-to-br from-accent to-brand-to/5">
             <CardContent className="flex flex-col items-start gap-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-4">
-                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm dark:bg-slate-900">
+                <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-sm">
                   <MailIcon className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0">
@@ -228,7 +228,7 @@ export default function ContactPage() {
       {/* Final CTA */}
       <section className="pb-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-violet-600 to-blue-500 px-8 py-12 text-center text-white shadow-xl shadow-indigo-500/25 sm:px-12 sm:py-16">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-brand px-8 py-12 text-center text-white shadow-xl shadow-primary/25 sm:px-12 sm:py-16">
             <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 size-64 rounded-full bg-white/10 blur-3xl" />
             <h2 className="relative text-2xl font-bold tracking-tight sm:text-4xl">Let’s build something together</h2>
             <p className="relative mx-auto mt-3 max-w-xl text-white/85">

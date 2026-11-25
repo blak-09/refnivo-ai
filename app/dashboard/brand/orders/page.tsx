@@ -52,7 +52,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       />
 
       {wallet ? (
-        <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-4 py-3 text-sm", wallet.balance < wallet.owed ? "border-amber-500/40 bg-amber-500/5" : "bg-card")}>
+        <div className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-4 py-3 text-sm", wallet.balance < wallet.owed ? "border-warning/40 bg-warning/5" : "bg-card")}>
           <PiggyBankIcon className="size-4 text-primary" aria-hidden />
           <span>
             Wallet balance <span className="font-semibold tabular-nums">{formatMoney(wallet.balance)}</span>

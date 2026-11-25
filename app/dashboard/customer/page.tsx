@@ -1,10 +1,12 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CompassIcon, GiftIcon, LinkIcon, MousePointerClickIcon, PackageCheckIcon, ShoppingCartIcon } from "lucide-react";
+import { ArrowRightIcon, CompassIcon, GiftIcon, LinkIcon, MousePointerClickIcon, PackageCheckIcon, ShoppingCartIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard, PageHeader, StatusBadge } from "@/components/dashboard/primitives";
 import { PartnerLinksList } from "@/components/links/partner-links-list";
+import { CampaignCard } from "@/components/marketplace/campaign-card";
+import { recommendCampaigns } from "@/lib/services/dashboard";
 import { requireCustomer } from "@/lib/auth/guards";
 import { ProfileCompletionCard } from "@/components/onboarding/completion-card";
 import { profileCompletionFor } from "@/lib/services/onboarding";
@@ -21,12 +23,37 @@ export const metadata: Metadata = { title: "My rewards" };
 export default async function CustomerOverviewPage({ searchParams }: { searchParams: Promise<{ welcome?: string }> }) {
   const user = await requireCustomer();
   const { welcome } = await searchParams;
-  const [stats, links, claims, completion] = await Promise.all([
+  const [stats, links, claims, completion, profile] = await Promise.all([
     getPartnerStats(user.id),
     prisma.referralLink.count({ where: { ownerId: user.id, status: "ACTIVE" } }),
     listCustomerClaims(user.id),
     profileCompletionFor(user.id, "CUSTOMER"),
+    prisma.customerProfile.findUnique({ where: { userId: user.id }, select: { preferredCategories: true } }),
   ]);
+  const shareable = await recommendCampaigns({ userId: user.id, audience: "CUSTOMER", categories: profile?.preferredCategories ?? [] });
+
+  const productsToShare = shareable.campaigns.length ? (
+    <section aria-labelledby="share-heading" className="space-y-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 id="share-heading" className="text-base font-semibold tracking-tight">
+            Products you can share
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {shareable.matched ? "Live campaigns in the categories you picked." : "The newest live campaigns you haven't joined yet."} Open one to get your personal link.
+          </p>
+        </div>
+        <Link href="/campaigns" className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+          All products <ArrowRightIcon className="size-3" />
+        </Link>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {shareable.campaigns.map((c) => (
+          <CampaignCard key={c.id} c={c} />
+        ))}
+      </div>
+    </section>
+  ) : null;
 
   return (
     <div className="space-y-6">
@@ -34,7 +61,7 @@ export default async function CustomerOverviewPage({ searchParams }: { searchPar
         <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
           <p className="font-medium">Welcome to Refnivo, {user.name.split(" ")[0]} 🎉</p>
           <p className="text-muted-foreground">
-            Next: <Link href="/campaigns" className="underline underline-offset-4">discover products</Link> and share the ones you like with friends.
+            Next: {shareable.campaigns.length ? "pick a product below" : <Link href="/campaigns" className="underline underline-offset-4">discover products</Link>}, get your personal link and share it with friends.
           </p>
         </div>
       ) : null}
@@ -48,11 +75,17 @@ export default async function CustomerOverviewPage({ searchParams }: { searchPar
         }
       />
       <ProfileCompletionCard completion={completion} editHref="/dashboard/customer/profile" />
+      {links === 0 ? productsToShare : null}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <KpiCard label="My links" value={links} icon={LinkIcon} />
-        <KpiCard label="Clicks on my links" value={stats.clicks} hint={`${stats.qrScans} via QR`} icon={MousePointerClickIcon} />
+        <KpiCard
+          label="Rewards available"
+          value={formatMoney(stats.rewardsAvailable)}
+          hint={`${formatMoney(stats.rewardsPending)} pending · ${formatMoney(stats.rewardsRedeemed)} redeemed`}
+          icon={GiftIcon}
+        />
         <KpiCard label="Successful purchases" value={stats.verified} hint={`${stats.purchased} awaiting verification`} icon={ShoppingCartIcon} />
-        <KpiCard label="Rewards earned" value={formatMoney(stats.rewardsPending + stats.rewardsAvailable + stats.rewardsRedeemed)} hint={`${formatMoney(stats.rewardsAvailable)} available`} icon={GiftIcon} />
+        <KpiCard label="Clicks on my links" value={stats.clicks} hint={`${stats.qrScans} via QR`} icon={MousePointerClickIcon} />
+        <KpiCard label="My links" value={links} icon={LinkIcon} />
       </div>
       <Card>
         <CardHeader>
@@ -62,6 +95,7 @@ export default async function CustomerOverviewPage({ searchParams }: { searchPar
           <PartnerLinksList userId={user.id} emptyDescription="Open any campaign and tap “Join & generate my referral link” — you get a link and QR code instantly." />
         </CardContent>
       </Card>
+      {links > 0 ? productsToShare : null}
       {claims.length ? (
         <Card>
           <CardHeader>

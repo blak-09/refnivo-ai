@@ -85,7 +85,7 @@ export async function PartnerLinksList({ userId, emptyDescription }: { userId: s
                   {l.campaign.brand.name} · {l.campaign.name}
                 </p>
                 {l.source !== "GENERAL" ? (
-                  <p className="truncate text-xs font-medium text-indigo-600">
+                  <p className="truncate text-xs font-medium text-primary">
                     {SOURCE_LABEL[l.source]} link — {SOURCE_HINT[l.source]}
                   </p>
                 ) : null}

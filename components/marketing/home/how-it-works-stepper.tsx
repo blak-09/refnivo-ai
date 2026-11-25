@@ -8,20 +8,20 @@ const STEPS = [
   {
     id: "launch",
     icon: MegaphoneIcon,
-    title: "Brand launches a campaign",
-    body: "Pick a product, set the creator commission and customer reward, and choose the rules: attribution window, approval, budget.",
+    title: "Create your brand and campaign",
+    body: "Add your product, set the creator commission and customer reward, and choose the rules: attribution window, approval, budget and dates.",
   },
   {
     id: "share",
     icon: LinkIcon,
-    title: "Creator or customer shares",
-    body: "Every partner gets a unique link and QR code. Each click is attributed to them — on Instagram, YouTube, WhatsApp or in person.",
+    title: "Connect with creators",
+    body: "Creators apply or join instantly, and customers can join too. Every partner gets a unique link and QR code to share on Instagram, YouTube, WhatsApp or in person.",
   },
   {
     id: "verify",
     icon: BadgeCheckIcon,
-    title: "Brand verifies, commission is recorded",
-    body: "The brand confirms the order in its store. Only then is the commission or reward added to the ledger both sides can see.",
+    title: "Track referrals and sales",
+    body: "Every click is credited to the partner who sent it. You confirm orders from your store; only then is the commission or reward recorded in the ledger both sides can see.",
   },
 ] as const;
 
@@ -59,7 +59,7 @@ export function HowItWorksStepper() {
               onKeyDown={(e) => onKey(e, i)}
               className={cn(
                 "group flex w-full items-start gap-4 rounded-2xl border p-5 text-left transition-[background-color,border-color,box-shadow] focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-                selected ? "border-primary/30 bg-card shadow-lg shadow-indigo-500/10" : "border-transparent bg-transparent hover:bg-card/70",
+                selected ? "border-primary/30 bg-card shadow-lg shadow-primary/10" : "border-transparent bg-transparent hover:bg-card/70",
               )}
             >
               <span
@@ -80,7 +80,7 @@ export function HowItWorksStepper() {
       </div>
 
       <div id="hiw-panel" role="tabpanel" aria-labelledby={`hiw-tab-${STEPS[active].id}`} className="relative">
-        <div aria-hidden className="absolute -inset-4 -z-10 rounded-[2rem] bg-linear-to-br from-violet-100/70 to-sky-100/60 blur-2xl dark:from-violet-950/40 dark:to-sky-950/30" />
+        <div aria-hidden className="absolute -inset-4 -z-10 rounded-[2rem] bg-linear-to-br from-accent/70 to-brand-to/10 blur-2xl" />
         <ExampleCampaignCard step={active} />
       </div>
     </div>
@@ -91,11 +91,11 @@ export function HowItWorksStepper() {
 function ExampleCampaignCard({ step }: { step: number }) {
   const ring = (i: number) => (step === i ? "ring-2 ring-primary/40 bg-accent/60" : "bg-muted/40");
   return (
-    <figure className="overflow-hidden rounded-3xl border bg-card shadow-xl shadow-indigo-500/10" aria-label="Example campaign (illustrative values)">
+    <figure className="overflow-hidden rounded-3xl border bg-card shadow-xl shadow-primary/10" aria-label="Example campaign (illustrative values)">
       <div className="flex items-center justify-between border-b bg-muted/40 px-5 py-3">
         <p className="text-xs font-semibold text-muted-foreground">Example campaign</p>
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-          <span className="size-1.5 rounded-full bg-emerald-500" aria-hidden /> Live
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-semibold text-success-strong">
+          <span className="size-1.5 rounded-full bg-success" aria-hidden /> Live
         </span>
       </div>
       <div className="space-y-3 p-5 sm:p-6">
@@ -132,7 +132,7 @@ function ExampleCampaignCard({ step }: { step: number }) {
         <div className={cn("rounded-2xl p-4 transition-colors", ring(2))}>
           <div className="flex items-center justify-between text-sm">
             <span className="font-medium">Order #48213 · ₹2,499</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Verified</span>
+            <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-semibold text-success-strong">Verified</span>
           </div>
           <div className="mt-2 flex items-center justify-between text-sm text-muted-foreground">
             <span>Commission recorded</span>

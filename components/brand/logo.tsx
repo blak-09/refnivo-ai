@@ -70,7 +70,7 @@ export function Logo({
           Refnivo
           <span
             aria-hidden
-            className="inline-flex items-center rounded-md bg-linear-to-br from-violet-600 via-indigo-600 to-blue-500 px-1.5 text-[0.5em] font-bold leading-[1.7] text-white"
+            className="inline-flex items-center rounded-md bg-linear-to-br from-brand-from via-primary to-brand-to px-1.5 text-[0.5em] font-bold leading-[1.7] text-white"
           >
             AI
           </span>

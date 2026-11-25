@@ -76,7 +76,7 @@ export function SocialAccountCard({ row }: { row: PlatformRow }) {
                   <CheckCircle2Icon className="size-3" aria-hidden /> Connected
                 </Badge>
               ) : account?.status === "NEEDS_RECONNECT" ? (
-                <Badge variant="outline" className="gap-1 text-amber-700">
+                <Badge variant="outline" className="gap-1 text-warning-strong">
                   <TriangleAlertIcon className="size-3" aria-hidden /> Reconnect needed
                 </Badge>
               ) : null}

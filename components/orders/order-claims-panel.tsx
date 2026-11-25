@@ -96,7 +96,7 @@ export function OrderClaimsPanel({ claims, showAll, pendingCount }: { claims: Br
                       </TableCell>
                       <TableCell className="text-xs">
                         {c.evidence === "LAST_CLICK" && c.clickedAt ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                          <span className="inline-flex items-center gap-1 text-success-strong">
                             <MousePointerClickIcon className="size-3.5" aria-hidden /> Clicked the link {relative(c.clickedAt, c.createdAt)} before claiming
                           </span>
                         ) : (

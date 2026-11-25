@@ -14,8 +14,8 @@ import { cn } from "@/lib/utils";
  */
 
 const CIRCLES = {
-  CREATOR: { ...CREATOR_CIRCLE, icon: SparklesIcon, accent: "from-violet-600 to-fuchsia-500", tint: "bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300" },
-  BRAND: { ...BRAND_CIRCLE, icon: Building2Icon, accent: "from-indigo-600 to-blue-500", tint: "bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300" },
+  CREATOR: { ...CREATOR_CIRCLE, icon: SparklesIcon, accent: "from-brand-from to-brand-to", tint: "bg-accent text-primary" },
+  BRAND: { ...BRAND_CIRCLE, icon: Building2Icon, accent: "from-primary to-brand-to", tint: "bg-brand-to/10 text-accent-foreground" },
 } as const;
 
 /** Primary join button (gradient, large tap target) that opens the WhatsApp invite. */
@@ -41,9 +41,9 @@ export function JoinButton({
       className={cn(
         "h-12 gap-2 rounded-xl px-5 text-base font-semibold sm:h-11",
         variant === "gradient" &&
-          "bg-linear-to-r from-violet-600 to-blue-500 text-white shadow-md shadow-indigo-500/25 transition-[box-shadow,transform] hover:shadow-lg hover:shadow-indigo-500/30 active:translate-y-px",
+          "bg-gradient-brand text-white shadow-md shadow-primary/25 transition-[box-shadow,transform] hover:shadow-lg hover:shadow-primary/30 active:translate-y-px",
         variant === "outline" && "border-border bg-background shadow-xs hover:bg-muted",
-        variant === "light" && "bg-white text-indigo-700 shadow-md hover:bg-indigo-50",
+        variant === "light" && "bg-white text-primary shadow-md hover:bg-accent",
         className,
       )}
     >
@@ -58,7 +58,7 @@ export function NetworkBadge({ className }: { className?: string }) {
   return (
     <p
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border border-indigo-100 bg-white/80 px-3 py-1 text-xs font-semibold tracking-wider text-indigo-700 uppercase shadow-xs dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200",
+        "inline-flex items-center gap-1.5 rounded-full border border-primary/15 bg-white/80 px-3 py-1 text-xs font-semibold tracking-wider text-primary uppercase shadow-xs",
         className,
       )}
     >
@@ -98,11 +98,11 @@ export function CircleCard({ audience, placement, headingLevel = "h3" }: { audie
     <article
       id={c.id}
       aria-labelledby={`${c.id}-title`}
-      className="group relative flex scroll-mt-24 flex-col overflow-hidden rounded-3xl border bg-card/80 p-6 shadow-sm backdrop-blur-sm transition-[box-shadow,border-color] hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-500/10 sm:p-8 dark:hover:border-indigo-800"
+      className="group relative flex scroll-mt-24 flex-col overflow-hidden rounded-3xl border bg-card/80 p-6 shadow-sm backdrop-blur-sm transition-[box-shadow,border-color] hover:border-primary/25 hover:shadow-lg hover:shadow-primary/10 sm:p-8"
     >
       <div aria-hidden className={cn("absolute inset-x-0 top-0 h-1 bg-linear-to-r", c.accent)} />
       <div className="flex items-center gap-3">
-        <span className={cn("flex size-11 items-center justify-center rounded-2xl bg-linear-to-br text-white shadow-md shadow-indigo-500/20", c.accent)}>
+        <span className={cn("flex size-11 items-center justify-center rounded-2xl bg-linear-to-br text-white shadow-md shadow-primary/20", c.accent)}>
           <c.icon className="size-5" aria-hidden />
         </span>
         <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-semibold", c.tint)}>{c.eyebrow}</span>
@@ -114,7 +114,7 @@ export function CircleCard({ audience, placement, headingLevel = "h3" }: { audie
       <ul className="mt-6 flex-1 space-y-3" aria-label={`What ${c.title} members get`}>
         {c.benefits.map((b) => (
           <li key={b} className="flex items-start gap-2.5 text-sm font-medium">
-            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-success/15 text-success-strong">
               <CheckIcon className="size-3" aria-hidden />
             </span>
             {b}
@@ -144,7 +144,7 @@ export function CircleCallout({ audience, placement, className }: { audience: "C
       <CommunityJoinLink
         audience={audience}
         placement={placement}
-        className="group/callout inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-lg px-1 text-sm font-semibold text-indigo-600 hover:text-indigo-700 sm:self-auto dark:text-indigo-400"
+        className="group/callout inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-lg px-1 text-sm font-semibold text-primary hover:text-primary/80 sm:self-auto"
       >
         <WhatsAppIcon className="size-4" />
         {c.callout.label}
@@ -180,8 +180,8 @@ export function CommunityHomeBand() {
   return (
     <section id="community" aria-labelledby="community-heading" className="scroll-mt-20 pb-16">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        <div className="relative overflow-hidden rounded-3xl border bg-linear-to-br from-violet-50 via-background to-sky-50 p-6 sm:p-10 lg:p-12 dark:from-violet-950/30 dark:via-background dark:to-sky-950/20">
-          <NetworkPattern className="absolute -right-10 -bottom-10 hidden w-[28rem] text-indigo-500 sm:block" />
+        <div className="relative overflow-hidden rounded-3xl border bg-linear-to-br from-accent via-background to-brand-to/5 p-6 sm:p-10 lg:p-12 dark:via-background">
+          <NetworkPattern className="absolute -right-10 -bottom-10 hidden w-[28rem] text-primary sm:block" />
           <div className="relative grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
             <div>
               <NetworkBadge />
@@ -213,7 +213,7 @@ export function CommunityHomeBand() {
                   <li key={a}>
                     <Link
                       href={`/community#${c.id}`}
-                      className="group flex items-center gap-3 rounded-2xl border bg-card/80 p-4 shadow-xs backdrop-blur-sm transition-[box-shadow,border-color] hover:border-indigo-200 hover:shadow-md dark:hover:border-indigo-800"
+                      className="group flex items-center gap-3 rounded-2xl border bg-card/80 p-4 shadow-xs backdrop-blur-sm transition-[box-shadow,border-color] hover:border-primary/25 hover:shadow-md"
                     >
                       <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl bg-linear-to-br text-white", c.accent)}>
                         <c.icon className="size-5" aria-hidden />

@@ -153,7 +153,7 @@ export function SubmissionList({ submissions }: { submissions: Submission[] }) {
             </div>
           ) : null}
           {s.decision ? (
-            <p className={cn("mt-3 rounded-lg px-3 py-2 text-sm", s.decision === "APPROVED" ? "bg-success/10 text-success" : "bg-warning/15 text-amber-900 dark:text-amber-100")}>
+            <p className={cn("mt-3 rounded-lg px-3 py-2 text-sm", s.decision === "APPROVED" ? "bg-success/10 text-success" : "bg-warning/15 text-warning-strong")}>
               <span className="font-medium">{s.decision === "APPROVED" ? "Approved" : "Changes requested"}</span>
               {s.feedback ? <span className="mt-0.5 block whitespace-pre-line">{s.feedback}</span> : null}
             </p>

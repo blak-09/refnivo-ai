@@ -22,9 +22,9 @@ export const metadata: Metadata = { title: "Payment" };
 function present(status: PaymentStatus) {
   switch (status) {
     case "PAID":
-      return { icon: CheckCircle2Icon, tone: "text-emerald-600", title: "Payment successful", body: "Your payment has been successfully confirmed." };
+      return { icon: CheckCircle2Icon, tone: "text-success", title: "Payment successful", body: "Your payment has been successfully confirmed." };
     case "PARTIALLY_REFUNDED":
-      return { icon: CheckCircle2Icon, tone: "text-emerald-600", title: "Payment successful", body: "Part of this payment has since been refunded." };
+      return { icon: CheckCircle2Icon, tone: "text-success", title: "Payment successful", body: "Part of this payment has since been refunded." };
     case "REFUNDED":
       return { icon: AlertCircleIcon, tone: "text-muted-foreground", title: "Payment refunded", body: "This payment was refunded in full." };
     case "FAILED":

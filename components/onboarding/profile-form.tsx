@@ -81,7 +81,7 @@ export function ProfileForm({
     ) : role === "CREATOR" ? (
       <CreatorFields values={values} errors={errors} uploadsEnabled={uploadsEnabled} mode={mode} photoRequired={photoRequired} />
     ) : (
-      <CustomerFields values={values} errors={errors} uploadsEnabled={uploadsEnabled} email={email} />
+      <CustomerFields values={values} errors={errors} uploadsEnabled={uploadsEnabled} email={email} mode={mode} />
     );
 
   return (
@@ -103,7 +103,7 @@ export function ProfileForm({
             <span className="order-first w-full text-xs text-muted-foreground empty:hidden sm:order-none sm:w-auto sm:flex-1" aria-live="polite">
               {lastSaved ? (
                 <>
-                  <CheckIcon className="mr-1 inline size-3.5 text-emerald-600" aria-hidden />
+                  <CheckIcon className="mr-1 inline size-3.5 text-success" aria-hidden />
                   Progress saved at {timeOf(lastSaved)}
                 </>
               ) : null}

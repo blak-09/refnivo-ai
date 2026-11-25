@@ -13,11 +13,13 @@ export type NavLink = { href: string; label: string };
 export function MobileNav({
   links,
   resources = [],
+  resourcesLabel = "Resources",
   signedIn,
   dashboardHref,
 }: {
   links: NavLink[];
   resources?: NavLink[];
+  resourcesLabel?: string;
   signedIn: boolean;
   dashboardHref: string;
 }) {
@@ -47,7 +49,7 @@ export function MobileNav({
             ))}
             {resources.length ? (
               <>
-                <p className="mt-3 px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">Resources</p>
+                <p className="mt-3 px-3 pb-1 text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">{resourcesLabel}</p>
                 {resources.map((l) => (
                   <Link
                     key={l.href}

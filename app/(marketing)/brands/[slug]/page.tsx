@@ -36,7 +36,7 @@ type BrandCampaign = NonNullable<Awaited<ReturnType<typeof getPublicBrand>>>["ca
 
 function CampaignRow({ c }: { c: BrandCampaign }) {
   return (
-    <Card size="sm" className="border-indigo-100 dark:border-indigo-900/50">
+    <Card size="sm" className="border-primary/15">
       <CardContent className="flex gap-3">
         <ProductThumb src={c.product.imageUrl} name={c.product.name} className="size-16" />
         <div className="min-w-0 flex-1">

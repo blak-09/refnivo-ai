@@ -48,7 +48,7 @@ function Section({ id, index, title, children }: { id: string; index: number; ti
   return (
     <section id={id} className="scroll-mt-24 border-t pt-8 first:border-t-0 first:pt-0">
       <h2 className="flex items-baseline gap-3 text-lg font-semibold tracking-tight sm:text-xl">
-        <span className="text-sm font-bold text-indigo-500 tabular-nums">{String(index).padStart(2, "0")}</span>
+        <span className="text-sm font-bold text-primary tabular-nums">{String(index).padStart(2, "0")}</span>
         {title}
       </h2>
       <div className="mt-3 space-y-3 text-[15px] leading-7 text-muted-foreground [&_a]:font-medium [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline [&_li]:pl-1 [&_strong]:font-medium [&_strong]:text-foreground [&_ul]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5">
@@ -64,7 +64,7 @@ export default function RefundPolicyPage() {
 
   return (
     <>
-      <section className="border-b bg-linear-to-b from-violet-50/70 to-background py-12 sm:py-16">
+      <section className="border-b bg-linear-to-b from-accent/70 to-background py-12 sm:py-16">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
             <ol className="flex items-center gap-1.5">
@@ -80,7 +80,7 @@ export default function RefundPolicyPage() {
             </ol>
           </nav>
           <div className="mt-4 flex flex-col items-start gap-3 sm:flex-row">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 sm:mt-1">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent text-primary sm:mt-1">
               <ReceiptIcon className="size-5" aria-hidden />
             </span>
             <div>

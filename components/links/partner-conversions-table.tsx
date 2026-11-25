@@ -25,7 +25,7 @@ export async function PartnerConversionsTable({ userId, kind }: { userId: string
   ].filter(Boolean);
   const waitingNote = parts.length ? (
     <p className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
-      <ClockIcon className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
+      <ClockIcon className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
       <span>Waiting for brands: {parts.join(" and ")}. Brands are reminded after 3 and 7 days.</span>
     </p>
   ) : null;

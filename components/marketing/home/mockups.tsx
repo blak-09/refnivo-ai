@@ -16,7 +16,7 @@ const REELS = ["reel-earbud-wear", "reel-unboxing", "reel-outdoor", "reel-hand-c
 
 function Window({ title, children, className }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("overflow-hidden rounded-2xl border bg-card shadow-xl shadow-indigo-500/10", className)}>
+    <div className={cn("overflow-hidden rounded-2xl border bg-card shadow-xl shadow-primary/10", className)}>
       <div className="flex items-center gap-2 border-b bg-muted/40 px-4 py-2.5">
         <span className="flex gap-1.5" aria-hidden>
           <span className="size-2.5 rounded-full bg-rose-300" />
@@ -38,8 +38,8 @@ const LEDGER = [
 ] as const;
 
 const STATUS_STYLE: Record<string, string> = {
-  Approved: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
-  Pending: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  Approved: "bg-success/10 text-success-strong",
+  Pending: "bg-warning/10 text-warning-strong",
   Paid: "bg-accent text-accent-foreground",
 };
 
@@ -113,8 +113,8 @@ export function BrandMockup() {
 /** For creators & customers: earnings by status plus a joined campaign. */
 export function CreatorMockup() {
   const buckets = [
-    { icon: ClockIcon, label: "Pending", value: "₹4,180", tone: "text-amber-600" },
-    { icon: CheckIcon, label: "Approved", value: "₹12,640", tone: "text-emerald-600" },
+    { icon: ClockIcon, label: "Pending", value: "₹4,180", tone: "text-warning" },
+    { icon: CheckIcon, label: "Approved", value: "₹12,640", tone: "text-success" },
     { icon: CircleDollarSignIcon, label: "Paid", value: "₹38,900", tone: "text-primary" },
   ];
   return (
@@ -152,7 +152,7 @@ export function UgcMockup() {
             <p className="font-semibold tracking-tight">Unboxing reel · wireless earbuds</p>
             <p className="mt-0.5 text-xs text-muted-foreground">1 vertical video (30–45 s) + 3 photos</p>
           </div>
-          <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Open</span>
+          <span className="shrink-0 rounded-full bg-success/10 px-2.5 py-1 text-[11px] font-semibold text-success-strong">Open</span>
         </div>
         <dl className="grid grid-cols-3 gap-2 text-sm">
           {[

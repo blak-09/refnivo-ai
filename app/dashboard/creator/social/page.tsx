@@ -37,7 +37,7 @@ export default async function SocialAccountsPage({ searchParams }: { searchParam
       />
 
       {sp.connected ? (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
+        <Card className="border-success/30 bg-success/5">
           <CardContent className="py-2 text-sm">
             <p className="font-medium">Connected — your profile now shows this account.</p>
           </CardContent>

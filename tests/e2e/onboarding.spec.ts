@@ -26,6 +26,8 @@ test("role can change mid-signup; progress survives a reload; the profile can be
 
   // Save progress → reload → still there; nothing public written yet.
   await page.getByLabel(/^Username/).fill(actor.username);
+  // Optional fields sit in a collapsed "More details" group during onboarding.
+  await page.getByText("More details (optional)").click();
   await page.getByLabel(/^City/).fill("Jaipur");
   await page.getByRole("checkbox", { name: "Product reviews" }).check({ force: true });
   await page.getByRole("button", { name: /Save/ }).first().click();

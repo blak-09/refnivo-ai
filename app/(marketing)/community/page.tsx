@@ -23,9 +23,9 @@ export default function CommunityPage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b bg-linear-to-b from-violet-50/70 via-background to-background dark:from-violet-950/20">
+      <section className="relative overflow-hidden border-b bg-linear-to-b from-accent/70 via-background to-background">
         <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 h-[28rem] w-[60rem] max-w-[200vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgba(124,58,237,0.12),transparent)]" />
-        <NetworkPattern className="absolute top-6 right-0 hidden w-[30rem] text-indigo-500 lg:block" />
+        <NetworkPattern className="absolute top-6 right-0 hidden w-[30rem] text-primary lg:block" />
         <div className="relative mx-auto max-w-6xl px-4 py-14 sm:px-6 sm:py-20">
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
             <ol className="flex items-center gap-1.5">
@@ -44,7 +44,7 @@ export default function CommunityPage() {
             <NetworkBadge />
             <h1 className="mt-5 text-4xl leading-[1.1] font-bold tracking-tight text-balance sm:text-5xl">
               Welcome to the{" "}
-              <span className="bg-linear-to-r from-violet-600 to-blue-500 bg-clip-text text-transparent">Refnivo Network</span>
+              <span className="text-gradient-brand">Refnivo Network</span>
             </h1>
             <p className="mt-5 text-lg font-medium text-foreground/90 sm:text-xl">
               Where creators and brands connect, collaborate, discover opportunities and grow together.
@@ -61,7 +61,7 @@ export default function CommunityPage() {
       <section aria-labelledby="circles-heading" className="py-16 sm:py-20">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
           <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">Two circles, one network</p>
+            <p className="text-sm font-semibold text-primary">Two circles, one network</p>
             <h2 id="circles-heading" className="mt-1 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
               Build connections. Discover opportunities. Grow together.
             </h2>
@@ -77,7 +77,7 @@ export default function CommunityPage() {
           <ol className="mx-auto mt-12 grid max-w-5xl gap-3 sm:grid-cols-3" aria-label="How joining works">
             {STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-3 rounded-2xl border bg-muted/30 p-4">
-                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white tabular-nums">{i + 1}</span>
+                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white tabular-nums">{i + 1}</span>
                 <span>
                   <span className="block text-sm font-semibold">{s.title}</span>
                   <span className="block text-sm text-muted-foreground">{s.body}</span>

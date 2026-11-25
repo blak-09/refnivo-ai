@@ -49,17 +49,17 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-10 sm:px-6">
       {/* Header */}
-      <Card className="rounded-2xl border-indigo-100/80 shadow-sm">
+      <Card className="rounded-2xl border-primary/15 shadow-sm">
         <CardContent className="flex flex-col gap-6 md:flex-row md:items-start">
           <ProductThumb
             src={creator.profileImageUrl}
             name={creator.displayName}
-            className="size-28 shrink-0 rounded-full border-0 bg-linear-to-br from-violet-100 to-blue-100 ring-4 ring-indigo-50"
+            className="size-28 shrink-0 rounded-full border-0 bg-linear-to-br from-accent to-brand-to/10 ring-4 ring-primary/10"
           />
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">{creator.displayName}</h1>
-              {verified ? <BadgeCheckIcon className="size-5 fill-indigo-600 text-white" aria-label="Verified creator" /> : null}
+              {verified ? <BadgeCheckIcon className="size-5 fill-primary text-white" aria-label="Verified creator" /> : null}
             </div>
             <p className="text-sm text-muted-foreground">@{creator.username}</p>
             <div className="pt-1">
@@ -77,7 +77,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
               <Button
                 nativeButton={false}
                 render={<a href={primarySocial.url} target="_blank" rel="noreferrer" />}
-                className="bg-linear-to-r from-violet-600 to-blue-500 text-white shadow-md shadow-indigo-500/25 hover:shadow-lg"
+                className="bg-gradient-brand text-white shadow-md shadow-primary/25 hover:shadow-lg"
               >
                 <MessageCircleIcon /> Message on {primarySocial.label.split(" ")[0]}
               </Button>
@@ -103,7 +103,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
 
       {/* About + content samples */}
       <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
-        <Card className="rounded-2xl border-indigo-100/80 shadow-sm">
+        <Card className="rounded-2xl border-primary/15 shadow-sm">
           <CardHeader>
             <CardTitle>About</CardTitle>
           </CardHeader>
@@ -112,7 +112,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
             {verifiedAccounts.length ? (
               <div className="space-y-2">
                 <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                  <BadgeCheckIcon className="size-4 text-indigo-600" aria-hidden /> Connected accounts
+                  <BadgeCheckIcon className="size-4 text-primary" aria-hidden /> Connected accounts
                 </p>
                 <ul className="grid gap-2 sm:grid-cols-2">
                   {verifiedAccounts.map((a) => (
@@ -144,11 +144,11 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
           </CardContent>
         </Card>
 
-        <Card className="rounded-2xl border-indigo-100/80 shadow-sm">
+        <Card className="rounded-2xl border-primary/15 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Content Samples</CardTitle>
             {primarySocial && samples.length ? (
-              <a href={primarySocial.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-indigo-600 hover:underline">
+              <a href={primarySocial.url} target="_blank" rel="noreferrer" className="text-xs font-semibold text-primary hover:underline">
                 View More
               </a>
             ) : null}
@@ -160,7 +160,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
       </div>
 
       {/* Previous campaigns */}
-      <Card className="rounded-2xl border-indigo-100/80 shadow-sm">
+      <Card className="rounded-2xl border-primary/15 shadow-sm">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Previous Campaigns</CardTitle>
           <p className="text-xs text-muted-foreground">
@@ -183,7 +183,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                       <span>· joined {formatDate(a.createdAt)}</span>
                     </p>
                   </div>
-                  <Link href={`/campaigns/${a.campaign.slug}`} className="shrink-0 text-xs font-semibold text-indigo-600 hover:underline">
+                  <Link href={`/campaigns/${a.campaign.slug}`} className="shrink-0 text-xs font-semibold text-primary hover:underline">
                     View Details
                   </Link>
                 </li>

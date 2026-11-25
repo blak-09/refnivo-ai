@@ -1,31 +1,25 @@
 import Link from "next/link";
-import { ChevronDownIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeaderLogo } from "@/components/brand/logo";
 import { MobileNav, type NavLink } from "@/components/marketing/mobile-nav";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { roleHome } from "@/lib/auth/roles";
 
-/** The three products (docs/POSITIONING.md), shown as a dropdown on desktop. */
-const products: (NavLink & { hint: string })[] = [
-  { href: "/#affiliate", label: "Affiliate & referrals", hint: "Pay per verified sale" },
-  { href: "/#ugc", label: "UGC collaborations", hint: "Fixed-fee content from creators" },
-  { href: "/#partners", label: "Creator partnerships", hint: "Every creator and their results" },
-];
-
+/** Four destinations only (docs/REDESIGN_PLAN.md U1); everything else is in the footer and the mobile menu. */
 const links: NavLink[] = [
   { href: "/#brands", label: "For Brands" },
   { href: "/#creators", label: "For Creators" },
+  { href: "/campaigns", label: "Explore Campaigns" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/community", label: "Community" },
 ];
 
-/** Everything else stays one click away under Resources. */
-const resources: NavLink[] = [
-  { href: "/campaigns", label: "Explore Campaigns" },
-  { href: "/how-it-works", label: "How It Works" },
-  { href: "/brands", label: "Brand Directory" },
-  { href: "/creators", label: "Creator Directory" },
+/** Secondary pages, listed under "More" in the mobile menu. */
+const more: NavLink[] = [
+  { href: "/how-it-works", label: "How it works" },
+  { href: "/products", label: "Discover products" },
+  { href: "/brands", label: "Brand directory" },
+  { href: "/creators", label: "Creator directory" },
+  { href: "/community", label: "Community" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -41,45 +35,11 @@ export async function SiteHeader() {
         <HeaderLogo />
 
         <nav className="mx-auto hidden items-center gap-0.5 lg:flex" aria-label="Main">
-          <div className="group relative">
-            <button type="button" className={`${linkClass} inline-flex items-center gap-1`} aria-haspopup="true">
-              Products <ChevronDownIcon className="size-3.5 transition-transform group-focus-within:rotate-180 group-hover:rotate-180" aria-hidden />
-            </button>
-            <div className="invisible absolute top-full left-0 z-50 w-72 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-              <ul className="rounded-xl border bg-popover p-1.5 shadow-lg">
-                {products.map((p) => (
-                  <li key={p.href}>
-                    <Link href={p.href} className="block rounded-lg px-3 py-2 hover:bg-accent">
-                      <span className="block text-sm font-medium text-foreground">{p.label}</span>
-                      <span className="block text-xs text-muted-foreground">{p.hint}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
           {links.map((l) => (
             <Link key={l.href} href={l.href} className={linkClass}>
               {l.label}
             </Link>
           ))}
-          {/* CSS-only dropdown: opens on hover and on keyboard focus, no client JS. */}
-          <div className="group relative">
-            <button type="button" className={`${linkClass} inline-flex items-center gap-1`} aria-haspopup="true">
-              Resources <ChevronDownIcon className="size-3.5 transition-transform group-focus-within:rotate-180 group-hover:rotate-180" aria-hidden />
-            </button>
-            <div className="invisible absolute top-full left-1/2 z-50 w-56 -translate-x-1/2 pt-2 opacity-0 transition-opacity group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-              <ul className="rounded-xl border bg-popover p-1.5 shadow-lg">
-                {resources.map((r) => (
-                  <li key={r.href}>
-                    <Link href={r.href} className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-accent">
-                      {r.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2 whitespace-nowrap lg:ml-0">
@@ -92,12 +52,12 @@ export async function SiteHeader() {
               <Button variant="ghost" className="hidden rounded-lg sm:inline-flex" nativeButton={false} render={<Link href="/auth/login" />}>
                 Log in
               </Button>
-              <Button size="sm" className="bg-gradient-brand rounded-lg font-semibold text-white shadow-sm shadow-indigo-500/25 hover:opacity-95 sm:h-9 sm:px-4" nativeButton={false} render={<Link href="/get-started" />}>
+              <Button size="sm" className="bg-gradient-brand rounded-lg font-semibold text-white shadow-sm shadow-primary/25 hover:opacity-95 sm:h-9 sm:px-4" nativeButton={false} render={<Link href="/get-started" />}>
                 Get Started
               </Button>
             </>
           )}
-          <MobileNav links={[...products.map(({ href, label }) => ({ href, label })), ...links]} resources={resources} signedIn={!!user} dashboardHref={dashboardHref} />
+          <MobileNav links={links} resources={more} resourcesLabel="More" signedIn={!!user} dashboardHref={dashboardHref} />
         </div>
       </div>
     </header>
