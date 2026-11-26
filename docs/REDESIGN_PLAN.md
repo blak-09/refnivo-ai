@@ -1,6 +1,6 @@
 # Refnivo — UI/UX redesign audit & phased plan (25 Nov 2026)
 
-Status: plan approved 25 Nov 2026.
+Status: plan approved 25 Nov 2026; all 7 phases done 26 Nov 2026.
 
 - **Phase 1 (design system): done, pushed 25 Nov 2026.**
   - 326 raw colour classes moved to tokens; the 16 left are homepage illustrations (Phase 2) and social-platform brand colours.
@@ -94,6 +94,9 @@ Status: plan approved 25 Nov 2026.
     - The e2e server runs with `CAMPAIGN_REVIEW=off`, so the golden path publishes straight to live. First-campaign review stays covered by integration tests.
     - The golden-path campaign uses a 0-day refund window, so the payout steps can run the same day.
   - **Known:** after a client-side page change, the first Tab goes to the page's header, not the skip link (Next.js keeps the focus start point). The skip link works on every full page load.
+- **Phase 7 (testing & report): done 26 Nov 2026.**
+  - The final report, with test results, screenshots and open issues, is in [`REDESIGN_REPORT.md`](REDESIGN_REPORT.md).
+  - Screenshots are in `docs/redesign/screenshots/`.
 
 Scope inspected:
 
