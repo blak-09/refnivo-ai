@@ -25,7 +25,7 @@ export default async function OnboardingLayout({ children }: { children: React.R
           </p>
         )}
       </header>
-      <main className="flex flex-1 justify-center px-4 pt-4 pb-16 sm:px-6 sm:pt-8">{children}</main>
+      <main id="main-content" tabIndex={-1} className="focus:outline-none flex flex-1 justify-center px-4 pt-4 pb-16 sm:px-6 sm:pt-8">{children}</main>
     </div>
   );
 }

@@ -29,7 +29,7 @@ export function PayoutHistory({ rows }: { rows: PayoutHistoryRow[] }) {
   if (!rows.length) return <p className="text-sm text-muted-foreground">No requests yet.</p>;
   return (
     <div className="overflow-x-auto">
-      <Table>
+      <Table stackOnMobile>
         <TableHeader>
           <TableRow>
             <TableHead>Requested</TableHead>

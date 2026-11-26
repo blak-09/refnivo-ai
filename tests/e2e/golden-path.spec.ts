@@ -55,7 +55,9 @@ test("brand: signup → onboarding → product → published campaign", async ({
   await page.getByLabel(/^Commission \(₹ per order\)/).fill("600");
   await page.getByLabel(/^Reward value \(₹\)|^Reward \(% of order\)/).fill("50");
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Continue" }).click(); // rules, budget & duration: defaults (starts today)
+  // Rules, budget & duration: defaults (starts today), except no refund hold so the payout steps below can run today.
+  await page.getByLabel(/^Refund window before payout/).fill("0");
+  await page.getByRole("button", { name: "Continue" }).click();
   // Step 4: review & launch.
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Launch Campaign" }).click();

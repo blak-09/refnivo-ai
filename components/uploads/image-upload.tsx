@@ -19,6 +19,8 @@ type Status = "idle" | "uploading" | "success" | "error";
  * (legacy URL or a previously uploaded path) — it stays until replaced/removed.
  */
 export function ImageUpload({
+  id,
+  invalid = false,
   name,
   initialUrl,
   endpoint = "/api/uploads/product-image",
@@ -28,6 +30,10 @@ export function ImageUpload({
   disabled = false,
   disabledText = "Image uploads are not enabled on this deployment yet. Save without an image and add one later.",
 }: {
+  /** Id for the upload button, so a surrounding `<Field htmlFor={id}>` label and its error (`${id}-error`) belong to it. */
+  id?: string;
+  /** The form reported an error for this field: links the error to the upload button and marks it `data-invalid` so focus-on-error can land on it. */
+  invalid?: boolean;
   name: string;
   initialUrl?: string | null;
   endpoint?: string;
@@ -43,7 +49,9 @@ export function ImageUpload({
   const [message, setMessage] = React.useState<string>("");
   const [dragging, setDragging] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const fieldId = React.useId();
+  const autoId = React.useId();
+  const fieldId = id ?? autoId;
+  const describedBy = invalid ? `${fieldId}-help ${fieldId}-error` : `${fieldId}-help`;
 
   function clientValidate(file: File): string | null {
     if (!ALLOWED.includes(file.type)) return "Unsupported file type. Upload a JPG, PNG or WebP image.";
@@ -92,23 +100,26 @@ export function ImageUpload({
   }
 
   return (
-    <div className="space-y-2">
+    // `data-uploading` lets a form hold its submit until the upload finishes.
+    <div className="space-y-2" data-uploading={status === "uploading" ? "true" : undefined}>
       {/* Value consumed by the enclosing <form> server action. */}
       <input type="hidden" name={name} value={url} />
       <input
         ref={inputRef}
-        id={fieldId}
+        id={`${fieldId}-file`}
         type="file"
         accept={ACCEPT}
         className="sr-only"
         aria-label={label}
+        // The visible "Upload" buttons open this input, so it stays out of the Tab order.
+        tabIndex={-1}
         onChange={(e) => onFiles(e.target.files)}
       />
 
       {url ? (
         <div className="space-y-2">
           <div className={cn("relative overflow-hidden rounded-xl border bg-muted", aspect)}>
-            <img src={url} alt="Selected product image" className="size-full object-contain" />
+            <img src={url} alt="Selected image" className="size-full object-contain" />
             {status === "uploading" ? (
               <div className="absolute inset-0 grid place-items-center bg-background/60">
                 <Loader2Icon className="size-6 animate-spin text-primary" />
@@ -116,7 +127,17 @@ export function ImageUpload({
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={status === "uploading"}>
+            <Button
+              id={fieldId}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => inputRef.current?.click()}
+              disabled={status === "uploading"}
+              aria-label="Replace image"
+              data-invalid={invalid ? "true" : undefined}
+              aria-describedby={describedBy}
+            >
               <UploadCloudIcon /> Replace image
             </Button>
             <Button type="button" variant="ghost" size="sm" onClick={remove} disabled={status === "uploading"}>
@@ -138,7 +159,11 @@ export function ImageUpload({
         </div>
       ) : (
         <button
+          id={fieldId}
           type="button"
+          // Named by its own visible text ("Upload photo"), not by the field label it is linked to.
+          aria-labelledby={`${fieldId}-action`}
+          data-invalid={invalid ? "true" : undefined}
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
@@ -153,9 +178,9 @@ export function ImageUpload({
           className={cn(
             "flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-10 text-center transition-colors",
             "hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
-            dragging ? "border-primary bg-primary/5" : "border-input",
+            dragging ? "border-primary bg-primary/5" : invalid ? "border-destructive" : "border-input",
           )}
-          aria-describedby={`${fieldId}-help`}
+          aria-describedby={describedBy}
         >
           {status === "uploading" ? (
             <Loader2Icon className="size-6 animate-spin text-primary" aria-hidden />
@@ -164,7 +189,9 @@ export function ImageUpload({
               <ImageIcon className="size-5" aria-hidden />
             </span>
           )}
-          <span className="text-sm font-medium">{status === "uploading" ? "Uploading…" : label}</span>
+          <span id={`${fieldId}-action`} className="text-sm font-medium">
+            {status === "uploading" ? "Uploading…" : label}
+          </span>
           <span className="text-xs text-muted-foreground">Drag &amp; drop, or click to browse</span>
         </button>
       )}
@@ -177,11 +204,15 @@ export function ImageUpload({
           <AlertCircleIcon className="size-3.5" /> {message}
         </p>
       ) : null}
-      {status === "success" && message ? (
-        <p className="flex items-center gap-1.5 text-xs text-primary">
-          <CheckCircle2Icon className="size-3.5" /> {message}
-        </p>
-      ) : null}
+      {/* Announces upload progress and success to screen readers. */}
+      <div role="status" aria-live="polite">
+        {status === "uploading" ? <span className="sr-only">Uploading image…</span> : null}
+        {status === "success" && message ? (
+          <p className="flex items-center gap-1.5 text-xs text-primary">
+            <CheckCircle2Icon className="size-3.5" aria-hidden /> {message}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

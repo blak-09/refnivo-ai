@@ -44,7 +44,7 @@ export default async function CreatorUgcPage({ searchParams }: { searchParams: P
           >
             {t.label}
             <span className="ml-1.5 text-xs opacity-70">{t.value === "open" ? open.length : mine.length}</span>
-            {t.value === "mine" && needsAction ? <span className="ml-1.5 inline-block size-2 rounded-full bg-primary align-middle" aria-label={`${needsAction} need your action`} /> : null}
+            {t.value === "mine" && needsAction ? <span className="ml-1.5 inline-block size-2 rounded-full bg-primary align-middle" role="img" aria-label={`${needsAction} need your action`} /> : null}
           </Link>
         ))}
       </div>

@@ -60,7 +60,7 @@ export default async function PartnersPage({ searchParams }: { searchParams: Pro
               <p className="py-6 text-center text-sm text-muted-foreground">No partner matches “{query}”.</p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table stackOnMobile>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Creator</TableHead>

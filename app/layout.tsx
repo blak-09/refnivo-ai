@@ -18,6 +18,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
+        <a
+          href="#main-content"
+          className="sr-only rounded-lg bg-background px-4 py-2 text-sm font-medium text-foreground shadow-lg focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100]"
+        >
+          Skip to main content
+        </a>
         {isMisconfigured() ? <MisconfiguredPage /> : children}
         <Toaster position="top-right" richColors closeButton />
       </body>

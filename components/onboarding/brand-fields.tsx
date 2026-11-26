@@ -48,7 +48,7 @@ export function BrandFields({ values, errors, uploadsEnabled, mode }: { values: 
             </NativeSelect>
           </Field>
           <Field label={opt("Brand logo")} htmlFor="logoUrl" error={errors.logoUrl} hint="Square works best. Shown on campaigns and referral pages.">
-            <ImageUpload name="logoUrl" endpoint="/api/uploads/brand-logo" initialUrl={v("logoUrl") || undefined} label="Upload logo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
+            <ImageUpload id="logoUrl" invalid={!!errors.logoUrl} name="logoUrl" endpoint="/api/uploads/brand-logo" initialUrl={v("logoUrl") || undefined} label="Upload logo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
           </Field>
           <Field label={opt("Website")} htmlFor="website" error={errors.website} hint="Where shoppers buy your products.">
             <Input id="website" name="website" type="url" inputMode="url" defaultValue={v("website")} placeholder="https://yourbrand.com" aria-invalid={!!errors.website} />
@@ -106,7 +106,7 @@ export function BrandFields({ values, errors, uploadsEnabled, mode }: { values: 
 
         <FormSection title="Cover & collaboration">
           <Field label={opt("Cover image")} htmlFor="coverImageUrl" error={errors.coverImageUrl} hint="A wide banner for your public brand page.">
-            <ImageUpload name="coverImageUrl" endpoint="/api/uploads/brand-cover" initialUrl={v("coverImageUrl") || undefined} label="Upload cover" disabled={!uploadsEnabled} />
+            <ImageUpload id="coverImageUrl" invalid={!!errors.coverImageUrl} name="coverImageUrl" endpoint="/api/uploads/brand-cover" initialUrl={v("coverImageUrl") || undefined} label="Upload cover" disabled={!uploadsEnabled} />
           </Field>
           <ChoiceChips name="collaborationTypes" legend={opt("Preferred collaboration types")} options={BRAND_COLLABORATION_OPTIONS} defaultValue={arr(values, "collaborationTypes")} error={errors.collaborationTypes} />
         </FormSection>

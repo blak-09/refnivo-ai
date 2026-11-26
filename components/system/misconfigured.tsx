@@ -5,7 +5,7 @@
  */
 export function MisconfiguredPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-6">
+    <main id="main-content" tabIndex={-1} className="focus:outline-none flex min-h-screen items-center justify-center px-6">
       <div className="max-w-md space-y-3 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">Refnivo AI is being configured</h1>
         <p className="text-sm text-muted-foreground">

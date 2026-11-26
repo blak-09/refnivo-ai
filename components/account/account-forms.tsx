@@ -32,7 +32,7 @@ export function AccountDetailsForm({ user, uploadsEnabled = true }: { user: { na
         <Input id="phone" name="phone" type="tel" defaultValue={values.phone ?? user.phone ?? ""} placeholder="+91 98765 43210" aria-invalid={!!errors.phone} />
       </Field>
       <Field label="Profile photo" htmlFor="avatarUrl" error={errors.avatarUrl} hint="Optional. Shown in your dashboard header.">
-        <ImageUpload name="avatarUrl" endpoint="/api/uploads/avatar" initialUrl={values.avatarUrl ?? user.avatarUrl ?? undefined} label="Upload photo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
+        <ImageUpload id="avatarUrl" invalid={!!errors.avatarUrl} name="avatarUrl" endpoint="/api/uploads/avatar" initialUrl={values.avatarUrl ?? user.avatarUrl ?? undefined} label="Upload photo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
       </Field>
       <div className="flex justify-end">
         <SubmitButton>Save details</SubmitButton>

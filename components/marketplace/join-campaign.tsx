@@ -72,7 +72,12 @@ export function JoinCampaignPanel({
     return (
       <div className="space-y-2">
         <Button className="w-full" nativeButton={false} render={<Link href={`/auth/login?callbackUrl=${returnTo}`} />}>
-          <LinkIcon /> Join campaign &amp; get your link
+          <LinkIcon />{" "}
+          {!requiresApproval || campaignType === "CUSTOMER_REFERRAL"
+            ? "Join campaign & get your link"
+            : campaignType === "CREATOR_AFFILIATE"
+              ? "Log in to apply"
+              : "Log in to join or apply"}
         </Button>
         <p className="text-center text-xs text-muted-foreground">
           New here?{" "}

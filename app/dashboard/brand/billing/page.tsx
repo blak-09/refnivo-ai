@@ -194,7 +194,7 @@ export default async function BillingPage() {
             <EmptyState icon={ReceiptIcon} title="No payments yet" description="Payments you make appear here with a receipt reference you can quote to support." />
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table stackOnMobile>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>

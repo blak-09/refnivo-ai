@@ -43,7 +43,7 @@ export default async function PayoutsPage() {
               <EmptyState icon={WalletIcon} title="No commissions yet" description="Commissions are created when you record an order that came through a creator link." />
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table stackOnMobile>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>
@@ -86,7 +86,7 @@ export default async function PayoutsPage() {
               <EmptyState icon={WalletIcon} title="No rewards yet" description="Rewards are created when you record an order that came through a customer's referral link." />
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                <Table stackOnMobile>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Date</TableHead>

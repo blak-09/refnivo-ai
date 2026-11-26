@@ -61,17 +61,19 @@ export async function completeProfile(page: Page, role: Role, opts: Actor) {
   const handle = opts.username ?? uniq("u").replace(/-/g, "_").toLowerCase().slice(0, 28);
   if (role === "BRAND_OWNER") {
     await page.getByLabel(/^Brand name/).fill(opts.brandName ?? `${opts.name} Brand`);
-    await page.getByLabel(/^Industry \/ category/).selectOption({ index: 1 });
-    await page.getByLabel(/^Brand description/).fill("We make everyday products for e2e testing, sold online across India.");
+    await page.getByLabel(/^Business category/).selectOption({ index: 1 });
+    await page.getByLabel(/^Short brand description/).fill("We make everyday products for e2e testing, sold online across India.");
     // Business email and contact person are pre-filled from the account.
   } else if (role === "CREATOR") {
     await page.getByLabel(/^Username/).fill(handle);
     await page.getByLabel(/^Creator category/).selectOption({ index: 1 });
     await page.getByLabel(/^Professional bio/).fill("I review gadgets for students, two videos every week.");
-    await page.getByLabel("Upload photo").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: TINY_PNG });
+    await page.locator("#profileImageUrl-file").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: TINY_PNG });
     await expect(page.getByText(/uploaded/i).first()).toBeVisible({ timeout: 30_000 });
   } else {
     await page.getByLabel(/^Username/).fill(handle);
+    // Interests sit in the collapsed "More details" group during onboarding.
+    await page.getByText("More details (optional)").click();
     await page.getByRole("checkbox", { name: "Fitness", exact: true }).check({ force: true });
   }
   await page.getByRole("button", { name: "Continue" }).click();

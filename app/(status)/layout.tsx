@@ -12,7 +12,7 @@ export default function StatusLayout({ children }: { children: React.ReactNode }
             Log in
           </Link>
         </header>
-        <main className="flex flex-1 items-start justify-center px-4 pb-16 sm:px-6">{children}</main>
+        <main id="main-content" tabIndex={-1} className="focus:outline-none flex flex-1 items-start justify-center px-4 pb-16 sm:px-6">{children}</main>
       </div>
       <BrandPanel />
     </div>

@@ -35,7 +35,7 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
         <ul className="divide-y">
           {items.map((item) => (
             <li key={item.key}>
-              <Link href={item.href} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:outline-none sm:px-5">
+              <Link href={item.href} className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/50 focus-visible:bg-muted/50 focus-visible:-outline-offset-2 sm:px-5">
                 <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", item.kind === "info" ? "bg-muted text-muted-foreground" : "bg-warning/15 text-warning-strong")}>
                   <item.icon className="size-4" aria-hidden />
                 </span>

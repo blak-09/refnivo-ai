@@ -57,7 +57,7 @@ export function ProductForm({ product, uploadsEnabled = true }: { product?: Prod
           <Input id="purchaseUrl" name="purchaseUrl" type="url" defaultValue={dv("purchaseUrl", product?.purchaseUrl)} placeholder="https://www.boat-lifestyle.com/products/rockerz-450" required aria-invalid={!!errors.purchaseUrl} />
         </Field>
         <Field label="Upload product image" htmlFor="imageUrl" error={errors.imageUrl} className="sm:col-span-2" hint="Shown on product cards, the marketplace and referral pages.">
-          <ImageUpload name="imageUrl" initialUrl={product?.imageUrl ?? undefined} label="Upload product image" disabled={!uploadsEnabled} />
+          <ImageUpload id="imageUrl" invalid={!!errors.imageUrl} name="imageUrl" initialUrl={product?.imageUrl ?? undefined} label="Upload product image" disabled={!uploadsEnabled} />
         </Field>
         <Field label="Description" htmlFor="description" error={errors.description} className="sm:col-span-2">
           <Textarea id="description" name="description" rows={4} defaultValue={dv("description", product?.description)} placeholder="15-hour playback, 40mm drivers, soft padded ear cushions…" />

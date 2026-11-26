@@ -3,14 +3,54 @@
 import * as React from "react"
 import { cn } from "cn"
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+/**
+ * Labels each body cell with its column header (`data-label`) so a table with
+ * `stackOnMobile` can show "Header: value" pairs when its rows become cards on
+ * phones. Re-runs when rows are added or replaced.
+ */
+function labelCells(table: HTMLTableElement) {
+  const headers = Array.from(table.querySelectorAll<HTMLTableCellElement>("thead tr:last-child th")).map((th) =>
+    (th.textContent ?? "").trim()
+  )
+  table.querySelectorAll<HTMLTableRowElement>("tbody tr").forEach((tr) => {
+    let col = 0
+    Array.from(tr.cells).forEach((cell) => {
+      const label = cell.colSpan > 1 ? "" : headers[col] ?? ""
+      if (label) cell.setAttribute("data-label", label)
+      else cell.removeAttribute("data-label")
+      col += cell.colSpan
+    })
+  })
+}
+
+function Table({
+  className,
+  stackOnMobile = false,
+  ...props
+}: React.ComponentProps<"table"> & {
+  /** Below the `sm` breakpoint, show each row as a card of "Header: value" pairs instead of scrolling sideways. */
+  stackOnMobile?: boolean
+}) {
+  const ref = React.useRef<HTMLTableElement>(null)
+
+  React.useEffect(() => {
+    const table = ref.current
+    if (!stackOnMobile || !table) return
+    labelCells(table)
+    const observer = new MutationObserver(() => labelCells(table))
+    observer.observe(table, { childList: true, subtree: true, characterData: true })
+    return () => observer.disconnect()
+  }, [stackOnMobile])
+
   return (
     <div
       data-slot="table-container"
       className="relative w-full overflow-x-auto"
     >
       <table
+        ref={ref}
         data-slot="table"
+        data-stack={stackOnMobile ? "mobile" : undefined}
         className={cn("w-full caption-bottom text-sm", className)}
         {...props}
       />

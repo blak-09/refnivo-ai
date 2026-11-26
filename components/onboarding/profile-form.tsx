@@ -62,13 +62,18 @@ export function ProfileForm({
       return;
     }
     // Move focus to the first invalid field so keyboard and screen-reader users land on it.
-    const first = formRef.current?.querySelector<HTMLElement>("[aria-invalid='true']");
+    const first = formRef.current?.querySelector<HTMLElement>("[aria-invalid='true'], [data-invalid='true']");
     first?.focus();
     first?.scrollIntoView({ block: "center", behavior: "smooth" });
   }, [state]);
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    // An image is still uploading: its URL is not in the form yet, so saving now would report it missing.
+    if (e.currentTarget.querySelector("[data-uploading='true']")) {
+      toast.info("Wait for the image to finish uploading, then try again.");
+      return;
+    }
     const submitter = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const fd = new FormData(e.currentTarget, submitter);
     setIntent(submitter?.value === "save" ? "save" : "continue");

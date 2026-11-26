@@ -42,7 +42,7 @@ export function CustomerFields({ values, errors, uploadsEnabled, email, mode }: 
         <FormSection title="Profile">
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={opt("Profile picture")} htmlFor="avatarUrl" error={errors.avatarUrl}>
-              <ImageUpload name="avatarUrl" endpoint="/api/uploads/avatar" initialUrl={v("avatarUrl") || undefined} label="Upload photo" aspect="aspect-square max-w-32" disabled={!uploadsEnabled} />
+              <ImageUpload id="avatarUrl" invalid={!!errors.avatarUrl} name="avatarUrl" endpoint="/api/uploads/avatar" initialUrl={v("avatarUrl") || undefined} label="Upload photo" aspect="aspect-square max-w-32" disabled={!uploadsEnabled} />
             </Field>
             <Field label={opt("Gender")} htmlFor="gender" error={errors.gender}>
               <NativeSelect id="gender" name="gender" defaultValue={v("gender")}>

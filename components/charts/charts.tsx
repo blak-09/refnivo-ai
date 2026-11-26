@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import {
   Area,
   AreaChart,
@@ -44,6 +45,14 @@ function Empty({ message }: { message: string }) {
   return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{message}</div>;
 }
 
+/** A text version of the chart for screen readers (the SVG itself has no text alternative). */
+function ChartSummary({ children }: { children: React.ReactNode }) {
+  return <p className="sr-only">{children}</p>;
+}
+
+const sum = <T,>(rows: T[], pick: (r: T) => number) => rows.reduce((n, r) => n + pick(r), 0);
+const count = (n: number) => n.toLocaleString("en-IN");
+
 export function ReferralsOverTimeChart({ data }: { data: DailyPoint[] }) {
   const hasData = data.some((d) => d.total > 0);
   return (
@@ -51,27 +60,32 @@ export function ReferralsOverTimeChart({ data }: { data: DailyPoint[] }) {
       {!hasData ? (
         <Empty message="No referrals in this period yet." />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="fillCreator" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={COLORS.creator} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={COLORS.creator} stopOpacity={0.02} />
-              </linearGradient>
-              <linearGradient id="fillCustomer" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={COLORS.customer} stopOpacity={0.35} />
-                <stop offset="100%" stopColor={COLORS.customer} stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-            <YAxis {...axisProps} allowDecimals={false} />
-            <Tooltip {...tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Area type="monotone" dataKey="creator" name="Creator referrals" stackId="1" stroke={COLORS.creator} fill="url(#fillCreator)" />
-            <Area type="monotone" dataKey="customer" name="Customer referrals" stackId="1" stroke={COLORS.customer} fill="url(#fillCustomer)" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <>
+          <ChartSummary>
+            {count(sum(data, (d) => d.creator))} creator referrals and {count(sum(data, (d) => d.customer))} customer referrals over {data.length} days.
+          </ChartSummary>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="fillCreator" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={COLORS.creator} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={COLORS.creator} stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="fillCustomer" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={COLORS.customer} stopOpacity={0.35} />
+                  <stop offset="100%" stopColor={COLORS.customer} stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+              <YAxis {...axisProps} allowDecimals={false} />
+              <Tooltip {...tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Area type="monotone" dataKey="creator" name="Creator referrals" stackId="1" stroke={COLORS.creator} fill="url(#fillCreator)" />
+              <Area type="monotone" dataKey="customer" name="Customer referrals" stackId="1" stroke={COLORS.customer} fill="url(#fillCustomer)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </>
       )}
     </div>
   );
@@ -84,15 +98,18 @@ export function RevenueByCampaignChart({ data }: { data: CampaignBreakdownRow[] 
       {!rows.length ? (
         <Empty message="No verified revenue yet." />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
-            <XAxis type="number" {...axisProps} tickFormatter={(v: number) => formatMoney(v, "INR", { compact: true })} />
-            <YAxis type="category" dataKey="name" width={120} {...axisProps} />
-            <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
-            <Bar dataKey="revenue" name="Attributed revenue" fill={COLORS.revenue} radius={[0, 6, 6, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <>
+          <ChartSummary>Attributed revenue by campaign: {rows.map((r) => `${r.name} ${formatMoney(r.revenue)}`).join("; ")}.</ChartSummary>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} layout="vertical" margin={{ top: 8, right: 16, left: 8, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+              <XAxis type="number" {...axisProps} tickFormatter={(v: number) => formatMoney(v, "INR", { compact: true })} />
+              <YAxis type="category" dataKey="name" width={120} {...axisProps} />
+              <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
+              <Bar dataKey="revenue" name="Attributed revenue" fill={COLORS.revenue} radius={[0, 6, 6, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </>
       )}
     </div>
   );
@@ -105,17 +122,22 @@ export function CostByCampaignChart({ data }: { data: CampaignBreakdownRow[] }) 
       {!rows.length ? (
         <Empty message="No approved rewards or commissions yet." />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="name" {...axisProps} interval={0} tickFormatter={(v: string) => (v.length > 14 ? v.slice(0, 13) + "…" : v)} />
-            <YAxis {...axisProps} tickFormatter={(v: number) => formatMoney(v, "INR", { compact: true })} />
-            <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Bar dataKey="rewardCost" name="Customer rewards" stackId="c" fill={COLORS.reward} />
-            <Bar dataKey="commissionCost" name="Creator commissions" stackId="c" fill={COLORS.commission} radius={[6, 6, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <>
+          <ChartSummary>
+            Partner cost by campaign: {rows.map((r) => `${r.name}: customer rewards ${formatMoney(r.rewardCost)}, creator commissions ${formatMoney(r.commissionCost)}`).join("; ")}.
+          </ChartSummary>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={rows} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="name" {...axisProps} interval={0} tickFormatter={(v: string) => (v.length > 14 ? v.slice(0, 13) + "…" : v)} />
+              <YAxis {...axisProps} tickFormatter={(v: number) => formatMoney(v, "INR", { compact: true })} />
+              <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="rewardCost" name="Customer rewards" stackId="c" fill={COLORS.reward} />
+              <Bar dataKey="commissionCost" name="Creator commissions" stackId="c" fill={COLORS.commission} radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </>
       )}
     </div>
   );
@@ -132,17 +154,22 @@ export function PartnerSplitChart({ creator, customer }: { creator: number; cust
       {!total ? (
         <Empty message="No referrals yet." />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3} strokeWidth={0}>
-              {data.map((d) => (
-                <Cell key={d.name} fill={d.color} />
-              ))}
-            </Pie>
-            <Tooltip {...tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-          </PieChart>
-        </ResponsiveContainer>
+        <>
+          <ChartSummary>
+            {count(creator)} creator referrals and {count(customer)} customer referrals.
+          </ChartSummary>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3} strokeWidth={0}>
+                {data.map((d) => (
+                  <Cell key={d.name} fill={d.color} />
+                ))}
+              </Pie>
+              <Tooltip {...tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </>
       )}
     </div>
   );
@@ -190,27 +217,32 @@ export function PerformanceChart({ data, emptyMessage = "No clicks or conversion
       {!hasData ? (
         <Empty message={emptyMessage} />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
-            <defs>
-              <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.3} />
-                <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
-              </linearGradient>
-              <linearGradient id="fillConversions" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.35} />
-                <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0.02} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-            <YAxis {...axisProps} allowDecimals={false} />
-            <Tooltip {...tooltipStyle} />
-            <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Area type="monotone" dataKey="clicks" name="Clicks" stroke="var(--chart-1)" fill="url(#fillClicks)" />
-            <Area type="monotone" dataKey="conversions" name="Verified conversions" stroke="var(--chart-3)" fill="url(#fillConversions)" />
-          </AreaChart>
-        </ResponsiveContainer>
+        <>
+          <ChartSummary>
+            {count(sum(data, (d) => d.clicks))} clicks and {count(sum(data, (d) => d.conversions))} verified conversions over {data.length} days.
+          </ChartSummary>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="fillClicks" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0.02} />
+                </linearGradient>
+                <linearGradient id="fillConversions" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--chart-3)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="var(--chart-3)" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+              <YAxis {...axisProps} allowDecimals={false} />
+              <Tooltip {...tooltipStyle} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Area type="monotone" dataKey="clicks" name="Clicks" stroke="var(--chart-1)" fill="url(#fillClicks)" />
+              <Area type="monotone" dataKey="conversions" name="Verified conversions" stroke="var(--chart-3)" fill="url(#fillConversions)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </>
       )}
     </div>
   );
@@ -224,15 +256,20 @@ export function RevenueSeriesChart({ data }: { data: SeriesPoint[] }) {
       {!hasData ? (
         <Empty message="No verified revenue in this period yet." />
       ) : (
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
-            <YAxis {...axisProps} tickFormatter={(v: number) => formatMoney(v).replace(/\.00$/, "")} width={70} />
-            <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
-            <Bar dataKey="revenue" name="Verified revenue" fill={COLORS.revenue} radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        <>
+          <ChartSummary>
+            {formatMoney(sum(data, (d) => d.revenue))} verified revenue over {data.length} days.
+          </ChartSummary>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" {...axisProps} interval="preserveStartEnd" minTickGap={24} />
+              <YAxis {...axisProps} tickFormatter={(v: number) => formatMoney(v).replace(/\.00$/, "")} width={70} />
+              <Tooltip {...tooltipStyle} formatter={(v) => formatMoney(Number(v))} />
+              <Bar dataKey="revenue" name="Verified revenue" fill={COLORS.revenue} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </>
       )}
     </div>
   );

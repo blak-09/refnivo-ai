@@ -106,7 +106,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         <EmptyState icon={ShoppingCartIcon} title="No orders yet" description="Orders appear here once you record them with a partner's referral code." />
       ) : (
         <div className="overflow-x-auto rounded-xl border">
-          <Table>
+          <Table stackOnMobile>
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>

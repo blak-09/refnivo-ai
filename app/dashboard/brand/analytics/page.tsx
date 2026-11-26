@@ -169,7 +169,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             {!topCreators.length ? (
               <p className="text-sm text-muted-foreground">No creator activity yet.</p>
             ) : (
-              <Table>
+              <Table stackOnMobile>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Creator</TableHead>
@@ -211,7 +211,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             {!topProducts.length ? (
               <p className="text-sm text-muted-foreground">No products yet.</p>
             ) : (
-              <Table>
+              <Table stackOnMobile>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
@@ -252,7 +252,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             <p className="text-sm text-muted-foreground">No campaigns yet.</p>
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table stackOnMobile>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Campaign</TableHead>

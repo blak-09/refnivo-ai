@@ -64,7 +64,7 @@ test("role can change mid-signup; progress survives a reload; the profile can be
 test("brand logo uploads before the brand exists, and the preview shows it", async ({ page }) => {
   const actor = { name: "E2E Logo", email: email("logo"), brandName: `Logo Brand ${uniq("l")}` };
   await register(page, "BRAND_OWNER", actor, { profile: false });
-  await page.getByLabel("Upload logo").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: TINY_PNG });
+  await page.locator("#logoUrl-file").setInputFiles({ name: "logo.png", mimeType: "image/png", buffer: TINY_PNG });
   await expect(page.getByText("Image uploaded.").first()).toBeVisible({ timeout: 30_000 });
   await completeProfile(page, "BRAND_OWNER", actor);
   const brand = await db().brand.findFirstOrThrow({ where: { owner: { email: actor.email } } });

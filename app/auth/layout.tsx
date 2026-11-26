@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <header className="mx-auto flex h-16 w-full max-w-6xl items-center px-4 sm:px-6">
           <HeaderLogo />
         </header>
-        <main className="flex flex-1 items-start justify-center px-4 pb-16 sm:px-6">{children}</main>
+        <main id="main-content" tabIndex={-1} className="focus:outline-none flex flex-1 items-start justify-center px-4 pb-16 sm:px-6">{children}</main>
       </div>
       <BrandPanel />
     </div>

@@ -26,7 +26,7 @@ export function SourcePerformanceTable({ rows, title, description }: { rows: Sou
           />
         ) : (
           <div className="overflow-x-auto">
-            <Table>
+            <Table stackOnMobile>
               <TableHeader>
                 <TableRow>
                   <TableHead>Channel</TableHead>

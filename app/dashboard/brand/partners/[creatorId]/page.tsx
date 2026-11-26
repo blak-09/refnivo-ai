@@ -73,7 +73,7 @@ export default async function PartnerPage({ params }: { params: Promise<{ creato
                 <p className="text-sm text-muted-foreground">No campaign applications from this creator yet.</p>
               ) : (
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table stackOnMobile>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Campaign</TableHead>

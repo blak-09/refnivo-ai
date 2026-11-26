@@ -87,7 +87,7 @@ export function CreatorFields({
             <Input id="username" name="username" autoCapitalize="none" autoComplete="username" spellCheck={false} defaultValue={v("username")} placeholder="yourname" aria-invalid={!!errors.username} />
           </Field>
           <Field label={photoRequired ? "Profile picture" : opt("Profile picture")} htmlFor="profileImageUrl" error={errors.profileImageUrl} required={photoRequired} hint="A clear photo of you or your channel logo.">
-            <ImageUpload name="profileImageUrl" endpoint="/api/uploads/creator-image" initialUrl={v("profileImageUrl") || undefined} label="Upload photo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
+            <ImageUpload id="profileImageUrl" invalid={!!errors.profileImageUrl} name="profileImageUrl" endpoint="/api/uploads/creator-image" initialUrl={v("profileImageUrl") || undefined} label="Upload photo" aspect="aspect-square max-w-40" disabled={!uploadsEnabled} />
           </Field>
           <Field label="Creator category" htmlFor="category" error={errors.category} required>
             <NativeSelect id="category" name="category" defaultValue={v("category")} aria-invalid={!!errors.category}>

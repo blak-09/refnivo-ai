@@ -46,7 +46,7 @@ export async function PartnerConversionsTable({ userId, kind }: { userId: string
     <div className="space-y-3">
       {waitingNote}
       <div className="overflow-x-auto rounded-xl border">
-        <Table>
+        <Table stackOnMobile>
           <TableHeader>
             <TableRow>
               <TableHead>Order date</TableHead>

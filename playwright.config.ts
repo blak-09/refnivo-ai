@@ -45,6 +45,8 @@ export default defineConfig({
           NEXTAUTH_URL: baseURL,
           NEXT_PUBLIC_APP_URL: baseURL,
           SIGNUP_APPROVAL: "auto",
+          // The golden path publishes straight to live; first-campaign review is covered by integration tests.
+          CAMPAIGN_REVIEW: "off",
           EMAIL_PROVIDER: "console",
           STORAGE_PROVIDER: "local",
           RATE_LIMIT_PROVIDER: "memory",

@@ -98,7 +98,7 @@ export default async function BrandWalletPage() {
             <EmptyState icon={PiggyBankIcon} title="No activity yet" description="Top-ups, verified orders and refunds will appear here." />
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table stackOnMobile>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>

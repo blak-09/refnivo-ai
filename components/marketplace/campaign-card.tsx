@@ -15,7 +15,7 @@ export function CampaignCard({ c }: { c: MarketplaceCampaign }) {
   return (
     <Card size="sm" className="flex h-full flex-col transition-shadow hover:shadow-md">
       <CardContent className="flex flex-1 flex-col gap-3">
-        <Link href={`/campaigns/${c.slug}`} className="block">
+        <Link href={`/campaigns/${c.slug}`} className="block" tabIndex={-1} aria-hidden>
           <ProductThumb src={c.product.imageUrl} name={c.product.name} className="aspect-[4/3] w-full" />
         </Link>
         <div className="flex items-center gap-2">

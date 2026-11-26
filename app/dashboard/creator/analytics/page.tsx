@@ -79,7 +79,7 @@ export default async function CreatorAnalyticsPage({ searchParams }: { searchPar
             />
           ) : (
             <div className="overflow-x-auto">
-              <Table>
+              <Table stackOnMobile>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Campaign</TableHead>

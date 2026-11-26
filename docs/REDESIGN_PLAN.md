@@ -66,6 +66,34 @@ Status: plan approved 25 Nov 2026.
   - **Campaign page:**
     - An "At a glance" summary under the price: what you earn, what the shopper gets, how to qualify.
     - An application status banner at the top for creators who applied (pending, approved, rejected, removed, withdrawn).
+- **Phase 6 (responsive & accessibility): done, pushed 26 Nov 2026.**
+  - **Tables on phones:** `Table` has an opt-in `stackOnMobile` mode (`components/ui/table.tsx` + `app/globals.css`).
+    - Below 640 px each row becomes a card of "column: value" pairs, labelled from the table's own headers. Desktop is unchanged.
+    - On for 15 brand, creator and customer tables (orders, claims, partners, payouts, wallet, billing, analytics, conversions, payout history, channels).
+    - Admin tables still scroll sideways. Tracking already had its own phone layout.
+  - **Focus:** every link and control without its own focus ring now shows a 2 px ring-colour outline on keyboard focus (it was a faint 1 px outline).
+  - **Skip link:** "Skip to main content" on every page, plus a `<main id="main-content">` landmark. Marketing pages and the 404 page had no `<main>` before.
+  - **Colour-only and missing text alternatives:**
+    - Each chart has a screen-reader summary.
+    - The UGC "needs action" dot is now announced.
+    - The duplicate product-image link in campaign cards is out of the Tab order.
+  - **Skeletons:** campaign page and campaign wizard now have their own loading layouts. Every loading screen says "Loading…" to screen readers.
+  - **Image upload:**
+    - The field label now points at the upload button, and errors are linked to it.
+    - A failed save moves focus to the upload button.
+    - Upload progress and success are announced.
+    - Saving while an image is still uploading is held, with a message (it used to report the image as missing).
+    - The hidden file input is out of the Tab order.
+  - **Copy:** logged-out visitors on approval-only campaigns see "Log in to apply" or "Log in to join or apply" (was "Join campaign & get your link").
+  - **Checked:**
+    - No horizontal scroll on 22 public, creator and brand pages at 375 px, and 11 at 768 px.
+    - Keyboard-only walk-through: home → Explore campaigns → campaign → sign up → onboarding → apply. The apply dialog keeps focus inside.
+  - **E2E suite repaired, 16/16 green** (it had been failing since Phase 3 and the 06faa7c audit fixes):
+    - The onboarding helpers use the Phase 3 labels ("Business category", "Short brand description") and open "More details" for customer interests.
+    - Uploads target the file inputs by id.
+    - The e2e server runs with `CAMPAIGN_REVIEW=off`, so the golden path publishes straight to live. First-campaign review stays covered by integration tests.
+    - The golden-path campaign uses a 0-day refund window, so the payout steps can run the same day.
+  - **Known:** after a client-side page change, the first Tab goes to the page's header, not the skip link (Next.js keeps the focus start point). The skip link works on every full page load.
 
 Scope inspected:
 
