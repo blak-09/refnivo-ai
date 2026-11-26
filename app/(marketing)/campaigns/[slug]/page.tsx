@@ -2,12 +2,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
-import { BadgeCheckIcon, ExternalLinkIcon, ShoppingBagIcon, UsersIcon } from "lucide-react";
+import { BadgeCheckIcon, CheckCircle2Icon, ClockIcon, ExternalLinkIcon, ShoppingBagIcon, UsersIcon, XCircleIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/dashboard/primitives";
-import { describeCreatorCommission, describeCustomerReward, describeEligibility, describeDuration } from "@/components/campaigns/campaign-summary";
+import { describeCreatorCommission, describeCustomerReward, describeEligibility, describeDuration, shortCommission, shortReward } from "@/components/campaigns/campaign-summary";
 import { CouponCode } from "@/components/campaigns/coupon-code";
 import { OrderClaimForm } from "@/components/orders/order-claim-form";
 import { BrandLogo, ProductThumb } from "@/components/products/product-thumb";
@@ -22,6 +22,91 @@ import { referralQrDataUrl, referralUrl, shareTargets } from "@/lib/services/lin
 import { getPartnerStatus } from "@/lib/services/partners";
 import { ATTRIBUTION_COOKIE, markVisited, resolveReferralCode, VISITOR_COOKIE } from "@/lib/services/tracking";
 import { normalizeReferralCode } from "@/lib/utils/codes";
+import { cn } from "@/lib/utils";
+
+type PublicCampaign = NonNullable<Awaited<ReturnType<typeof getPublicCampaign>>>;
+type ApplicationStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN" | "REMOVED";
+
+/**
+ * "At a glance": what the viewer earns, what the shopper gets and how to
+ * qualify, straight from the campaign's own settings.
+ */
+function CampaignAtAGlance({ campaign, viewerRole }: { campaign: PublicCampaign; viewerRole: string | null }) {
+  const creatorsAllowed = campaign.campaignType !== "CUSTOMER_REFERRAL";
+  const customersAllowed = campaign.campaignType !== "CREATOR_AFFILIATE";
+  const items: { label: string; value: string }[] = [];
+  if (viewerRole === "CREATOR" && creatorsAllowed) items.push({ label: "You earn", value: `${shortCommission(campaign)} per verified order` });
+  else if (viewerRole === "CUSTOMER" && customersAllowed) items.push({ label: "You earn", value: `${shortReward(campaign)} per friend's verified order` });
+  else {
+    if (creatorsAllowed) items.push({ label: "Creators earn", value: `${shortCommission(campaign)} per verified order` });
+    if (customersAllowed) items.push({ label: "Customers earn", value: `${shortReward(campaign)} per friend's verified order` });
+  }
+  items.push({ label: "Shopper gets", value: campaign.offerTitle ? `${campaign.offerTitle}${campaign.couponCode ? ` (code ${campaign.couponCode})` : ""}` : "The brand's regular price" });
+  const joining =
+    viewerRole === "CUSTOMER" || !creatorsAllowed ? "Join for an instant link" : campaign.requiresApproval ? "Apply — the brand approves each creator" : "Join for an instant link";
+  items.push({ label: "How to qualify", value: `${joining} · orders within ${campaign.attributionWindowDays} days of a click count` });
+  return (
+    <section aria-label="Campaign at a glance" className="mt-4">
+      <dl className="grid gap-2 sm:grid-cols-2">
+        {items.map((i) => (
+          <div key={i.label} className="rounded-xl border bg-card px-3 py-2.5">
+            <dt className="text-xs font-medium text-muted-foreground">{i.label}</dt>
+            <dd className="mt-0.5 text-sm font-semibold">{i.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+const BANNER: Record<ApplicationStatus, { tone: "success" | "warning" | "danger" | "muted"; icon: typeof ClockIcon; title: string; body: (brand: string) => string }> = {
+  PENDING: { tone: "warning", icon: ClockIcon, title: "Application sent", body: (b) => `${b} is reviewing your profile. Your referral link appears on this page once you're approved, and we'll notify you.` },
+  APPROVED: { tone: "success", icon: CheckCircle2Icon, title: "You're in", body: () => "Your referral link and QR code are ready below. Share them to start earning." },
+  REJECTED: { tone: "danger", icon: XCircleIcon, title: "Application not approved", body: (b) => `${b} didn't approve your application for this campaign. You can still apply to other campaigns.` },
+  REMOVED: { tone: "danger", icon: XCircleIcon, title: "Removed from this campaign", body: (b) => `${b} removed you from this campaign, so your referral link for it is disabled.` },
+  WITHDRAWN: { tone: "muted", icon: ClockIcon, title: "Application withdrawn", body: () => "You withdrew your application to this campaign." },
+};
+
+function ApplicationBanner({ status, brandName }: { status: ApplicationStatus; brandName: string }) {
+  const b = BANNER[status];
+  return (
+    <div
+      role="status"
+      className={cn(
+        "mb-6 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm",
+        b.tone === "success" && "border-success/40 bg-success/10",
+        b.tone === "warning" && "border-warning/40 bg-warning/10",
+        b.tone === "danger" && "border-destructive/30 bg-destructive/5",
+        b.tone === "muted" && "bg-muted/40",
+      )}
+    >
+      <b.icon
+        className={cn(
+          "mt-0.5 size-4 shrink-0",
+          b.tone === "success" && "text-success-strong",
+          b.tone === "warning" && "text-warning-strong",
+          b.tone === "danger" && "text-destructive",
+          b.tone === "muted" && "text-muted-foreground",
+        )}
+        aria-hidden
+      />
+      <div>
+        <p className="font-medium">{b.title}</p>
+        <p className="text-muted-foreground">
+          {b.body(brandName)}
+          {status === "APPROVED" ? (
+            <>
+              {" "}
+              <a href="#promote" className="font-medium text-primary underline-offset-2 hover:underline">
+                Go to your link
+              </a>
+            </>
+          ) : null}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -100,6 +185,8 @@ export default async function CampaignPage({ params, searchParams }: { params: P
         </div>
       ) : null}
 
+      {partner?.applicationStatus ? <ApplicationBanner status={partner.applicationStatus} brandName={campaign.brand.name} /> : null}
+
       <div className="grid gap-8 lg:grid-cols-[1.1fr_1fr]">
         {/* Product */}
         <div className="space-y-6">
@@ -118,6 +205,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             </div>
             <h1 className="mt-3 text-2xl font-semibold tracking-tight sm:text-3xl">{campaign.product.name}</h1>
             <p className="mt-1 text-xl font-medium">{formatMoney(campaign.product.price, campaign.product.currency)}</p>
+            <CampaignAtAGlance campaign={campaign} viewerRole={user?.role ?? null} />
             {campaign.product.description ? <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{campaign.product.description}</p> : null}
             <div className="mt-4 flex flex-wrap gap-2">
               <Button nativeButton={false} render={<a href={purchaseHref} target="_blank" rel="noreferrer" />}>
@@ -201,7 +289,7 @@ export default async function CampaignPage({ params, searchParams }: { params: P
             </CardContent>
           </Card>
 
-          <Card>
+          <Card id="promote" className="scroll-mt-24">
             <CardHeader>
               <CardTitle className="text-base">{linkCard ? "Your referral link" : "Promote this product"}</CardTitle>
             </CardHeader>

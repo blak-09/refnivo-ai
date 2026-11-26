@@ -2,6 +2,7 @@ import { Prisma, type Campaign, type CampaignStatus } from "@prisma/client";
 import { prisma, transaction } from "@/lib/db/prisma";
 import { campaignNeedsReview, campaignReviewMode, canEdit, canTransition, isCampaignLive, publishProblems, stoppedAtFor, TRANSITIONS } from "@/lib/domain/campaign-rules";
 import { toCampaignData, type CampaignAction, type CampaignFormValues } from "@/lib/validation/campaign";
+import type { ApprovalFilter, CampaignTypeFilter, CommissionFilter, MarketplaceSort } from "@/lib/campaigns/filters";
 import { recordAudit } from "./audit";
 import { adminUserIds, notify, notifyMany } from "./notify";
 import { uniqueSlug } from "./brands";
@@ -302,12 +303,18 @@ export const marketplaceCampaignSelect = {
 
 export type MarketplaceCampaign = Prisma.CampaignGetPayload<{ select: typeof marketplaceCampaignSelect }>;
 
-export type MarketplaceSort = "newest" | "commission" | "trending" | "ending";
+export type { MarketplaceSort } from "@/lib/campaigns/filters";
 
 export type MarketplaceFilters = {
   category?: string;
   industry?: string;
-  type?: "CREATOR_AFFILIATE" | "CUSTOMER_REFERRAL" | "HYBRID";
+  type?: CampaignTypeFilter;
+  /** "instant" = partners get a link straight away; "approval" = the brand approves each partner. */
+  approval?: ApprovalFilter;
+  /** How the creator commission is set. */
+  commission?: CommissionFilter;
+  /** Only campaigns with a shopper offer (a store coupon the referred shopper uses). */
+  offer?: boolean;
   sort?: MarketplaceSort;
   q?: string;
 };
@@ -329,19 +336,24 @@ export async function listMarketplaceCampaigns(filters: MarketplaceFilters & { l
       product: { status: "ACTIVE", ...(filters.category ? { category: filters.category } : {}) },
       ...(filters.industry ? { brand: { status: "ACTIVE", industry: filters.industry } } : {}),
       ...(filters.type ? { campaignType: filters.type } : {}),
-      ...(filters.q
-        ? {
-            AND: [
+      ...(filters.approval ? { requiresApproval: filters.approval === "approval" } : {}),
+      // Commission type only means something where creators can join.
+      ...(filters.commission ? { creatorCommissionType: filters.commission, campaignType: filters.type ?? { not: "CUSTOMER_REFERRAL" } } : {}),
+      AND: [
+        ...(filters.q
+          ? [
               {
                 OR: [
-                  { name: { contains: filters.q, mode: "insensitive" } },
-                  { product: { name: { contains: filters.q, mode: "insensitive" } } },
-                  { brand: { name: { contains: filters.q, mode: "insensitive" } } },
+                  { name: { contains: filters.q, mode: "insensitive" as const } },
+                  { product: { name: { contains: filters.q, mode: "insensitive" as const } } },
+                  { brand: { name: { contains: filters.q, mode: "insensitive" as const } } },
                 ],
               },
-            ],
-          }
-        : {}),
+            ]
+          : []),
+        // A shopper offer is stored with its coupon code (lib/validation/campaign.ts), so the title marks one.
+        ...(filters.offer ? [{ offerTitle: { not: null } }] : []),
+      ],
     },
     select: marketplaceCampaignSelect,
   });

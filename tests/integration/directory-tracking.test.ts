@@ -1,12 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/prisma";
-import { createCampaign, transitionCampaign } from "@/lib/services/campaigns";
+import { createCampaign, listMarketplaceCampaigns, transitionCampaign } from "@/lib/services/campaigns";
 import { decideApplication, joinCampaign } from "@/lib/services/partners";
 import { recordOrder, verifyConversion } from "@/lib/services/conversions";
 import { recordClick } from "@/lib/services/tracking";
 import { getBrandSeries, getBrandTrackingLinks, getPartnerCampaignPerformance, getPartnerSeries, parseRange } from "@/lib/services/metrics";
 import { getBrandCollaborators } from "@/lib/services/brands";
-import { listDirectory } from "@/lib/services/directory";
+import { parseCampaignSearch } from "@/lib/campaigns/filters";
 import { campaignValues, makeCreator, makeOwnerWithBrand, uniq } from "../helpers";
 
 /**
@@ -75,32 +75,60 @@ describe("tracking and analytics series", () => {
   });
 });
 
-describe("campaign directory and brand profile", () => {
-  it("lists live Refnivo campaigns with search, category chips and category filter", async () => {
-    const all = await listDirectory({ q: brandName });
-    expect(all.total).toBe(1);
-    expect(all.items[0].campaign.id).toBe(campaignId);
-    expect(all.items[0].commission).toMatch(/per sale|Customer rewards/);
-    expect(all.categories).toEqual(["Electronics"]); // "Headphones & audio" maps onto Electronics
+describe("campaign discovery and brand profile", () => {
+  it("lists live campaigns with search and the shared filters (approval, commission type, shopper offer)", async () => {
+    const ids = async (f: Parameters<typeof listMarketplaceCampaigns>[0]) => (await listMarketplaceCampaigns({ q: brandName, ...f })).map((c) => c.id);
+    expect(await ids({})).toEqual([campaignId]);
+    expect(await ids({ category: "Headphones & audio" })).toEqual([campaignId]);
+    expect(await ids({ category: "Clothing" })).toEqual([]);
+    expect(await ids({ q: `${brandName}-no-such-brand` })).toEqual([]);
 
-    expect((await listDirectory({ q: brandName, category: "Electronics" })).total).toBe(1);
-    expect((await listDirectory({ q: brandName, category: "Fashion" })).items).toHaveLength(0);
-    expect((await listDirectory({ q: `${brandName}-no-such-brand` })).total).toBe(0);
+    // campaignValues: approval needed, percentage commission, no shopper offer.
+    expect(await ids({ approval: "approval" })).toEqual([campaignId]);
+    expect(await ids({ approval: "instant" })).toEqual([]);
+    expect(await ids({ commission: "PERCENTAGE" })).toEqual([campaignId]);
+    expect(await ids({ commission: "FIXED_AMOUNT" })).toEqual([]);
+    expect(await ids({ offer: true })).toEqual([]);
+
+    const tag = uniq("Offer");
+    const o = await makeOwnerWithBrand(`${tag} brand`);
+    const withOffer = await createCampaign(
+      o.brand.id,
+      o.brand.name,
+      o.user.id,
+      campaignValues(o.product.id, { name: `${tag} campaign`, requiresApproval: false, creatorCommissionType: "FIXED_AMOUNT", creatorCommissionValue: 500, offerTitle: "10% off", couponCode: "SAVE10" }),
+    );
+    await transitionCampaign(o.brand.id, o.user.id, withOffer.id, "PUBLISH", { confirmed: true });
+    const found = async (f: Parameters<typeof listMarketplaceCampaigns>[0]) => (await listMarketplaceCampaigns({ q: tag, ...f })).map((c) => c.id);
+    expect(await found({ offer: true, approval: "instant", commission: "FIXED_AMOUNT" })).toEqual([withOffer.id]);
+    expect(await found({ commission: "PERCENTAGE" })).toEqual([]);
   });
 
-  it("only lists campaigns that are live, and pages results", async () => {
+  it("only lists campaigns that are live", async () => {
     const tag = uniq("Page");
     const o = await makeOwnerWithBrand(`${tag} brand`);
     const draft = await createCampaign(o.brand.id, o.brand.name, o.user.id, campaignValues(o.product.id, { name: `${tag} draft` }));
-    expect((await listDirectory({ q: tag })).total).toBe(0); // drafts are not listed
+    expect(await listMarketplaceCampaigns({ q: tag })).toHaveLength(0); // drafts are not listed
     await transitionCampaign(o.brand.id, o.user.id, draft.id, "PUBLISH", { confirmed: true });
-    expect((await listDirectory({ q: tag })).total).toBe(1);
+    expect(await listMarketplaceCampaigns({ q: tag })).toHaveLength(1);
+  });
 
-    const page1 = await listDirectory({ q: brandName.split(" ")[0] }, 1);
-    expect(page1.items.length).toBeLessThanOrEqual(1);
-    expect(page1.total).toBeGreaterThanOrEqual(page1.items.length);
-    // Unknown sort values fall back to "newest" instead of failing.
-    expect((await listDirectory({ q: tag, sort: "commission" })).total).toBe(1);
+  it("parses filter URLs and drops unknown values instead of failing", () => {
+    expect(parseCampaignSearch({ sort: "commission", approval: "instant", commission: "FIXED_AMOUNT", offer: "1", page: "3" })).toMatchObject({
+      sort: "commission",
+      approval: "instant",
+      commission: "FIXED_AMOUNT",
+      offer: true,
+      page: 3,
+    });
+    expect(parseCampaignSearch({ sort: "az", approval: "maybe", commission: "x", offer: "yes", type: "ALL", page: "-2" })).toMatchObject({
+      sort: "newest",
+      approval: undefined,
+      commission: undefined,
+      offer: undefined,
+      type: undefined,
+      page: 1,
+    });
   });
 
   it("shows only approved or connected creators as collaborations, without social numbers", async () => {

@@ -46,8 +46,8 @@ test("brand: signup → onboarding → product → published campaign", async ({
 
   // Campaign wizard.
   await page.goto("/dashboard/brand/campaigns/new");
+  // Step 1: product & basics.
   await page.getByRole("button").filter({ hasText: "E2E Headphones" }).first().click();
-  await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Campaign name").fill(`E2E Launch ${uniq("c")}`);
   await page.getByRole("button", { name: "Continue" }).click();
   // Fixed ₹600 commission so one verified order clears the default ₹500 payout minimum.
@@ -55,9 +55,8 @@ test("brand: signup → onboarding → product → published campaign", async ({
   await page.getByLabel(/^Commission \(₹ per order\)/).fill("600");
   await page.getByLabel(/^Reward value \(₹\)|^Reward \(% of order\)/).fill("50");
   await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Continue" }).click(); // rules & budget: defaults
-  await page.getByRole("button", { name: "Continue" }).click(); // duration: defaults (starts today)
-  await page.getByRole("button", { name: "Continue" }).click(); // preview
+  await page.getByRole("button", { name: "Continue" }).click(); // rules, budget & duration: defaults (starts today)
+  // Step 4: review & launch.
   await page.getByRole("checkbox").check();
   await page.getByRole("button", { name: "Launch Campaign" }).click();
   // The wizard itself lives at /campaigns/new, so exclude it or this passes before the launch lands.

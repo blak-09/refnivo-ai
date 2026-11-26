@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CheckIcon, ChevronLeftIcon, CrownIcon, ChevronRightIcon, Loader2Icon, PackageIcon, RocketIcon, SaveIcon } from "lucide-react";
+import { CheckIcon, ChevronLeftIcon, CrownIcon, ChevronRightIcon, Loader2Icon, PackageIcon, PencilIcon, RocketIcon, SaveIcon } from "lucide-react";
 import type { Campaign } from "@prisma/client";
 import { campaignStatusAction, saveCampaignAction } from "@/app/actions/campaigns";
 import { Button } from "@/components/ui/button";
@@ -18,16 +18,8 @@ import { ProductThumb } from "@/components/products/product-thumb";
 import { basisPointsToPercent, formatMoney, paiseToRupees } from "@/lib/money";
 import { estimateCampaignCost } from "@/lib/domain/rewards";
 import { publishProblems } from "@/lib/domain/campaign-rules";
-import {
-  campaignBasicsSchema,
-  campaignDurationSchema,
-  campaignFormSchema,
-  campaignProductSchema,
-  campaignRewardsSchema,
-  campaignRulesSchema,
-  toCampaignData,
-  type CampaignFormInput,
-} from "@/lib/validation/campaign";
+import { campaignFormSchema, toCampaignData, type CampaignFormInput } from "@/lib/validation/campaign";
+import { WIZARD_STEP as STEP, WIZARD_STEPS as STEPS, wizardStepForField } from "@/lib/campaigns/wizard-steps";
 import { zodFieldErrors, type FieldErrors } from "@/lib/utils/action-result";
 import { toDateInputValue } from "@/lib/utils/dates";
 import { CAMPAIGN_TYPE_LABEL, COMMISSION_TYPE_LABEL, REWARD_TYPE_LABEL } from "@/lib/utils/labels";
@@ -146,15 +138,22 @@ function toPayload(s: FormState): CampaignFormInput {
   };
 }
 
-const STEPS = [
-  { key: "product", title: "Product", schema: campaignProductSchema },
-  { key: "basics", title: "Campaign details", schema: campaignBasicsSchema },
-  { key: "rewards", title: "Commission & reward", schema: campaignRewardsSchema },
-  { key: "rules", title: "Rules & budget", schema: campaignRulesSchema },
-  { key: "duration", title: "Duration", schema: campaignDurationSchema },
-  { key: "preview", title: "Preview", schema: null },
-  { key: "publish", title: "Launch", schema: null },
-] as const;
+const LAST = STEPS.length - 1;
+
+function ReviewHeading({ title, edits }: { title: string; edits: { label: string; onClick: () => void }[] }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h3 className="text-sm font-semibold">{title}</h3>
+      <div className="flex gap-1">
+        {edits.map((e) => (
+          <Button key={e.label} type="button" variant="ghost" size="sm" onClick={e.onClick}>
+            <PencilIcon aria-hidden /> {e.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type Props = ({ mode: "create" } | { mode: "edit"; campaign: Campaign }) & {
   products: WizardProduct[];
@@ -169,6 +168,16 @@ export function CampaignWizard(props: Props) {
     props.mode === "edit" ? fromCampaign(props.campaign) : { ...DEFAULT_STATE, productId: props.initialProductId ?? "" },
   );
   const [step, setStep] = React.useState(0);
+  const stepHeadingRef = React.useRef<HTMLHeadingElement>(null);
+  const shownStep = React.useRef(step);
+  // Move focus to the new step's heading (not on first load) so keyboard and
+  // screen-reader users land at the top of the step they just opened.
+  React.useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    stepHeadingRef.current?.focus({ preventScroll: true });
+    stepHeadingRef.current?.scrollIntoView({ block: "nearest" });
+  }, [step]);
   const [errors, setErrors] = React.useState<FieldErrors>({});
   const [formError, setFormError] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState<"draft" | "publish" | null>(null);
@@ -192,11 +201,14 @@ export function CampaignWizard(props: Props) {
   };
 
   function validateStep(index: number): boolean {
-    const schema = STEPS[index].schema;
-    if (!schema) return true;
-    const result = schema.safeParse(toPayload(state));
-    if (!result.success) {
-      setErrors(zodFieldErrors(result.error));
+    const payload = toPayload(state);
+    let fe: FieldErrors = {};
+    for (const schema of STEPS[index].schemas) {
+      const result = schema.safeParse(payload);
+      if (!result.success) fe = { ...fe, ...zodFieldErrors(result.error) };
+    }
+    if (Object.keys(fe).length) {
+      setErrors(fe);
       setFormError(null);
       return false;
     }
@@ -204,7 +216,7 @@ export function CampaignWizard(props: Props) {
     return true;
   }
 
-  const next = () => validateStep(step) && setStep((s) => Math.min(s + 1, STEPS.length - 1));
+  const next = () => validateStep(step) && setStep((s) => Math.min(s + 1, LAST));
   const back = () => setStep((s) => Math.max(s - 1, 0));
   const goTo = (i: number) => i <= step && setStep(i);
 
@@ -215,7 +227,7 @@ export function CampaignWizard(props: Props) {
       setErrors(fe);
       setFormError("Some fields need attention: " + Object.values(fe)[0]);
       const firstKey = Object.keys(fe)[0];
-      const stepIndex = STEPS.findIndex((s) => s.schema && Object.keys((s.schema as { shape?: object }).shape ?? {}).includes(firstKey));
+      const stepIndex = wizardStepForField(firstKey);
       if (stepIndex >= 0) setStep(stepIndex);
       return;
     }
@@ -307,13 +319,15 @@ export function CampaignWizard(props: Props) {
             <p className="text-xs font-medium text-muted-foreground">
               Step {step + 1} of {STEPS.length}
             </p>
-            <h2 className="text-lg font-semibold">{STEPS[step].title}</h2>
+            <h2 ref={stepHeadingRef} tabIndex={-1} className="scroll-mt-24 text-lg font-semibold focus:outline-none">
+              {STEPS[step].title}
+            </h2>
           </div>
 
           <FormError message={formError} />
 
-          {/* ---------------- Step 1: Product ---------------- */}
-          {step === 0 ? (
+          {/* ---------------- Step 1: Product & basics ---------------- */}
+          {step === STEP.basics ? (
             <div className="space-y-4">
               {!activeProducts.length ? (
                 <div className="rounded-lg border border-dashed p-6 text-center">
@@ -358,9 +372,9 @@ export function CampaignWizard(props: Props) {
             </div>
           ) : null}
 
-          {/* ---------------- Step 2: Basics ---------------- */}
-          {step === 1 ? (
-            <div className="grid gap-4">
+          {step === STEP.basics && activeProducts.length ? (
+            <div className="grid gap-4 border-t pt-6">
+              <h3 className="text-sm font-semibold">Campaign details</h3>
               <Field label="Campaign name" htmlFor="name" error={errors.name} required>
                 <Input id="name" value={state.name} onChange={(e) => set("name", e.target.value)} placeholder={product ? `${product.name} launch` : "Rockerz 450 launch"} aria-invalid={!!errors.name} />
               </Field>
@@ -396,8 +410,8 @@ export function CampaignWizard(props: Props) {
             </div>
           ) : null}
 
-          {/* ---------------- Step 3: Commission & reward ---------------- */}
-          {step === 2 ? (
+          {/* ---------------- Step 2: Commission & reward ---------------- */}
+          {step === STEP.rewards ? (
             <div className="grid gap-6">
               {isEditingLive ? (
                 <p className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm">
@@ -470,8 +484,8 @@ export function CampaignWizard(props: Props) {
             </div>
           ) : null}
 
-          {/* ---------------- Step 4: Rules & budget ---------------- */}
-          {step === 3 ? (
+          {/* ---------------- Step 3: Rules, budget & duration ---------------- */}
+          {step === STEP.rules ? (
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="flex items-start gap-3 rounded-lg border p-3 sm:col-span-2">
                 <input type="checkbox" className="mt-0.5 size-4 accent-primary" checked={state.requiresApproval} onChange={(e) => set("requiresApproval", e.target.checked)} />
@@ -514,9 +528,9 @@ export function CampaignWizard(props: Props) {
             </div>
           ) : null}
 
-          {/* ---------------- Step 5: Duration ---------------- */}
-          {step === 4 ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+          {step === STEP.rules ? (
+            <div className="grid gap-4 border-t pt-6 sm:grid-cols-2">
+              <h3 className="text-sm font-semibold sm:col-span-2">Duration</h3>
               <Field label="Start date" htmlFor="startDate" error={errors.startDate} required>
                 <Input id="startDate" type="date" value={state.startDate} onChange={(e) => set("startDate", e.target.value)} aria-invalid={!!errors.startDate} />
               </Field>
@@ -526,13 +540,14 @@ export function CampaignWizard(props: Props) {
             </div>
           ) : null}
 
-          {/* ---------------- Step 6: Preview ---------------- */}
-          {step === 5 ? (
+          {/* ---------------- Step 4: Review & launch ---------------- */}
+          {step === STEP.review ? (
             <div className="space-y-6">
               {!previewRules || !product ? (
                 <FormError message="Some earlier steps have invalid values. Go back and fix them to see the preview." />
               ) : (
                 <>
+                  <ReviewHeading title="Product & basics" edits={[{ label: "Edit", onClick: () => setStep(STEP.basics) }]} />
                   <div className="flex gap-4 rounded-xl border bg-gradient-to-br from-accent/60 to-background p-5">
                     <ProductThumb src={product.imageUrl} name={product.name} className="size-20" />
                     <div className="min-w-0">
@@ -544,6 +559,13 @@ export function CampaignWizard(props: Props) {
                       {state.offerTitle ? <p className="mt-1 text-sm font-medium text-primary">{state.offerTitle}</p> : null}
                     </div>
                   </div>
+                  <ReviewHeading
+                    title="Commission, reward & rules"
+                    edits={[
+                      { label: "Commission", onClick: () => setStep(STEP.rewards) },
+                      { label: "Rules & dates", onClick: () => setStep(STEP.rules) },
+                    ]}
+                  />
                   <CampaignRulesGrid campaign={previewRules} />
                   {state.terms ? (
                     <div>
@@ -585,9 +607,9 @@ export function CampaignWizard(props: Props) {
             </div>
           ) : null}
 
-          {/* ---------------- Step 7: Publish ---------------- */}
-          {step === 6 ? (
-            <div className="space-y-5">
+          {step === STEP.review ? (
+            <div className="space-y-5 border-t pt-6">
+              <h3 className="text-sm font-semibold">Launch</h3>
               {problems.length ? (
                 <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm">
                   <p className="font-medium text-destructive">Fix these before launching:</p>
@@ -658,12 +680,12 @@ export function CampaignWizard(props: Props) {
               ) : null}
             </div>
             <div className="flex flex-wrap justify-end gap-2">
-              {step >= 1 && step < 6 ? (
+              {step < LAST && activeProducts.length ? (
                 <Button type="button" variant="outline" onClick={() => save("draft")} disabled={!!saving}>
                   {saving === "draft" ? <Loader2Icon className="animate-spin" /> : <SaveIcon />} Save {props.mode === "edit" && props.campaign.status !== "DRAFT" ? "changes" : "as draft"}
                 </Button>
               ) : null}
-              {step < 6 ? (
+              {step < LAST ? (
                 <Button type="button" onClick={next} disabled={!!saving || (step === 0 && !activeProducts.length)}>
                   Continue <ChevronRightIcon />
                 </Button>

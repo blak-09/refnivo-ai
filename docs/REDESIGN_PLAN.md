@@ -45,6 +45,27 @@ Status: plan approved 25 Nov 2026.
     - New "Products you can share" row (live customer campaigns not yet joined, preferred categories first).
   - **New read-only service:** `lib/services/dashboard.ts`, with tests in `tests/integration/dashboard.test.ts`.
   - **Customer overview was not opened in the browser:** the customer demo login does not work in the local database. It was checked by typecheck and tests.
+- **Phase 5 (campaign experience): done, pushed 26 Nov 2026.**
+  - **One campaign browser** (`components/campaigns/campaign-browser.tsx` + `campaign-filter-bar.tsx`) for `/campaigns` and creator Discover.
+    - Search, plus filters: product type, brand category, who can join, instant or approval, creator commission type, has a shopper offer.
+    - Sort chips: newest, highest commission, trending, ending soon.
+    - Live count, "Load more" (24 at a time), and empty states that offer "Clear filters".
+    - It is a plain GET form, so every view is a shareable URL and works without JavaScript.
+    - On phones the filters open in a bottom sheet behind a "Filters" button with a count badge, so campaigns start on the first screen.
+    - Filter parsing lives in `lib/campaigns/filters.ts`. Unknown values are ignored.
+  - **Removed** (replaced by the shared filters, per C1): the old directory view's A–Z and category sorts and its broad category chips (`campaign-directory.tsx`, `lib/services/directory.ts`).
+  - **Campaign wizard: 6 steps → 4** (`lib/campaigns/wizard-steps.ts`):
+    1. Product & basics.
+    2. Commission & reward.
+    3. Rules, budget & duration.
+    4. Review & launch.
+    - Fields and server validation are unchanged.
+    - The review step has Edit buttons that jump to the matching step.
+    - Focus moves to the new step's heading on every step change.
+    - A unit test checks that every server field belongs to a step.
+  - **Campaign page:**
+    - An "At a glance" summary under the price: what you earn, what the shopper gets, how to qualify.
+    - An application status banner at the top for creators who applied (pending, approved, rejected, removed, withdrawn).
 
 Scope inspected:
 
