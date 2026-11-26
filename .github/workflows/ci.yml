@@ -68,6 +68,10 @@ jobs:
       - name: Lint (zero warnings)
         run: npx eslint . --max-warnings 0
 
+      # next-env.d.ts (image imports, route types) is gitignored and only written by next dev/build.
+      - name: Generate Next.js types
+        run: npx next typegen
+
       - name: Typecheck
         run: npm run typecheck
 
